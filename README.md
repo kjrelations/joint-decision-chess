@@ -1,2 +1,5 @@
-# joint-decision-chess
- A chess varient with simultaneous play
+# README
+ A chess variant with simultaneous play
+
+## Setup
+
