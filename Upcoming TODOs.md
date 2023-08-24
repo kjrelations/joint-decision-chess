@@ -1,0 +1,51 @@
+# Upcoming TODO
+
+- Take early morning-midday documentation breaks and document as you go.
+  - Have a winding down routine and a hard time deadline.
+  - End the day with next day todos, potentially eventually progress updates.
+- Priority:
+  - Commit project to Github, 
+  - Create branches and simple Readme
+  - Create setup dependancy manager.
+- Play music during work!
+- Create your own transparency circles.
+- Highlight hovered square
+  - Optional: Highlight captures with an open circle different to regular moves
+  - Optional Initially: Label the chess board with letters and numbers.
+- Color the chess board correctly.
+  - Choose pleasing and attractive unique colors (see chess.com for example)
+- Highlight previous square for each player
+  - Implement "players" (classes)
+- Eventually implement guided arrows that can stack.
+  - Diagonal arrows for 1 distanced diagonal squares or long diagonal squares, direct arrows otherwise
+  - Right click to create arrows, left click to remove all arrows.
+  - Maybe instead during the second stage a clear all button.
+- Consider how to implement coordinates and their utility in your potential app!!!
+  - Save the game state as a class
+- Decide on implementing the classical version first or second.
+  - Turn based stages, no timers
+  - Special rules
+    - Castling
+      - Needs a history of the game position
+    - En-passant
+      - Needs a history of the game position
+    - Threefold repetition
+    - Checkmate recognition
+    - Special handling for algebraic notation
+    - Specialised simple AI's you can find online
+    - Highlight forbidden moves
+  - Resignation
+  - Drawing
+- Better tests eventualllllllllyyyyyyy; That's not the point for now.
+
+- Website:
+  - Switch view for any player.
+  - Add licensing for images.
+  - Implement chat boxes 
+    - Lock them with functionality
+  - Advertise the free version to redditors for playtest and breaking
+  - Optional final goal: Revisit the states of the game once it's done
+
+- Optional hard TODO that seems annoying:
+  - Figure out how to enable pytest in VSCode.
+  - https://code.visualstudio.com/docs/python/testing 
