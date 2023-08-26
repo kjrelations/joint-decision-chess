@@ -9,9 +9,26 @@ WIDTH, HEIGHT = 800, 800
 GRID_SIZE = WIDTH // 8
 WHITE_SQUARE = (255, 230, 155)
 BLACK_SQUARE = (140, 215, 230)
-TRANSPARENT_FILLED_CIRCLE = (255, 180, 155, 160)
+TRANSPARENT_CIRCLES = (255, 180, 155, 160)
 HOVER_OUTLINE_COLOR_WHITE = (255, 240, 200)
 HOVER_OUTLINE_COLOR_BLACK = (200, 235, 245)
+TEXT_OFFSET = 7
+HIGHLIGHT_WHITE = (255, 215, 105)
+HIGHLIGHT_BLACK = (75, 215, 230)
+PREVIOUS_WHITE = (255, 215, 105)
+PREVIOUS_BLACK = (75, 215, 230)
+
+# Coordinate font
+FONT_SIZE = 36
+font = pygame.font.Font(None, FONT_SIZE)
+COORDINATES = ['a','b','c','d','e','f','g','h']
+NUMBERS = ['1','2','3','4','5','6','7','8']
+letter_surfaces = []
+number_surfaces = []
+for i, letter in enumerate(COORDINATES):
+    SQUARE = WHITE_SQUARE if i % 2 == 0 else BLACK_SQUARE
+    letter_surfaces.append(font.render(letter, True, SQUARE))
+    number_surfaces.append(font.render(NUMBERS[i], True, SQUARE))
 
 # Chess board representation (for simplicity, just pieces are represented)
 # Our convention is that white pieces are upper case.
@@ -37,6 +54,18 @@ for row in range(8):
         color = WHITE_SQUARE if (row + col) % 2 == 0 else BLACK_SQUARE
         pygame.draw.rect(chessboard, color, (col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
+# Blit the coordinates onto the reference image
+coordinate_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+for i, letter in enumerate(letter_surfaces):
+    square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+    square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
+    coordinate_surface.blit(letter, (square_x, square_y))
+
+for i, number in enumerate(number_surfaces):
+    square_x = 5
+    square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
+    coordinate_surface.blit(number, (square_x, square_y))
+
 # Function to draw transparent circles on half of the tiles
 # TODO change name to be more accurate
 def draw_transparent_circles(valid_moves, valid_captures):
@@ -45,11 +74,11 @@ def draw_transparent_circles(valid_moves, valid_captures):
     for row, col in free_moves:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
         square_y = row * GRID_SIZE + GRID_SIZE // 2
-        pygame.draw.circle(transparent_surface, TRANSPARENT_FILLED_CIRCLE, (square_x, square_y), GRID_SIZE * 0.15)
+        pygame.draw.circle(transparent_surface, TRANSPARENT_CIRCLES, (square_x, square_y), GRID_SIZE * 0.15)
     for row, col in valid_captures:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
         square_y = row * GRID_SIZE + GRID_SIZE // 2
-        pygame.draw.circle(transparent_surface, TRANSPARENT_FILLED_CIRCLE, (square_x, square_y), GRID_SIZE * 0.5, 8)
+        pygame.draw.circle(transparent_surface, TRANSPARENT_CIRCLES, (square_x, square_y), GRID_SIZE * 0.5, 8)
 
     return transparent_surface
 
@@ -57,8 +86,15 @@ def draw_transparent_circles(valid_moves, valid_captures):
 def draw_hover_outline(row, col):
     hover_outline = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
     HOVER_OUTLINE_COLOR = HOVER_OUTLINE_COLOR_WHITE if (row + col) % 2 == 0 else HOVER_OUTLINE_COLOR_BLACK
-    pygame.draw.rect(hover_outline, HOVER_OUTLINE_COLOR, (0, 0, GRID_SIZE, GRID_SIZE), 5)  # Draw an outline
+    pygame.draw.rect(hover_outline, HOVER_OUTLINE_COLOR, (0, 0, GRID_SIZE, GRID_SIZE), 5)
     window.blit(hover_outline, (col * GRID_SIZE, row * GRID_SIZE))
+
+# Function to highlight selected squares
+def draw_highlight(row, col):
+    square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
+    HIGHLIGHT_COLOR = HIGHLIGHT_WHITE if (row + col) % 2 == 0 else HIGHLIGHT_BLACK
+    pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
+    window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
 
 ## TODO is in check function
 
@@ -66,7 +102,17 @@ def draw_hover_outline(row, col):
 def load_piece_image(piece):
     filename = f'images/{piece}.png'
     img = pygame.image.load(filename)
-    return pygame.transform.scale(img, (GRID_SIZE, GRID_SIZE))
+    img = pygame.transform.scale(img, (GRID_SIZE, GRID_SIZE))
+
+    # Create a transparent surface with the same size as GRID_SIZE x GRID_SIZE
+    transparent_surface = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
+    # Add transparency alpha
+    transparent_surface.set_alpha(128)
+
+    # Blit the image onto the transparent surface with transparency
+    transparent_surface.blit(img, (0, 0))
+
+    return img, transparent_surface
 
 # Function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping
 def name_keys(color, piece):
@@ -77,10 +123,11 @@ def name_keys(color, piece):
 
 # Load the chess pieces dynamically
 pieces = {}
+transparent_pieces = {}
 for color in ['w', 'b']:
     for piece in ['r', 'n', 'b', 'q', 'k', 'p']:
         piece_key, image_name_key = name_keys(color, piece)
-        pieces[piece_key] = load_piece_image(image_name_key)
+        pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key)
 
 # Function to draw the chess pieces
 def draw_pieces():
@@ -350,14 +397,20 @@ def calculate_moves(board, row, col):
 
 def main():
     running = True
-    # Variable to store the currently selected piece and hovered square
+
     selected_piece = None
+    current_position = None
+    previous_position = None
     hovered_square = None
+    # Boolean stating the first intention of moving a piece
+    first_intent = False
+    selected_piece_image = None
     valid_moves = []
     valid_captures = []
 
     left_mouse_button_down = False
 
+    # TODO right click deselects piece while left clicking
     # Main game loop
     while running:
         for event in pygame.event.get():
@@ -371,10 +424,12 @@ def main():
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
                     piece = board[row][col]
-
+                            
                     if not selected_piece:
                         if piece != ' ':
+                            first_intent = True
                             selected_piece = (row, col)
+                            selected_piece_image = transparent_pieces[piece]
                             valid_moves, valid_captures = calculate_moves(board, row, col)
                             if (row, col) != hovered_square:
                                 hovered_square = (row, col)
@@ -385,23 +440,52 @@ def main():
                             # The following logic will later change for my variant
                             board[row][col] = board[selected_piece[0]][selected_piece[1]]
                             board[selected_piece[0]][selected_piece[1]] = ' '
+                            previous_position = (selected_piece[0], selected_piece[1])
+                            current_position = (row, col)
                             selected_piece = None
+                            selected_piece_image = None
                             valid_moves, valid_captures = [], []
-                        elif (row, col) == selected_piece:
-                            selected_piece = None
-                            valid_moves, valid_captures = [], []
-                            if (row, col) != hovered_square:
-                                hovered_square = (row, col)
                         else:
                             if piece != ' ':
-                                selected_piece = (row, col)
-                                valid_moves, valid_captures = calculate_moves(board, row, col)
-                                if (row, col) != hovered_square:
-                                    hovered_square = (row, col)
+                                # If the mouse stays on a square and a piece is clicked a second time 
+                                # this ensures that mouseup on this square deselects the piece
+                                if (row, col) == selected_piece and first_intent:
+                                    first_intent = False
+                                    selected_piece_image = transparent_pieces[piece]
+                                # Redraw the transparent dragged piece on subsequent clicks
+                                if (row, col) == selected_piece and not first_intent:
+                                    selected_piece_image = transparent_pieces[piece]
+                                if (row, col) != selected_piece:
+                                    first_intent = True
+                                    selected_piece = (row, col)
+                                    selected_piece_image = transparent_pieces[piece]
+                                    valid_moves, valid_captures = calculate_moves(board, row, col)
+                                    if (row, col) != hovered_square:
+                                        hovered_square = (row, col)
+                                
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
                     left_mouse_button_down = False
                     hovered_square = None
+                    selected_piece_image = None
+                    # For the second time a mouseup occurs on the same square it deselects it
+                    # This can be an arbitrary number of mousedowns later
+                    if not first_intent and (row, col) == selected_piece:
+                            selected_piece = None
+                            valid_moves, valid_captures = [], []
+                    # First intent changed to false if mouseup on same square the first time
+                    if (row, col) == selected_piece and first_intent:
+                        first_intent = not first_intent
+                    # Move to valid squares on mouseup
+                    if (row, col) in valid_moves:
+                        # Move the piece
+                        # The following logic will later change for my variant
+                        board[row][col] = board[selected_piece[0]][selected_piece[1]]
+                        board[selected_piece[0]][selected_piece[1]] = ' '
+                        previous_position = (selected_piece[0], selected_piece[1])
+                        current_position = (row, col)
+                        selected_piece = None
+                        valid_moves, valid_captures = [], []
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
                 row, col = get_board_coordinates(x, y)
@@ -417,6 +501,17 @@ def main():
         # Draw the reference chessboard (constructed only once)
         window.blit(chessboard, (0, 0))
 
+        # Highlight selected squares
+        if selected_piece is not None:
+            draw_highlight(selected_piece[0], selected_piece[1])
+        if current_position is not None:
+            draw_highlight(current_position[0], current_position[1])
+        if previous_position is not None:
+            draw_highlight(previous_position[0], previous_position[1])
+
+        # Draw coordinates after highlights
+        window.blit(coordinate_surface, (0, 0))
+
         # Highlight valid move squares
         transparent_circles = draw_transparent_circles(valid_moves, valid_captures)
         window.blit(transparent_circles, (0, 0))
@@ -424,9 +519,19 @@ def main():
         # Draw the chess pieces on top of the reference board
         draw_pieces()
 
+
         # Draw the hover outline if a square is hovered
         if hovered_square is not None:
             draw_hover_outline(hovered_square[0], hovered_square[1])
+
+        # On mousedown and a piece is selected draw a transparent copy of the piece
+        # Draw after outline and previous layers
+        if selected_piece_image is not None:
+            x, y = pygame.mouse.get_pos()
+            # Calculate the position to center the image on the mouse
+            image_x = x - GRID_SIZE // 2
+            image_y = y - GRID_SIZE // 2
+            window.blit(selected_piece_image, (image_x, image_y))
 
         pygame.display.flip()
 
