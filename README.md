@@ -12,8 +12,10 @@
 2. Now, create a virtual environment and install the project's dependencies:
 
    ```bash
-   pipenv install
+   pipenv install --dev
    ```
+
+   - The dev flag ensures all dependencies including development packages are installed.
 
 3. This will create a virtual environment and install the required packages specified in the `Pipfile.lock`.
 
