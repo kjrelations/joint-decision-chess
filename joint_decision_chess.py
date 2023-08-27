@@ -3,6 +3,12 @@ import sys
 # Consider first publishing a version that is the classical variant of chess. Decide when the two versions branch off.
 # Initialize Pygame
 pygame.init()
+# Initialize mixer for sounds
+pygame.mixer.init()
+
+# Sound Effects
+move_sound = pygame.mixer.Sound('sounds/move.mp3')
+capture_sound = pygame.mixer.Sound('sounds/capture.mp3')
 
 # Constants
 WIDTH, HEIGHT = 800, 800
@@ -67,7 +73,6 @@ for i, number in enumerate(number_surfaces):
     coordinate_surface.blit(number, (square_x, square_y))
 
 # Function to draw transparent circles on half of the tiles
-# TODO change name to be more accurate
 def draw_transparent_circles(valid_moves, valid_captures):
     free_moves = [move for move in valid_moves if move not in valid_captures]
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -143,7 +148,27 @@ def get_board_coordinates(x, y):
     row = y // GRID_SIZE
     return row, col
 
-# TODO promotion
+class Button:
+    def __init__(self, x, y, width, height, piece, callback):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.scale_ratio = 1.5
+        self.scaled_width = int(self.rect.width * self.scale_ratio)
+        self.scaled_height = int(self.rect.height * self.scale_ratio)
+        self.scaled_x = self.rect.centerx - self.scaled_width // 2
+        self.scaled_y = self.rect.centery - self.scaled_height // 2
+        self.callback = callback
+        self.is_hovered = False
+        self.original_rect = self.rect.copy()
+        self.piece = piece
+
+    def check_hover(self, pos):
+        current = self.is_hovered
+        self.is_hovered = self.rect.collidepoint(pos)
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+                self.check_hover(event.pos)
+
 # TODO Implement "extra" potential moves that occur with blocked pieces of the same color
 # so .islower() == is_black and break out of loops, put these into "extra" helper functions
 # Helper function to calculate moves for a pawn
@@ -231,7 +256,7 @@ def rook_moves(board, row, col, is_white):
         else:
             if board[i][col].islower() == is_white:
                 moves.append((i, col))
-                captures.append((i, row))
+                captures.append((i, col))
             break
     return moves, captures
 
@@ -356,7 +381,6 @@ def calculate_moves(board, row, col):
     captures = []
 
     is_white = piece.isupper() # Check if the piece is white
-    is_black = piece.islower() # Check if the piece is black
 
     if piece.lower() == 'p':  # Pawn
         p_moves, p_captures = pawn_moves(board, row, col, is_white)
@@ -404,11 +428,113 @@ def main():
     hovered_square = None
     # Boolean stating the first intention of moving a piece
     first_intent = False
+    # Lock game state due to pawn promotion
+    game_locked = False
     selected_piece_image = None
+    promotion_required = False
+    promotion_square = None
     valid_moves = []
     valid_captures = []
 
     left_mouse_button_down = False
+
+    # Function for drawing the board
+    def draw_board():
+        # Draw the reference chessboard (constructed only once)
+        window.blit(chessboard, (0, 0))
+
+        # Highlight selected squares
+        if selected_piece is not None:
+            draw_highlight(selected_piece[0], selected_piece[1])
+        if current_position is not None:
+            draw_highlight(current_position[0], current_position[1])
+        if previous_position is not None:
+            draw_highlight(previous_position[0], previous_position[1])
+
+        # Draw coordinates after highlights
+        window.blit(coordinate_surface, (0, 0))
+
+        # Highlight valid move squares
+        transparent_circles = draw_transparent_circles(valid_moves, valid_captures)
+        window.blit(transparent_circles, (0, 0))
+        
+        # Draw the chess pieces on top of the reference board
+        draw_pieces()
+
+        # Draw the hover outline if a square is hovered
+        if hovered_square is not None:
+            draw_hover_outline(hovered_square[0], hovered_square[1])
+
+        # On mousedown and a piece is selected draw a transparent copy of the piece
+        # Draw after outline and previous layers
+        if selected_piece_image is not None:
+            x, y = pygame.mouse.get_pos()
+            # Calculate the position to center the image on the mouse
+            image_x = x - GRID_SIZE // 2
+            image_y = y - GRID_SIZE // 2
+            window.blit(selected_piece_image, (image_x, image_y))
+
+    def display_promotion_options(row, col, promotion_required):
+        
+        # Draw buttons onto a surface
+        if row == 0:
+            button_x = col * GRID_SIZE
+            button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
+            promotion_buttons = [
+                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'Q', promote_to_piece),
+                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'R', promote_to_piece),
+                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'B', promote_to_piece),
+                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'N', promote_to_piece),
+            ]
+        elif row == 7:
+            button_x = col * GRID_SIZE
+            button_y_values = [i * GRID_SIZE for i in [7, 6, 5, 4]]
+            promotion_buttons = [
+                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'q', promote_to_piece),
+                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'r', promote_to_piece),
+                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b', promote_to_piece),
+                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n', promote_to_piece),
+            ]
+        
+        while promotion_required:
+            for event in pygame.event.get():
+                for button in promotion_buttons:
+                    button.handle_event(event)
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        x, y = pygame.mouse.get_pos()
+                        if button.rect.collidepoint(x, y):
+                            button.callback(row, col, button.piece)
+                            promotion_required = False  # Exit promotion state condition
+            # Clear the screen
+            window.fill((0, 0, 0))
+
+            # Draw the board
+            draw_board()
+            
+            # Darken the screen
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
+
+            # Blit the overlay surface onto the main window
+            window.blit(overlay, (0, 0))
+
+            # Draw buttons and update the display
+            for button in promotion_buttons:
+                img = pieces[button.piece]
+                img_x, img_y = button.rect.x, button.rect.y
+                if button.is_hovered:
+                    img = pygame.transform.smoothscale(img, (GRID_SIZE * 1.5, GRID_SIZE * 1.5))
+                    img_x, img_y = button.scaled_x, button.scaled_y
+                window.blit(img, (img_x, img_y))
+
+            pygame.display.flip()
+
+    def promote_to_piece(row, col, piece):
+        # Handle promoting the pawn to the correct colored piece
+        board[row][col] = piece
 
     # TODO right click deselects piece while left clicking
     # Main game loop
@@ -424,7 +550,7 @@ def main():
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
                     piece = board[row][col]
-                            
+                    
                     if not selected_piece:
                         if piece != ' ':
                             first_intent = True
@@ -444,7 +570,15 @@ def main():
                             current_position = (row, col)
                             selected_piece = None
                             selected_piece_image = None
+                            if (row, col) in valid_captures:
+                                capture_sound.play()
+                            else:
+                                move_sound.play()
                             valid_moves, valid_captures = [], []
+                            # Pawn Promotion
+                            if board[row][col].lower() == 'p' and (row == 0 or row == 7):
+                                promotion_required = True
+                                promotion_square = (row, col)
                         else:
                             if piece != ' ':
                                 # If the mouse stays on a square and a piece is clicked a second time 
@@ -484,7 +618,15 @@ def main():
                         board[selected_piece[0]][selected_piece[1]] = ' '
                         previous_position = (selected_piece[0], selected_piece[1])
                         current_position = (row, col)
+                        if (row, col) in valid_captures:
+                            capture_sound.play()
+                        else:
+                            move_sound.play()
                         selected_piece = None
+                        # Pawn Promotion
+                        if board[row][col].lower() == 'p' and (row == 0 or row == 7):
+                            promotion_required = True
+                            promotion_square = (row, col)
                         valid_moves, valid_captures = [], []
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
@@ -498,40 +640,18 @@ def main():
         # Clear the screen
         window.fill((0, 0, 0))
 
-        # Draw the reference chessboard (constructed only once)
-        window.blit(chessboard, (0, 0))
+        # Draw the board
+        draw_board()
 
-        # Highlight selected squares
-        if selected_piece is not None:
-            draw_highlight(selected_piece[0], selected_piece[1])
-        if current_position is not None:
-            draw_highlight(current_position[0], current_position[1])
-        if previous_position is not None:
-            draw_highlight(previous_position[0], previous_position[1])
-
-        # Draw coordinates after highlights
-        window.blit(coordinate_surface, (0, 0))
-
-        # Highlight valid move squares
-        transparent_circles = draw_transparent_circles(valid_moves, valid_captures)
-        window.blit(transparent_circles, (0, 0))
-        
-        # Draw the chess pieces on top of the reference board
-        draw_pieces()
-
-
-        # Draw the hover outline if a square is hovered
-        if hovered_square is not None:
-            draw_hover_outline(hovered_square[0], hovered_square[1])
-
-        # On mousedown and a piece is selected draw a transparent copy of the piece
-        # Draw after outline and previous layers
-        if selected_piece_image is not None:
-            x, y = pygame.mouse.get_pos()
-            # Calculate the position to center the image on the mouse
-            image_x = x - GRID_SIZE // 2
-            image_y = y - GRID_SIZE // 2
-            window.blit(selected_piece_image, (image_x, image_y))
+        if promotion_required:
+            # Lock the game state (disable other input)
+            
+            # Display an overlay or popup with promotion options
+            display_promotion_options(promotion_square[0], promotion_square[1], promotion_required)
+            promotion_required = False
+            # Remove the overlay or popup by redrawing the board
+            window.fill((0, 0, 0))
+            draw_board()
 
         pygame.display.flip()
 
