@@ -437,6 +437,7 @@ def main():
     valid_captures = []
 
     left_mouse_button_down = False
+    right_mouse_button_down = False
 
     # Function for drawing the board
     def draw_board():
@@ -546,6 +547,8 @@ def main():
                 # LIKELY UGLY IMPLEMENTATION
                 if event.button == 1:  # Left mouse button
                     left_mouse_button_down = True
+                if event.button == 3:
+                    right_mouse_button_down = True
                 if left_mouse_button_down:
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
@@ -596,7 +599,12 @@ def main():
                                     valid_moves, valid_captures = calculate_moves(board, row, col)
                                     if (row, col) != hovered_square:
                                         hovered_square = (row, col)
-                                
+                if right_mouse_button_down:
+                    hovered_square = None
+                    selected_piece_image = None
+                    selected_piece = None
+                    first_intent = False
+                    valid_moves, valid_captures = [], []
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
                     left_mouse_button_down = False
@@ -628,6 +636,8 @@ def main():
                             promotion_required = True
                             promotion_square = (row, col)
                         valid_moves, valid_captures = [], []
+                if event.button == 3:  # Right mouse button
+                    right_mouse_button_down = False
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
                 row, col = get_board_coordinates(x, y)
