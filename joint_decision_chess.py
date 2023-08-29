@@ -149,25 +149,26 @@ def get_board_coordinates(x, y):
     return row, col
 
 class Button:
-    def __init__(self, x, y, width, height, piece, callback):
+    def __init__(self, x, y, width, height, piece):
         self.rect = pygame.Rect(x, y, width, height)
         self.scale_ratio = 1.5
         self.scaled_width = int(self.rect.width * self.scale_ratio)
         self.scaled_height = int(self.rect.height * self.scale_ratio)
         self.scaled_x = self.rect.centerx - self.scaled_width // 2
         self.scaled_y = self.rect.centery - self.scaled_height // 2
-        self.callback = callback
         self.is_hovered = False
-        self.original_rect = self.rect.copy()
         self.piece = piece
 
     def check_hover(self, pos):
-        current = self.is_hovered
         self.is_hovered = self.rect.collidepoint(pos)
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
                 self.check_hover(event.pos)
+    
+def promote_to_piece(row, col, piece):
+    # Handle promoting the pawn to the correct colored piece
+    board[row][col] = piece
 
 # TODO Implement "extra" potential moves that occur with blocked pieces of the same color
 # so .islower() == is_black and break out of loops, put these into "extra" helper functions
@@ -428,9 +429,8 @@ def main():
     hovered_square = None
     # Boolean stating the first intention of moving a piece
     first_intent = False
-    # Lock game state due to pawn promotion
-    game_locked = False
     selected_piece_image = None
+    # Locks the game state due to pawn promotion
     promotion_required = False
     promotion_square = None
     valid_moves = []
@@ -482,19 +482,19 @@ def main():
             button_x = col * GRID_SIZE
             button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
             promotion_buttons = [
-                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'Q', promote_to_piece),
-                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'R', promote_to_piece),
-                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'B', promote_to_piece),
-                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'N', promote_to_piece),
+                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'Q'),
+                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'R'),
+                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'B'),
+                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'N'),
             ]
         elif row == 7:
             button_x = col * GRID_SIZE
             button_y_values = [i * GRID_SIZE for i in [7, 6, 5, 4]]
             promotion_buttons = [
-                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'q', promote_to_piece),
-                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'r', promote_to_piece),
-                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b', promote_to_piece),
-                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n', promote_to_piece),
+                Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'q'),
+                Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'r'),
+                Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b'),
+                Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n'),
             ]
         
         while promotion_required:
@@ -507,7 +507,7 @@ def main():
                     elif event.type == pygame.MOUSEBUTTONDOWN:
                         x, y = pygame.mouse.get_pos()
                         if button.rect.collidepoint(x, y):
-                            button.callback(row, col, button.piece)
+                            promote_to_piece(row, col, button.piece)
                             promotion_required = False  # Exit promotion state condition
             # Clear the screen
             window.fill((0, 0, 0))
@@ -532,10 +532,6 @@ def main():
                 window.blit(img, (img_x, img_y))
 
             pygame.display.flip()
-
-    def promote_to_piece(row, col, piece):
-        # Handle promoting the pawn to the correct colored piece
-        board[row][col] = piece
 
     # TODO right click deselects piece while left clicking
     # Main game loop
@@ -600,6 +596,7 @@ def main():
                                     if (row, col) != hovered_square:
                                         hovered_square = (row, col)
                 if right_mouse_button_down:
+                    # If on selected piece draw, else remove
                     hovered_square = None
                     selected_piece_image = None
                     selected_piece = None
@@ -638,6 +635,8 @@ def main():
                         valid_moves, valid_captures = [], []
                 if event.button == 3:  # Right mouse button
                     right_mouse_button_down = False
+                    # drawing logic end here also append lines to list then blit them all at once later
+                    # Also have active draw list with [[start,end], [start,end], ...] that clear on left mouse click down
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
                 row, col = get_board_coordinates(x, y)
