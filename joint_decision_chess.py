@@ -441,7 +441,7 @@ def is_invalid_capture(board, is_color):
 def is_check(board, is_color):
     # Find the king's position
     king = 'K' if is_color else 'k'
-    king_position = None
+    # king_position = None # Otherwise no king could be found in potential boards
     for row in range(8):
         for col in range(8):
             if board[row][col] == king:
@@ -458,11 +458,11 @@ def is_check(board, is_color):
     return False
 
 def is_checkmate_or_stalemate(board, is_color):
-    # Iterate through all the player's pieces
     possible_moves = 0
-    pos_moves = []
+    pos_moves = [] # For DEBUG only, TO REMOVE IN FINAL VERSION
     # Consider this as a potential checkmate if under check
     checkmate = is_check(board, is_color)
+    # Iterate through all the player's pieces
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
@@ -476,12 +476,13 @@ def is_checkmate_or_stalemate(board, is_color):
                     if not is_check(temp_board, is_color):
                         possible_moves += 1
                         checkmate = False
-                        pos_moves.append([move, row, col])
+                        pos_moves.append([move, row, col]) # For DEBUG only, TO REMOVE IN FINAL VERSION
     
     return checkmate, possible_moves
 
 def main():
     running = True
+    end_position = False
 
     selected_piece = None
     current_position = None
@@ -665,10 +666,12 @@ def main():
                                 if checkmate:
                                     running = False
                                     print("CHECKMATE")
+                                    end_position = True
                                     break
                                 if remaining_moves == 0:
                                     running = False
                                     print("STALEMATE")
+                                    end_position = True
                                     break
                             valid_moves, valid_captures = [], []
                             # Pawn Promotion
@@ -789,14 +792,16 @@ def main():
             if checkmate:
                 print("CHECKMATE")
                 running = False
+                end_position = True
                 break
             if remaining_moves == 0:
                 print("STALEMATE")
                 running = False
+                end_position = True
                 break
 
         pygame.display.flip()
-    end_position = True
+    
     while end_position:
         # Clear the screen
         window.fill((0, 0, 0))
