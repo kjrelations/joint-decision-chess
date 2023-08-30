@@ -107,7 +107,7 @@ def draw_highlight(row, col):
 def load_piece_image(piece):
     filename = f'images/{piece}.png'
     img = pygame.image.load(filename)
-    img = pygame.transform.scale(img, (GRID_SIZE, GRID_SIZE))
+    img = pygame.transform.smoothscale(img, (GRID_SIZE, GRID_SIZE))
 
     # Create a transparent surface with the same size as GRID_SIZE x GRID_SIZE
     transparent_surface = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
@@ -194,6 +194,10 @@ def pawn_moves(board, row, col, is_white):
         if row == 1 and board[row + 1][col] == ' ' \
                     and board[row + 2][col] == ' ':
             moves.append((row + 2, col))
+
+    # No captures possible when pawns reach the end, otherwise list index out of range
+    if is_white and row == 0 or not is_white and row == 7:
+        return moves, captures
 
     # Pawn captures diagonally
     forwards = -1 if is_white else 1 # The forward direction for white is counting down rows
@@ -420,6 +424,62 @@ def calculate_moves(board, row, col):
     
     return moves, captures
 
+def is_invalid_capture(board, is_color):
+    # Find the king's position
+    king = 'K' if is_color else 'k'
+    king_position = None
+    for row in range(8):
+        for col in range(8):
+            if board[row][col] == king:
+                king_position = (row, col)
+                break
+    if king_position is None:
+        return True # Illegal move not allowed for now until turns are implemented
+    else:
+        return False
+
+def is_check(board, is_color):
+    # Find the king's position
+    king = 'K' if is_color else 'k'
+    king_position = None
+    for row in range(8):
+        for col in range(8):
+            if board[row][col] == king:
+                king_position = (row, col)
+                break
+    # Check if any opponent's pieces can attack the king
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece.islower() == is_color and piece != ' ':
+                _, captures = calculate_moves(board, row, col)
+                if king_position in captures:
+                    return True
+    return False
+
+def is_checkmate_or_stalemate(board, is_color):
+    # Iterate through all the player's pieces
+    possible_moves = 0
+    pos_moves = []
+    # Consider this as a potential checkmate if under check
+    checkmate = is_check(board, is_color)
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece.isupper() == is_color and piece != ' ':
+                moves, _ = calculate_moves(board, row, col)
+                for move in moves:
+                    # Try each move and see if it removes the check
+                    temp_board = [row[:] for row in board]
+                    temp_board[move[0]][move[1]] = temp_board[row][col]
+                    temp_board[row][col] = ' '
+                    if not is_check(temp_board, is_color):
+                        possible_moves += 1
+                        checkmate = False
+                        pos_moves.append([move, row, col])
+    
+    return checkmate, possible_moves
+
 def main():
     running = True
 
@@ -549,6 +609,7 @@ def main():
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
                     piece = board[row][col]
+                    is_white = piece.isupper()
                     
                     if not selected_piece:
                         if piece != ' ':
@@ -556,29 +617,66 @@ def main():
                             selected_piece = (row, col)
                             selected_piece_image = transparent_pieces[piece]
                             valid_moves, valid_captures = calculate_moves(board, row, col)
+                            # Remove invalid moves that place the king under check
+                            for move in valid_moves.copy():
+                                # Before making the move, create a copy of the board where the piece has moved
+                                temp_board = [rank[:] for rank in board]  
+                                temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+                                temp_board[selected_piece[0]][selected_piece[1]] = ' '
+                                # Temporary invalid move check, Useful for my variant later
+                                if is_invalid_capture(temp_board, not is_white):
+                                    valid_moves.remove(move)
+                                    if move in valid_captures:
+                                        valid_captures.remove(move)
+                                elif is_check(temp_board, is_white):
+                                    valid_moves.remove(move)
+                                    # Simplify?
+                                    if move in valid_captures:
+                                        valid_captures.remove(move)
                             if (row, col) != hovered_square:
                                 hovered_square = (row, col)
                     else:
                         # Implement logic to check if the clicked square is a valid move
                         if (row, col) in valid_moves:
-                            # Move the piece
-                            # The following logic will later change for my variant
-                            board[row][col] = board[selected_piece[0]][selected_piece[1]]
-                            board[selected_piece[0]][selected_piece[1]] = ' '
-                            previous_position = (selected_piece[0], selected_piece[1])
-                            current_position = (row, col)
-                            selected_piece = None
-                            selected_piece_image = None
-                            if (row, col) in valid_captures:
-                                capture_sound.play()
-                            else:
-                                move_sound.play()
+                            # Need to be considering the selected piece for this section
+                            piece = board[selected_piece[0]][selected_piece[0]]
+                            is_white = piece.isupper()
+                            # Before making the move, create a copy of the board where the piece has moved
+                            temp_board = [rank[:] for rank in board]  
+                            temp_board[row][col] = temp_board[selected_piece[0]][selected_piece[1]]
+                            temp_board[selected_piece[0]][selected_piece[1]] = ' '
+
+                            if not is_check(temp_board, is_white):
+                                # Move the piece if your king does not enter check
+                                # The following logic will later change for my variant
+                                board[row][col] = board[selected_piece[0]][selected_piece[1]]
+                                board[selected_piece[0]][selected_piece[1]] = ' '
+                                previous_position = (selected_piece[0], selected_piece[1])
+                                current_position = (row, col)
+                                selected_piece = None
+                                selected_piece_image = None
+
+                                if (row, col) in valid_captures:
+                                    capture_sound.play()
+                                else:
+                                    move_sound.play()
+                                # Check for checkmate or stalemate
+                                checkmate, remaining_moves = is_checkmate_or_stalemate(board, not is_white)
+                                if checkmate:
+                                    running = False
+                                    print("CHECKMATE")
+                                    break
+                                if remaining_moves == 0:
+                                    running = False
+                                    print("STALEMATE")
+                                    break
                             valid_moves, valid_captures = [], []
                             # Pawn Promotion
                             if board[row][col].lower() == 'p' and (row == 0 or row == 7):
                                 promotion_required = True
                                 promotion_square = (row, col)
                         else:
+                            # Otherwise we are considering another piece
                             if piece != ' ':
                                 # If the mouse stays on a square and a piece is clicked a second time 
                                 # this ensures that mouseup on this square deselects the piece
@@ -593,6 +691,21 @@ def main():
                                     selected_piece = (row, col)
                                     selected_piece_image = transparent_pieces[piece]
                                     valid_moves, valid_captures = calculate_moves(board, row, col)
+                                    # Remove invalid moves that place the king under check
+                                    for move in valid_moves.copy():
+                                        # Before making the move, create a copy of the board where the piece has moved
+                                        temp_board = [rank[:] for rank in board]  
+                                        temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+                                        temp_board[selected_piece[0]][selected_piece[1]] = ' '
+                                        # Temporary invalid move check # Useful for my variant later
+                                        if is_invalid_capture(temp_board, not is_white):
+                                            valid_moves.remove(move)
+                                            if move in valid_captures:
+                                                valid_captures.remove(move)
+                                        elif is_check(temp_board, is_white):
+                                            valid_moves.remove(move)
+                                            if move in valid_captures:
+                                                valid_captures.remove(move)
                                     if (row, col) != hovered_square:
                                         hovered_square = (row, col)
                 if right_mouse_button_down:
@@ -617,21 +730,26 @@ def main():
                         first_intent = not first_intent
                     # Move to valid squares on mouseup
                     if (row, col) in valid_moves:
-                        # Move the piece
-                        # The following logic will later change for my variant
-                        board[row][col] = board[selected_piece[0]][selected_piece[1]]
-                        board[selected_piece[0]][selected_piece[1]] = ' '
-                        previous_position = (selected_piece[0], selected_piece[1])
-                        current_position = (row, col)
-                        if (row, col) in valid_captures:
-                            capture_sound.play()
-                        else:
-                            move_sound.play()
-                        selected_piece = None
-                        # Pawn Promotion
-                        if board[row][col].lower() == 'p' and (row == 0 or row == 7):
-                            promotion_required = True
-                            promotion_square = (row, col)
+                        # Before making the move, create a copy of the board where the piece has moved
+                        temp_board = [rank[:] for rank in board]  
+                        temp_board[row][col] = temp_board[selected_piece[0]][selected_piece[1]]
+                        temp_board[selected_piece[0]][selected_piece[1]] = ' '
+                        if not is_check(temp_board, is_white):
+                            # Move the piece if king does not enter check
+                            # The following logic will later change for my variant
+                            board[row][col] = board[selected_piece[0]][selected_piece[1]]
+                            board[selected_piece[0]][selected_piece[1]] = ' '
+                            previous_position = (selected_piece[0], selected_piece[1])
+                            current_position = (row, col)
+                            if (row, col) in valid_captures:
+                                capture_sound.play()
+                            else:
+                                move_sound.play()
+                            selected_piece = None
+                            # Pawn Promotion
+                            if board[row][col].lower() == 'p' and (row == 0 or row == 7):
+                                promotion_required = True
+                                promotion_square = (row, col)
                         valid_moves, valid_captures = [], []
                 if event.button == 3:  # Right mouse button
                     right_mouse_button_down = False
@@ -658,11 +776,44 @@ def main():
             # Display an overlay or popup with promotion options
             display_promotion_options(promotion_square[0], promotion_square[1], promotion_required)
             promotion_required = False
+            
             # Remove the overlay or popup by redrawing the board
             window.fill((0, 0, 0))
             draw_board()
+            # On mousedown piece could become whatever was there before
+            # We need to set the piece to be the pawn to confirm checkmate immediately 
+            piece = board[row][col]
+            is_white = piece.isupper()
+            # Check for checkmate or stalemate
+            checkmate, remaining_moves = is_checkmate_or_stalemate(board, not is_white)
+            if checkmate:
+                print("CHECKMATE")
+                running = False
+                break
+            if remaining_moves == 0:
+                print("STALEMATE")
+                running = False
+                break
 
         pygame.display.flip()
+    end_position = True
+    while end_position:
+        # Clear the screen
+        window.fill((0, 0, 0))
+
+        # Draw the board
+        draw_board()
+
+        # Darken the screen
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 128))
+
+        # Blit the overlay surface onto the main window
+        window.blit(overlay, (0, 0))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                end_position = False
 
     # Quit Pygame
     pygame.quit()
