@@ -292,6 +292,18 @@ def main():
                     if (row, col) != hovered_square:
                         hovered_square = (row, col)
 
+            elif event.type == pygame.KEYDOWN:
+
+                # Undo move
+                if event.key == pygame.K_u:
+                    # Update current and previous position highlighting
+                    current_position, previous_position = game.undo_move()
+                    hovered_square = None
+                    selected_piece_image = None
+                    selected_piece = None
+                    first_intent = False
+                    valid_moves, valid_captures, valid_specials = [], [], []
+
         # Clear the screen
         window.fill((0, 0, 0))
 
@@ -330,9 +342,18 @@ def main():
                 'hovered_square': hovered_square,
                 'selected_piece_image': selected_piece_image
             }
-            display_promotion_options(draw_board_params, window, promotion_square[0], promotion_square[1], pieces, promotion_required, game)
+            new_current_position, new_previous_position = \
+                display_promotion_options(draw_board_params, window, promotion_square[0], promotion_square[1], pieces, promotion_required, game)
             promotion_required = False
             
+            if new_current_position is not None:
+                current_position, previous_position = new_current_position, new_previous_position
+                hovered_square = None
+                selected_piece_image = None
+                selected_piece = None
+                first_intent = False
+                valid_moves, valid_captures, valid_specials = [], [], []
+                
             # Remove the overlay and buttons by redrawing the board
             window.fill((0, 0, 0))
             # We likely need to reinput the arguments and can't use the above params as they are updated.
@@ -352,6 +373,7 @@ def main():
             })
             # On MOUSEDOWN, piece could become whatever was there before and have the wrong color
             # We need to set the piece to be the pawn/new_piece to confirm checkmate immediately 
+            # In the case of an undo this is fine and checkmate is always false
             piece = game.board[row][col]
             is_white = piece.isupper()
             # Check for checkmate or stalemate

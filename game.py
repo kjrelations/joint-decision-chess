@@ -153,5 +153,59 @@ class Game:
             self.alg_moves[-1] += 'x'
         print("ALG_MOVES:", self.alg_moves)
 
-    def undo_move(self, move):
-        pass
+    def undo_move(self):
+        # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
+        if len(self.moves) != 0:
+            # TODO Need to switch player turn as well once implemented and allowed in game
+            move = self.moves[-1]
+
+            prev_move = list(move[0])
+            curr_move = list(move[1])
+            potential_capture = move[2]
+            special = move[3]
+
+            piece, prev_row, prev_col = prev_move[0], int(prev_move[1]), int(prev_move[2])
+            curr_row, curr_col = int(curr_move[1]), int(curr_move[2])
+
+            self.board[prev_row][prev_col] = piece
+            if special != 'enpassant':
+                self.board[curr_row][curr_col] = potential_capture
+            else:
+                self.board[curr_row][curr_col] = ' '
+                self.board[prev_row][curr_col] = potential_capture
+
+            if special == 'castle':
+                if (curr_row, curr_col) == (7, 2):
+                    self.board[7][0] = 'R'
+                    self.board[7][3] = ' '
+                    self.castle_attributes['white_king_moved'] = False
+                    self.castle_attributes['left_white_rook_moved'] = False
+                elif (curr_row, curr_col) == (7, 6):
+                    self.board[7][7] = 'R'
+                    self.board[7][5] = ' '
+                    self.castle_attributes['white_king_moved'] = False
+                    self.castle_attributes['right_white_rook_moved'] = False
+                elif (curr_row, curr_col) == (0, 2):
+                    self.board[0][0] = 'r'
+                    self.board[0][3] = ' '
+                    self.castle_attributes['black_king_moved'] = False
+                    self.castle_attributes['left_black_rook_moved'] = False
+                elif (curr_row, curr_col) == (0, 6):
+                    self.board[0][7] = 'r'
+                    self.board[0][5] = ' '
+                    self.castle_attributes['black_king_moved'] = False
+                    self.castle_attributes['right_black_rook_moved'] = False
+            
+            del self.moves[-1]
+            del self.alg_moves[-1]
+
+            if len(self.moves) != 0:
+                new_recent_positions = self.moves[-1]
+                new_last_move, new_current_move = list(new_recent_positions[0]), list(new_recent_positions[1])
+
+                new_curr_row, new_curr_col = int(new_current_move[1]), int(new_current_move[2])
+                last_row, last_col = int(new_last_move[1]), int(new_last_move[2])
+
+                return (new_curr_row, new_curr_col), (last_row, last_col)
+            
+        return None, None

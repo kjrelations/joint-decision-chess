@@ -576,7 +576,8 @@ class Pawn_Button:
 
 # Helper Function for displaying and running until a pawn is promoted 
 def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
-    
+    new_current_position, new_previous_position = None, None
+
     # Draw buttons onto a surface
     if row == 0:
         button_x = col * GRID_SIZE
@@ -609,6 +610,13 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
                     if button.rect.collidepoint(x, y):
                         game.promote_to_piece(row, col, button.piece)
                         promotion_required = False  # Exit promotion state condition
+            if event.type == pygame.KEYDOWN:
+
+                # Undo move
+                if event.key == pygame.K_u:
+                    # Update current and previous position highlighting
+                    new_current_position, new_previous_position = game.undo_move()
+                    promotion_required = False
         
         # Clear the screen
         window.fill((0, 0, 0))
@@ -633,3 +641,5 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
             window.blit(img, (img_x, img_y))
 
         pygame.display.flip()
+    
+    return new_current_position, new_previous_position
