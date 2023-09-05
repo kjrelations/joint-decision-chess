@@ -486,10 +486,11 @@ def draw_transparent_circles(valid_moves, valid_captures, valid_specials):
 
     return transparent_surface
 
-# Helper Function to highlight selected squares
-def draw_highlight(window, row, col):
+# Helper Function to highlight selected squares on left or right click
+def draw_highlight(window, row, col, left):
     square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
-    HIGHLIGHT_COLOR = HIGHLIGHT_WHITE if (row + col) % 2 == 0 else HIGHLIGHT_BLACK
+    colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else [HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED]
+    HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
 
@@ -501,6 +502,7 @@ def draw_board(params):
     selected_piece = params['selected_piece']
     current_position = params['current_position']
     previous_position = params['previous_position']
+    right_clicked_squares = params['right_clicked_squares']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
@@ -511,13 +513,19 @@ def draw_board(params):
     # Draw the reference chessboard (constructed only once)
     window.blit(chessboard, (0, 0))
 
-    # Highlight selected squares
+    # Highlight left clicked selected squares
+    left = True
     if selected_piece is not None:
-        draw_highlight(window, selected_piece[0], selected_piece[1])
+        draw_highlight(window, selected_piece[0], selected_piece[1], left)
     if current_position is not None:
-        draw_highlight(window, current_position[0], current_position[1])
+        draw_highlight(window, current_position[0], current_position[1], left)
     if previous_position is not None:
-        draw_highlight(window, previous_position[0], previous_position[1])
+        draw_highlight(window, previous_position[0], previous_position[1], left)
+
+    # Highlight right clicked selected squares
+    left = False
+    for square in right_clicked_squares:
+        draw_highlight(window, square[0], square[1], left)
 
     # Perhaps this will be moved to constants or depend on player turn or something
     # Blit the coordinates onto the reference image
@@ -576,7 +584,7 @@ class Pawn_Button:
 
 # Helper Function for displaying and running until a pawn is promoted 
 def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
-    new_current_position, new_previous_position = None, None
+    new_current_position, new_previous_position, end_position, end_state = None, None, False, None
 
     # Draw buttons onto a surface
     if row == 0:
@@ -617,6 +625,24 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
                     # Update current and previous position highlighting
                     new_current_position, new_previous_position = game.undo_move()
                     promotion_required = False
+                
+                # Resignation
+                elif event.key == pygame.K_r:
+                    # Update current and previous position highlighting
+                    new_current_position, new_previous_position = game.undo_move()
+                    print("RESIGNATION")
+                    promotion_required = False
+                    end_position = True
+                    end_state = True
+                
+                # Draw
+                elif event.key == pygame.K_d:
+                    # Update current and previous position highlighting
+                    new_current_position, new_previous_position = game.undo_move()
+                    print("DRAW")
+                    promotion_required = False
+                    end_position = True
+                    end_state = False
         
         # Clear the screen
         window.fill((0, 0, 0))
@@ -642,4 +668,4 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
 
         pygame.display.flip()
     
-    return new_current_position, new_previous_position
+    return new_current_position, new_previous_position, end_position, end_state

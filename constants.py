@@ -12,15 +12,18 @@ HOVER_OUTLINE_COLOR_BLACK = (200, 235, 245)
 TEXT_OFFSET = 7
 HIGHLIGHT_WHITE = (255, 215, 105)
 HIGHLIGHT_BLACK = (75, 215, 230)
+HIGHLIGHT_WHITE_RED = (255, 100, 70)
+HIGHLIGHT_BLACK_RED = (150, 60, 40)
 PREVIOUS_WHITE = (255, 215, 105)
 PREVIOUS_BLACK = (75, 215, 230)
+STARTING_PLAYER = True
 
 # Initialize Pygame to initialize fonts
 pygame.init()
 
 # Coordinate font
 FONT_SIZE = 36
-font = pygame.font.Font(None, FONT_SIZE)
+font = pygame.font.Font(None, FONT_SIZE) # default font is called freesansbold
 COORDINATES = ['a','b','c','d','e','f','g','h']
 NUMBERS = ['1','2','3','4','5','6','7','8']
 letter_surfaces = []

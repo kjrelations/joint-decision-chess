@@ -2,8 +2,9 @@ from helpers import *
 
 class Game:
 
-    def __init__(self, board):
-        self.current_turn = None
+    def __init__(self, board, current_turn):
+        # current_turn = True for white, False for black
+        self.current_turn = current_turn
         self.board = board
         self.moves = []
         self.alg_moves = []
@@ -15,6 +16,7 @@ class Game:
             'left_black_rook_moved' : False,
             'right_black_rook_moved' : False
         }
+        self._debug = False # Dev private attribute for removing turns
 
     def update_state(self, new_row, new_col, selected_piece, special=False):
         piece = self.board[selected_piece[0]][selected_piece[1]]
@@ -38,7 +40,7 @@ class Game:
         if enpassant:
             self.board[capture_row][new_col] = ' '
         elif castle:
-            if (new_row, new_col) == (7,2):
+            if (new_row, new_col) == (7, 2):
                 self.board[7][3] = 'R'
                 self.board[7][0] = ' '
             elif (new_row, new_col) == (7, 6):
@@ -67,6 +69,11 @@ class Game:
         elif piece == 'r' and selected_piece == (0, 7) and not self.castle_attributes['right_black_rook_moved']:
             self.castle_attributes['right_black_rook_moved'] = True
 
+        if not self._debug:
+            # Change turns once a standard move is played, not during a pawn promotion
+            if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
+                self.current_turn = not self.current_turn
+
     def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, enpassant):
         file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
         rank_conversion = {i: str(8 - i) for i in range(8)}
@@ -75,7 +82,7 @@ class Game:
         
         # Castling
         if castle:
-            if (new_row, new_col) == (7,2) or (new_row, new_col) == (0, 2):
+            if (new_row, new_col) == (7, 2) or (new_row, new_col) == (0, 2):
                 return '0-0-0'
             elif (new_row, new_col) == (7, 6) or (new_row, new_col) == (0, 6):
                 return '0-0'
@@ -137,6 +144,16 @@ class Game:
 
         return alg_move
 
+    def add_end_game_notation(self, checkmate):
+        if not self._debug:
+            if checkmate:
+                symbol = '0-1' if self.current_turn else '1-0'
+                self.alg_moves.append(symbol)
+                print('ALG_MOVES: ', self.alg_moves)
+            else:
+                self.alg_moves.append('½–½')
+                print('ALG_MOVES: ', self.alg_moves)
+
     def promote_to_piece(self, row, col, piece):
         is_white = piece.isupper()
         self.board[row][col] = piece
@@ -151,12 +168,15 @@ class Game:
             self.alg_moves[-1] += 'X'
         elif is_check(self.board, not is_white, self.moves):
             self.alg_moves[-1] += 'x'
+        
+        # Change turns after pawn promotion
+        if not self._debug:
+            self.current_turn = not self.current_turn
         print("ALG_MOVES:", self.alg_moves)
 
     def undo_move(self):
         # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
         if len(self.moves) != 0:
-            # TODO Need to switch player turn as well once implemented and allowed in game
             move = self.moves[-1]
 
             prev_move = list(move[0])
@@ -199,6 +219,11 @@ class Game:
             del self.moves[-1]
             del self.alg_moves[-1]
 
+            if not self._debug:
+                # Change turns once a standard move is played, not during a pawn promotion
+                if piece.lower() != 'p' or (piece.lower() == 'p' and (curr_row != 7 and curr_row != 0)):
+                    self.current_turn = not self.current_turn
+
             if len(self.moves) != 0:
                 new_recent_positions = self.moves[-1]
                 new_last_move, new_current_move = list(new_recent_positions[0]), list(new_recent_positions[1])
@@ -207,5 +232,6 @@ class Game:
                 last_row, last_col = int(new_last_move[1]), int(new_last_move[2])
 
                 return (new_curr_row, new_curr_col), (last_row, last_col)
+            
             
         return None, None
