@@ -470,6 +470,7 @@ def draw_pieces(window, board, pieces):
 # Helper Function to draw transparent circles on half of the tiles
 def draw_transparent_circles(valid_moves, valid_captures, valid_specials):
     free_moves = [move for move in valid_moves if move not in valid_captures]
+    # Create surface allowing for transparaency with alpha transparency values defined in colors 
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for row, col in free_moves:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
@@ -484,6 +485,124 @@ def draw_transparent_circles(valid_moves, valid_captures, valid_specials):
         square_y = row * GRID_SIZE + GRID_SIZE // 2
         pygame.draw.circle(transparent_surface, TRANSPARENT_SPECIAL_CIRCLES, (square_x, square_y), GRID_SIZE * 0.15)
 
+    return transparent_surface
+
+# Helper Function to get x, y coordinates from board coordinates
+def get_coordinates(row, col):
+    x = row * GRID_SIZE
+    y = col * GRID_SIZE
+    return x, y
+
+def draw_arrow(arrow, current_turn):
+    # Arrow color depends on turn
+    arrow_color = ARROW_WHITE if current_turn else ARROW_BLACK
+    transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    # Arrows as row, col -> y, x
+    start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0])), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0]))
+    # Center start and end positions on Square
+    start, end = start + pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2),  end + pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2) 
+    y1, x1 = arrow[0]
+    y2, x2 = arrow[1]
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    intermediate_col, intermediate_row, intermediate_end = None, None, None
+    # Customizable arrow features
+    body_width = ARROW_BODY_WIDTH
+    head_height = ARROW_HEAD_HEIGHT
+    head_width = ARROW_HEAD_WIDTH
+
+    if (dx == 1 and dy == 2 ) or (dx == 2 and dy == 1):
+        # Knight's move: L-shaped path
+        if dx == 2:
+            # Intermediate move is horizontal
+            intermediate_col = x2 # Adjusted
+            intermediate_row = y1
+        else:
+            # Intermidiate move is vertical
+            intermediate_col = x1
+            intermediate_row = y2 # Adjusted
+    
+    if intermediate_col is not None and intermediate_row is not None:
+        # Translate the end point to the end of the body width of the second line to be drawn
+        if intermediate_col < x1:
+            translate = pygame.Vector2(-body_width / 2, 0)
+        elif intermediate_col > x1:
+            translate = pygame.Vector2(body_width / 2, 0)
+        elif intermediate_row < y1:
+            translate = pygame.Vector2(0, -body_width / 2)
+        elif intermediate_row > y1:
+            translate = pygame.Vector2(0, body_width / 2)
+        
+        # Need to offset to the midpoint as well
+        offset = pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2)
+        intermediate_end = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row)) + offset + translate
+        intermediate_point = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row)) + offset
+    else:
+        intermediate_point = start
+
+    # If the arrow is straight, draw an arrow head at the end of the line, 
+    # otherwise draw an arrow head at the end of the second line
+    arrow = intermediate_point - end
+    # Angle between arrow and a vertical line going up; negative x, y values are off screen left and up, respectively.
+    # Value is a clockwise rotation, negative for counterclockwise
+    angle = arrow.angle_to(pygame.Vector2(0, -1)) 
+    body_length = arrow.length() - head_height
+
+    # Create the triangle head around the origin
+    head_verts = [
+        pygame.Vector2(0, head_height / 2),                 # Center
+        pygame.Vector2(head_width / 2, -head_height / 2),   # Bottom Right
+        pygame.Vector2(-head_width / 2, -head_height / 2),  # Bottom Left
+    ]
+    # Rotate and translate the head into place
+    translation = pygame.Vector2(0, arrow.length() - (head_height / 2)).rotate(-angle)
+    for i in range(len(head_verts)):
+        head_verts[i].rotate_ip(-angle)
+        head_verts[i] += translation
+        head_verts[i] += intermediate_point
+
+    pygame.draw.polygon(transparent_surface, arrow_color, head_verts)
+
+    # Calculate the body rectangle, rotate and translate into place, 
+    # offset the start/bottom of the line only for a single line to not 
+    # have the line overlap with starting piece
+    offset = pygame.Vector2(0, GRID_SIZE * 0.25)
+    if intermediate_point != start:
+        offset = pygame.Vector2(0, 0)
+    body_verts = [
+        pygame.Vector2(-body_width / 2, body_length / 2),            # Top Left
+        pygame.Vector2(body_width / 2, body_length / 2),             # Top Right
+        pygame.Vector2(body_width / 2, -body_length / 2) + offset,   # Bottom Right
+        pygame.Vector2(-body_width / 2, -body_length / 2) + offset,  # Bottom Left
+    ]
+    translation = pygame.Vector2(0, body_length / 2).rotate(-angle) # Rotates CCW as per documentation
+    for i in range(len(body_verts)):
+        body_verts[i].rotate_ip(-angle) # Rotates CCW as per documentation without a length change
+        body_verts[i] += translation
+        body_verts[i] += intermediate_point
+    
+    # For a second line repeat the above for the intermediate rectangle
+    if intermediate_point != start:
+        rectangle = start - intermediate_end
+        rec_angle = rectangle.angle_to(pygame.Vector2(0, -1))
+        rec_length = rectangle.length()
+        offset = pygame.Vector2(0, GRID_SIZE * 0.25)
+        intermediate_verts = [
+            pygame.Vector2(-body_width / 2, rec_length / 2),
+            pygame.Vector2(body_width / 2, rec_length / 2),
+            pygame.Vector2(body_width / 2, -rec_length / 2) + offset,
+            pygame.Vector2(-body_width / 2, -rec_length / 2) + offset,
+        ]
+        translation = pygame.Vector2(0, rec_length / 2).rotate(-rec_angle)
+        for i in range(len(intermediate_verts)):
+            intermediate_verts[i].rotate_ip(-rec_angle)
+            intermediate_verts[i] += translation
+            intermediate_verts[i] += start
+        
+        pygame.draw.polygon(transparent_surface, arrow_color, intermediate_verts)
+
+    pygame.draw.polygon(transparent_surface, arrow_color, body_verts)
+    
     return transparent_surface
 
 # Helper Function to highlight selected squares on left or right click
@@ -503,6 +622,8 @@ def draw_board(params):
     current_position = params['current_position']
     previous_position = params['previous_position']
     right_clicked_squares = params['right_clicked_squares']
+    drawn_arrows = params['drawn_arrows']
+    current_turn = params['current_turn']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
@@ -546,7 +667,7 @@ def draw_board(params):
     # Highlight valid move squares
     transparent_circles = draw_transparent_circles(valid_moves, valid_captures, valid_specials)
     window.blit(transparent_circles, (0, 0))
-    
+
     # Draw the chess pieces on top of the reference board
     draw_pieces(window, board, pieces)
 
@@ -554,6 +675,12 @@ def draw_board(params):
     if hovered_square is not None:
         draw_hover_outline(window, hovered_square[0], hovered_square[1])
 
+    # Draw arrows
+    for arrow in drawn_arrows:
+        transparent_arrow = draw_arrow(arrow, current_turn)
+        # Blit each arrow to not blend them with each other
+        window.blit(transparent_arrow, (0, 0))
+    
     # On mousedown and a piece is selected draw a transparent copy of the piece
     # Draw after outline and previous layers
     if selected_piece_image is not None:

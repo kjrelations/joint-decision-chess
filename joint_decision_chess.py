@@ -29,12 +29,13 @@ for row in range(8):
 pieces = {}
 transparent_pieces = {}
 for color in ['w', 'b']:
-    for piece in ['r', 'n', 'b', 'q', 'k', 'p']:
-        piece_key, image_name_key = name_keys(color, piece)
+    for piece_lower in ['r', 'n', 'b', 'q', 'k', 'p']:
+        piece_key, image_name_key = name_keys(color, piece_lower)
         pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key)
 
 # Main loop piece selection logic that updates state
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
+    piece = game.board[row][col]
     # Initialize variables based on turn
     if game.current_turn == is_white or game._debug:
         first_intent = True
@@ -172,7 +173,9 @@ def main():
     previous_position = None
     hovered_square = None
     current_right_clicked_square = None
+    end_right_released_square = None
     right_clicked_squares = []
+    drawn_arrows = []
     # Boolean stating the first intention of moving a piece
     first_intent = False
     selected_piece_image = None
@@ -213,8 +216,9 @@ def main():
                     continue
 
                 if left_mouse_button_down:
-                    # Clear highlights
+                    # Clear highlights and arrows
                     right_clicked_squares = []
+                    drawn_arrows = []
 
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
@@ -223,9 +227,10 @@ def main():
                     
                     if not selected_piece:
                         if piece != ' ':
-                             # Update states with new piece selection
-                             first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
+                            # Update states with new piece selection
+                            first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
                                 handle_new_piece_selection(game, row, col, is_white, hovered_square)
+                            
                     else:
                         ## Free moves or captures
                         if (row, col) in valid_moves:
@@ -271,6 +276,15 @@ def main():
                                 if (row, col) != selected_piece:
                                      first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
                                         handle_new_piece_selection(game, row, col, is_white, hovered_square)
+
+            elif event.type == pygame.MOUSEMOTION:
+                x, y = pygame.mouse.get_pos()
+                row, col = get_board_coordinates(x, y)
+
+                # Only draw hover outline when left button is down and a piece is selected
+                if left_mouse_button_down and selected_piece is not None:  
+                    if (row, col) != hovered_square:
+                        hovered_square = (row, col)
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
@@ -322,17 +336,17 @@ def main():
                             right_clicked_squares.append((row, col))
                         else:
                             right_clicked_squares.remove((row, col))
+                    elif current_right_clicked_square is not None:
+                        x, y = pygame.mouse.get_pos()
+                        row, col = get_board_coordinates(x, y)
+
+                        end_right_released_square = (row, col)
+                        if [current_right_clicked_square, end_right_released_square] not in drawn_arrows:
+                            drawn_arrows.append([current_right_clicked_square, end_right_released_square])
+                        else:
+                            drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
                     # drawing logic end here also append lines to list then blit them all at once later
                     # Also have active draw list with [[start,end], [start,end], ...] that clear on left mouse click down
-
-            elif event.type == pygame.MOUSEMOTION:
-                x, y = pygame.mouse.get_pos()
-                row, col = get_board_coordinates(x, y)
-
-                # Only draw hover outline when left button is down and a piece is selected
-                if left_mouse_button_down and selected_piece is not None:  
-                    if (row, col) != hovered_square:
-                        hovered_square = (row, col)
 
             elif event.type == pygame.KEYDOWN:
 
@@ -345,6 +359,8 @@ def main():
                     selected_piece = None
                     first_intent = False
                     valid_moves, valid_captures, valid_specials = [], [], []
+                    right_clicked_squares = []
+                    drawn_arrows = []
 
                 # Resignation
                 if event.key == pygame.K_r:
@@ -374,6 +390,8 @@ def main():
             'current_position': current_position,
             'previous_position': previous_position,
             'right_clicked_squares': right_clicked_squares,
+            'drawn_arrows': drawn_arrows,
+            'current_turn': game.current_turn,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -395,6 +413,8 @@ def main():
                 'current_position': current_position,
                 'previous_position': previous_position,
                 'right_clicked_squares': right_clicked_squares,
+                'drawn_arrows': drawn_arrows,
+                'current_turn': game.current_turn,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -430,6 +450,8 @@ def main():
                 'current_position': current_position,
                 'previous_position': previous_position,
                 'right_clicked_squares': right_clicked_squares,
+                'current_turn': game.current_turn,
+                'drawn_arrows': drawn_arrows,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -461,6 +483,7 @@ def main():
     while end_position:
         # Clear any selected highlights
         right_clicked_squares = []
+        drawn_arrows = []
         # Clear the screen
         window.fill((0, 0, 0))
 
@@ -473,6 +496,8 @@ def main():
             'current_position': current_position,
             'previous_position': previous_position,
             'right_clicked_squares': right_clicked_squares,
+            'current_turn': game.current_turn,
+            'drawn_arrows': drawn_arrows,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
