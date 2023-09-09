@@ -2,9 +2,10 @@ from helpers import *
 
 class Game:
 
-    def __init__(self, board, current_turn):
-        # current_turn = True for white, False for black
+    def __init__(self, board, current_turn, inverse_view = False):
+        # current_turn = True for white, False for black, the final version will always default to True, but for now we keep it like this
         self.current_turn = current_turn
+        self.inverse_view = inverse_view
         self.board = board
         self.moves = []
         self.alg_moves = []
@@ -16,6 +17,12 @@ class Game:
             'left_black_rook_moved' : False,
             'right_black_rook_moved' : False
         }
+        # Appending an empty set of special states and initialised castling states to rows of board row tuples
+        _current_board_state = tuple(tuple(row) for row in board)
+        _current_board_state = _current_board_state + ((),) # Empty set of specials
+        _current_board_state = _current_board_state + tuple(self.castle_attributes.values())
+        self.board_states = { _current_board_state: 1}
+        self.max_states = 1000
         self._debug = False # Dev private attribute for removing turns
 
     def update_state(self, new_row, new_col, selected_piece, special=False):
@@ -73,6 +80,26 @@ class Game:
             # Change turns once a standard move is played, not during a pawn promotion
             if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
                 self.current_turn = not self.current_turn
+                # Update dictionary of board states
+                current_special_moves = []
+                for row in range(8):
+                    for col in range(8):
+                        other_piece = self.board[row][col]
+                        if other_piece.islower() != piece.islower() and other_piece != ' ':
+                            _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                            current_special_moves.extend(specials)
+                _current_board_state = tuple(tuple(r) for r in self.board)
+                _current_board_state = _current_board_state + tuple(current_special_moves)
+                _current_board_state = _current_board_state + tuple(self.castle_attributes.values())
+                if _current_board_state in self.board_states:
+                    self.board_states[_current_board_state] += 1
+                else:
+                    self.board_states[_current_board_state] = 1
+                    if len(self.board_states) > self.max_states:
+                        # Find and remove the least accessed board state, this also happens to be the oldest 
+                        # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                        least_accessed = min(self.board_states, key=self.board_states.get)
+                        del self.board_states[least_accessed]
 
     def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, enpassant):
         file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
@@ -154,9 +181,9 @@ class Game:
                 self.alg_moves.append('½–½')
                 print('ALG_MOVES: ', self.alg_moves)
 
-    def promote_to_piece(self, row, col, piece):
+    def promote_to_piece(self, current_row, current_col, piece):
         is_white = piece.isupper()
-        self.board[row][col] = piece
+        self.board[current_row][current_col] = piece
         # Need to edit the temporary last moves/alg_moves in state one a decision is made
         string_list = list(self.moves[-1][1])
         string_list[0] = piece
@@ -172,11 +199,56 @@ class Game:
         # Change turns after pawn promotion
         if not self._debug:
             self.current_turn = not self.current_turn
+            # Update dictionary of board states
+            current_special_moves = []
+            for row in range(8):
+                for col in range(8):
+                    other_piece = self.board[row][col]
+                    if other_piece.islower() != piece.islower() and other_piece != ' ':
+                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                        current_special_moves.extend(specials)
+            _current_board_state = tuple(tuple(r) for r in self.board)
+            _current_board_state = _current_board_state + tuple(current_special_moves)
+            _current_board_state = _current_board_state + tuple(self.castle_attributes.values())
+            
+            if _current_board_state in self.board_states:
+                self.board_states[_current_board_state] += 1
+            else:
+                self.board_states[_current_board_state] = 1
+                if len(self.board_states) > self.max_states:
+                    # Find and remove the least accessed board state, this also happens to be the oldest 
+                    # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                    least_accessed = min(self.board_states, key=self.board_states.get)
+                    del self.board_states[least_accessed]
+            
         print("ALG_MOVES:", self.alg_moves)
+
+    def threefold_check(self):
+        for count in self.board_states.values():
+            if count >= 3:
+                return True
+        return False
 
     def undo_move(self):
         # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
         if len(self.moves) != 0:
+            # Deincrement or remove current state from dictionary of board states
+            current_special_moves = []
+            for row in range(8):
+                for col in range(8):
+                    current_piece = self.board[row][col]
+                    if current_piece.islower() == self.current_turn and current_piece != ' ':
+                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                        current_special_moves.extend(specials)
+            _current_board_state = tuple(tuple(r) for r in self.board)
+            _current_board_state = _current_board_state + tuple(current_special_moves)
+            _current_board_state = _current_board_state + tuple(self.castle_attributes.values())
+            
+            if self.board_states[_current_board_state] == 1:
+                del self.board_states[_current_board_state]
+            else:
+                self.board_states[_current_board_state] -= 1
+            
             move = self.moves[-1]
 
             prev_move = list(move[0])

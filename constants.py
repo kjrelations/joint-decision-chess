@@ -22,6 +22,7 @@ ARROW_HEAD_WIDTH = 48
 PREVIOUS_WHITE = (255, 215, 105)
 PREVIOUS_BLACK = (75, 215, 230)
 STARTING_PLAYER = True
+INVERSE_PLAYER_VIEW = False
 
 # Initialize Pygame to initialize fonts
 pygame.init()
@@ -31,11 +32,14 @@ FONT_SIZE = 36
 font = pygame.font.Font(None, FONT_SIZE) # default font is called freesansbold
 COORDINATES = ['a','b','c','d','e','f','g','h']
 NUMBERS = ['1','2','3','4','5','6','7','8']
-letter_surfaces = []
+white_letter_surfaces = []
+black_letter_surfaces = []
 number_surfaces = []
 for i, letter in enumerate(COORDINATES):
     SQUARE = WHITE_SQUARE if i % 2 == 0 else BLACK_SQUARE
-    letter_surfaces.append(font.render(letter, True, SQUARE))
+    white_letter_surfaces.append(font.render(letter, True, SQUARE))
+    OTHER_SQUARE = BLACK_SQUARE if i % 2 == 0 else WHITE_SQUARE
+    black_letter_surfaces.append(font.render(letter, True, OTHER_SQUARE))
     number_surfaces.append(font.render(NUMBERS[i], True, SQUARE))
 
 pygame.quit()

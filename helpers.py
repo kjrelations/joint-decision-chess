@@ -216,7 +216,7 @@ def king_moves(board, row, col, is_white):
     return moves, captures
 
 # Helper Function to return moves for the selected piece
-def calculate_moves(board, row, col, game_history, castle_attributes=None):
+def calculate_moves(board, row, col, game_history, castle_attributes=None, only_specials=False):
     piece = board[row][col]
     moves = []
     captures = []
@@ -225,9 +225,10 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None):
     is_white = piece.isupper() # Check if the piece is white
 
     if piece.lower() == 'p':  # Pawn
-        p_moves, p_captures = pawn_moves(board, row, col, is_white)
-        moves.extend(p_moves)
-        captures.extend(p_captures)
+        if not only_specials:
+            p_moves, p_captures = pawn_moves(board, row, col, is_white)
+            moves.extend(p_moves)
+            captures.extend(p_captures)
         if game_history is not None and len(game_history) != 0:
             previous_turn = game_history[-1]
             
@@ -246,30 +247,35 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None):
                     special_moves.append((destination_row, int(end[2])))
 
     elif piece.lower() == 'r':  # Rook
-        r_moves, r_captures = rook_moves(board, row, col, is_white)
-        moves.extend(r_moves)
-        captures.extend(r_captures)
+        if not only_specials:
+            r_moves, r_captures = rook_moves(board, row, col, is_white)
+            moves.extend(r_moves)
+            captures.extend(r_captures)
 
     elif piece.lower() == 'n':  # Knight (L-shaped moves)
-        n_moves, n_captures = knight_moves(board, row, col, is_white)
-        moves.extend(n_moves)
-        captures.extend(n_captures)
+        if not only_specials:
+            n_moves, n_captures = knight_moves(board, row, col, is_white)
+            moves.extend(n_moves)
+            captures.extend(n_captures)
 
     elif piece.lower() == 'b':  # Bishop
-        b_moves, b_captures = bishop_moves(board, row, col, is_white)
-        moves.extend(b_moves)
-        captures.extend(b_captures)
+        if not only_specials:
+            b_moves, b_captures = bishop_moves(board, row, col, is_white)
+            moves.extend(b_moves)
+            captures.extend(b_captures)
 
     elif piece.lower() == 'q':  # Queen (Bishop-like + Rook-like moves)
-        q_moves, q_captures = queen_moves(board, row, col, is_white)
-        moves.extend(q_moves)
-        captures.extend(q_captures)
+        if not only_specials:
+            q_moves, q_captures = queen_moves(board, row, col, is_white)
+            moves.extend(q_moves)
+            captures.extend(q_captures)
 
     elif piece.lower() == 'k':  # King
-        k_moves, k_captures = king_moves(board, row, col, is_white)
-        moves.extend(k_moves)
-        captures.extend(k_captures)
-        # Eliminates need to deepcopy everywhere and unnecessarily consider special moves
+        if not only_specials:
+            k_moves, k_captures = king_moves(board, row, col, is_white)
+            moves.extend(k_moves)
+            captures.extend(k_captures)
+        # Having these attributes instead of a game copy eliminates need to deepcopy the game below
         if castle_attributes is not None:
             # Castling
             queen_castle = True
@@ -336,7 +342,6 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None):
             if king_castle:
                 king_pos = (7, 6) if is_white else (0, 6) 
                 special_moves.append(king_pos)
-
     elif piece == ' ':
         return [], [], []
     else:
@@ -493,9 +498,9 @@ def get_coordinates(row, col):
     y = col * GRID_SIZE
     return x, y
 
-def draw_arrow(arrow, current_turn):
+def draw_arrow(arrow, inverse_view):
     # Arrow color depends on turn
-    arrow_color = ARROW_WHITE if current_turn else ARROW_BLACK
+    arrow_color = ARROW_WHITE if not inverse_view else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0])), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0]))
@@ -613,9 +618,55 @@ def draw_highlight(window, row, col, left):
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
 
+# Helper function to reverse the view of a board
+def reverse_chessboard(board):
+    reversed_board = []
+    for row in reversed(board):
+        reversed_row = row[::-1]
+        reversed_board.append(reversed_row)
+    return reversed_board
+
+# Helper function to shift coordinates as inputs to those of a reversed board
+def map_to_reversed_board(original_row, original_col, board_size=8):
+    reversed_row = board_size - 1 - original_row
+    reversed_col = board_size - 1 - original_col
+    
+    return reversed_row, reversed_col
+
+# Helper function for reversing coordinates of input parameters
+def reverse_coordinates(params):
+    params['board'] = reverse_chessboard(params['board'])
+    for key in ['selected_piece', 'current_position', 'previous_position', 'hovered_square']:
+        if params[key] is not None:
+            params[key] = map_to_reversed_board(params[key][0], params[key][1])
+
+    reversed_valid_moves, reversed_valid_captures, reversed_valid_specials = [], [], []
+    for move in params['valid_moves']:
+        reversed_valid_moves.append(map_to_reversed_board(move[0], move[1]))
+    for move in params['valid_captures']:
+        reversed_valid_captures.append(map_to_reversed_board(move[0], move[1]))
+    for move in params['valid_specials']:
+        reversed_valid_specials.append(map_to_reversed_board(move[0], move[1]))
+    params['valid_moves'] = reversed_valid_moves
+    params['valid_captures'] = reversed_valid_captures
+    params['valid_specials'] = reversed_valid_specials
+
+    reversed_right_click_squares, reversed_drawn_arrows = [], []
+    for square in params['right_clicked_squares']:
+        reversed_right_click_squares.append(map_to_reversed_board(square[0], square[1]))
+    for arrow in params['drawn_arrows']:
+        reversed_start, reversed_end = map_to_reversed_board(arrow[0][0], arrow[0][1]), map_to_reversed_board(arrow[1][0], arrow[1][1])
+        reversed_drawn_arrows.append([reversed_start, reversed_end])
+    params['right_clicked_squares'], params['drawn_arrows'] = reversed_right_click_squares, reversed_drawn_arrows
+
+    return params
+
 # Helper Function for drawing the board
 def draw_board(params):
     window = params['window']
+    inverse_view = params['inverse_view']
+    if inverse_view:
+        params = reverse_coordinates(params)
     board = params['board']
     chessboard = params['chessboard']
     selected_piece = params['selected_piece']
@@ -648,18 +699,30 @@ def draw_board(params):
     for square in right_clicked_squares:
         draw_highlight(window, square[0], square[1], left)
 
-    # Perhaps this will be moved to constants or depend on player turn or something
+    # Perhaps this will be could be moved out like chessboard and only depends on player view 
+    # without needing to recreate the surface each time
     # Blit the coordinates onto the reference image
     coordinate_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    for i, letter in enumerate(letter_surfaces):
-        square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
-        square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
-        coordinate_surface.blit(letter, (square_x, square_y))
+    if not inverse_view:
+        for i, letter in enumerate(white_letter_surfaces):
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
+            coordinate_surface.blit(letter, (square_x, square_y))
 
-    for i, number in enumerate(number_surfaces):
-        square_x = 5
-        square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
-        coordinate_surface.blit(number, (square_x, square_y))
+        for i, number in enumerate(number_surfaces):
+            square_x = 5
+            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
+            coordinate_surface.blit(number, (square_x, square_y))
+    else:
+        for i, letter in enumerate(black_letter_surfaces[::-1]):
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_x = i * GRID_SIZE + 5
+            coordinate_surface.blit(letter, (square_x, square_y))
+
+        for i, number in enumerate(number_surfaces[::-1]):
+            square_x = 8 * GRID_SIZE - 5 - FONT_SIZE // 2
+            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
+            coordinate_surface.blit(number, (square_x, square_y))
 
     # Draw coordinates after highlights
     window.blit(coordinate_surface, (0, 0))
@@ -677,7 +740,7 @@ def draw_board(params):
 
     # Draw arrows
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(arrow, current_turn)
+        transparent_arrow = draw_arrow(arrow, inverse_view)
         # Blit each arrow to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     

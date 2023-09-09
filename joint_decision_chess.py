@@ -127,6 +127,10 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
             print("STALEMATE")
             game.add_end_game_notation(checkmate)
             return True, remaining_moves, None, previous_position, current_position, promotion_required
+        if game.threefold_check():
+            print("DRAW BY THREEFOLD REPETITION")
+            game.add_end_game_notation(checkmate)
+            return True, remaining_moves, None, previous_position, current_position, promotion_required
 
     # Pawn Promotion
     if game.board[row][col].lower() == 'p' and (row == 0 or row == 7):
@@ -140,6 +144,7 @@ def handle_piece_special_move(game, selected_piece, row, col):
     # Need to be considering the selected piece for this section
     piece = game.board[selected_piece[0]][selected_piece[1]]
     is_white = piece.isupper()
+    previous_position, current_position = selected_piece, (row, col)
 
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
@@ -154,17 +159,21 @@ def handle_piece_special_move(game, selected_piece, row, col):
     if checkmate:
         print("CHECKMATE")
         game.add_end_game_notation(checkmate)
-        return True, remaining_moves, piece, is_white
+        return True, remaining_moves, previous_position, current_position, piece, is_white
     if remaining_moves == 0:
         print("STALEMATE")
         game.add_end_game_notation(checkmate)
-        return True, remaining_moves, piece, is_white
+        return True, remaining_moves, previous_position, current_position, piece, is_white
+    if game.threefold_check():
+        print("DRAW BY THREEFOLD REPETITION")
+        game.add_end_game_notation(checkmate)
+        return True, remaining_moves, previous_position, current_position, piece, is_white
 
-    return False, None, piece, is_white
+    return False, None, previous_position, current_position, piece, is_white
 
 # Main loop
 def main():
-    game = Game(new_board.copy(), STARTING_PLAYER)
+    game = Game(new_board.copy(), STARTING_PLAYER, INVERSE_PLAYER_VIEW)
     running = True
     end_position = False
 
@@ -195,7 +204,6 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                # LIKELY UGLY IMPLEMENTATION
                 if event.button == 1:  # Left mouse button
                     left_mouse_button_down = True
                 if event.button == 3:
@@ -211,6 +219,8 @@ def main():
                     
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
+                    if game.inverse_view:
+                        row, col = map_to_reversed_board(row, col)
                     if not left_mouse_button_down:
                         current_right_clicked_square = (row, col)
                     continue
@@ -222,6 +232,8 @@ def main():
 
                     x, y = pygame.mouse.get_pos()
                     row, col = get_board_coordinates(x, y)
+                    if game.inverse_view:
+                        row, col = map_to_reversed_board(row, col)
                     piece = game.board[row][col]
                     is_white = piece.isupper()
                     
@@ -248,7 +260,7 @@ def main():
                         
                         ## Specials
                         elif (row, col) in valid_specials:
-                            end_position, _, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
+                            end_position, _, previous_position, current_position, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
                             
                             # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                             valid_moves, valid_captures, valid_specials = [], [], []
@@ -280,6 +292,8 @@ def main():
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
                 row, col = get_board_coordinates(x, y)
+                if game.inverse_view:
+                        row, col = map_to_reversed_board(row, col)
 
                 # Only draw hover outline when left button is down and a piece is selected
                 if left_mouse_button_down and selected_piece is not None:  
@@ -317,7 +331,7 @@ def main():
 
                     ## Specials
                     elif (row, col) in valid_specials:
-                        end_position, _, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
+                        end_position, _, previous_position, current_position, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
                         
                         # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                         valid_moves, valid_captures, valid_specials = [], [], []
@@ -339,14 +353,14 @@ def main():
                     elif current_right_clicked_square is not None:
                         x, y = pygame.mouse.get_pos()
                         row, col = get_board_coordinates(x, y)
+                        if game.inverse_view:
+                            row, col = map_to_reversed_board(row, col)
 
                         end_right_released_square = (row, col)
                         if [current_right_clicked_square, end_right_released_square] not in drawn_arrows:
                             drawn_arrows.append([current_right_clicked_square, end_right_released_square])
                         else:
                             drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
-                    # drawing logic end here also append lines to list then blit them all at once later
-                    # Also have active draw list with [[start,end], [start,end], ...] that clear on left mouse click down
 
             elif event.type == pygame.KEYDOWN:
 
@@ -384,6 +398,7 @@ def main():
         # Draw the board
         draw_board({
             'window': window,
+            'inverse_view': game.inverse_view,
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
@@ -407,6 +422,7 @@ def main():
             # Display an overlay or popup with promotion options
             draw_board_params = {
                 'window': window,
+                'inverse_view': game.inverse_view,
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
@@ -444,6 +460,7 @@ def main():
             # We likely need to reinput the arguments and can't use the above params as they are updated.
             draw_board({
                 'window': window,
+                'inverse_view': game.inverse_view,
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
@@ -476,6 +493,12 @@ def main():
                 running = False
                 end_position = True
                 game.add_end_game_notation(checkmate)
+            # This seems redundant as promotions should lead to unique boards but we try it anyway
+            if game.threefold_check():
+                print("DRAW BY THREEFOLD REPETITION")
+                running = False
+                end_position = True
+                game.add_end_game_notation(checkmate)
         
         # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary
         pygame.display.flip()
@@ -490,6 +513,7 @@ def main():
         # Draw the board
         draw_board({
             'window': window,
+            'inverse_view': game.inverse_view,
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
