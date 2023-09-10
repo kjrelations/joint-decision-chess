@@ -414,6 +414,7 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                 for move in other_specials:
                     # We never have to try castling moves because you can never castle under check
                     if move not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
+                        temp_board = [rank[:] for rank in board]  
                         temp_moves = moves.copy()
                         temp_moves.append(output_move(piece, (row, col), move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
                         temp_board[move[0]][move[1]] = temp_board[row][col]
@@ -429,7 +430,7 @@ def is_checkmate_or_stalemate(board, is_color, moves):
 
 ## Drawing Logic
 # Helper Function to load chess piece images dynamically
-def load_piece_image(piece):
+def load_piece_image(piece, GRID_SIZE):
     filename = f'images/{piece}.png'
     img = pygame.image.load(filename)
     img = pygame.transform.smoothscale(img, (GRID_SIZE, GRID_SIZE))
@@ -452,28 +453,94 @@ def name_keys(color, piece):
     return piece_key, color + piece 
 
 # Helper Function to get the chessboard coordinates from mouse click coordinates
-def get_board_coordinates(x, y):
+def get_board_coordinates(x, y, GRID_SIZE):
     col = x // GRID_SIZE
     row = y // GRID_SIZE
     return row, col
 
+# Helper function to generate a chessboard surface loaded as a reference image (drawn only once)
+def generate_chessboard(theme):
+    # Simplify variable names
+    GRID_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT = \
+    theme.GRID_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT
+
+    chessboard = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    for row in range(8):
+        for col in range(8):
+            color = WHITE_SQUARE if (row + col) % 2 == 0 else BLACK_SQUARE
+            pygame.draw.rect(chessboard, color, (col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+    return chessboard
+
+# Helper function to generate coordinate fonts and their surface depending on view
+def generate_coordinate_surface(theme):
+    # Simplify variable names
+    GRID_SIZE, FONT_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT, INVERSE_PLAYER_VIEW, TEXT_OFFSET = \
+    theme.GRID_SIZE, theme.FONT_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT, \
+    theme.INVERSE_PLAYER_VIEW, theme.TEXT_OFFSET
+
+    font = pygame.font.Font(None, FONT_SIZE) # default font is called freesansbold
+    COORDINATES = ['a','b','c','d','e','f','g','h']
+    NUMBERS = ['1','2','3','4','5','6','7','8']
+    white_letter_surfaces = []
+    black_letter_surfaces = []
+    number_surfaces = []
+    for i, letter in enumerate(COORDINATES):
+        SQUARE = WHITE_SQUARE if i % 2 == 0 else BLACK_SQUARE
+        white_letter_surfaces.append(font.render(letter, True, SQUARE))
+        OTHER_SQUARE = BLACK_SQUARE if i % 2 == 0 else WHITE_SQUARE
+        black_letter_surfaces.append(font.render(letter, True, OTHER_SQUARE))
+        number_surfaces.append(font.render(NUMBERS[i], True, SQUARE))
+    
+    # Blit the coordinates onto the reference image
+    coordinate_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    if not INVERSE_PLAYER_VIEW:
+        for i, letter in enumerate(white_letter_surfaces):
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
+            coordinate_surface.blit(letter, (square_x, square_y))
+
+        for i, number in enumerate(number_surfaces):
+            square_x = 5
+            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
+            coordinate_surface.blit(number, (square_x, square_y))
+    else:
+        for i, letter in enumerate(black_letter_surfaces[::-1]):
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_x = i * GRID_SIZE + 5
+            coordinate_surface.blit(letter, (square_x, square_y))
+
+        for i, number in enumerate(number_surfaces[::-1]):
+            square_x = 8 * GRID_SIZE - 5 - FONT_SIZE // 2
+            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
+            coordinate_surface.blit(number, (square_x, square_y))
+    
+    return coordinate_surface
+
 # Helper Function to draw a temporary rectangle with only an outline on a square
-def draw_hover_outline(window, row, col):
+def draw_hover_outline(window, theme, row, col):
+    # Simplify variable names
+    GRID_SIZE, HOVER_OUTLINE_COLOR_WHITE, HOVER_OUTLINE_COLOR_BLACK = \
+    theme.GRID_SIZE, theme.HOVER_OUTLINE_COLOR_WHITE, theme.HOVER_OUTLINE_COLOR_BLACK
+
     hover_outline = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
     HOVER_OUTLINE_COLOR = HOVER_OUTLINE_COLOR_WHITE if (row + col) % 2 == 0 else HOVER_OUTLINE_COLOR_BLACK
     pygame.draw.rect(hover_outline, HOVER_OUTLINE_COLOR, (0, 0, GRID_SIZE, GRID_SIZE), 5)
     window.blit(hover_outline, (col * GRID_SIZE, row * GRID_SIZE))
 
 # Helper Function to draw the chess pieces
-def draw_pieces(window, board, pieces):
+def draw_pieces(window, theme, board, pieces):
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
             if piece != ' ':
-                window.blit(pieces[piece], (col * GRID_SIZE, row * GRID_SIZE))
+                window.blit(pieces[piece], (col * theme.GRID_SIZE, row * theme.GRID_SIZE))
 
 # Helper Function to draw transparent circles on half of the tiles
-def draw_transparent_circles(valid_moves, valid_captures, valid_specials):
+def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials):
+    # Simplify variable names
+    GRID_SIZE, WIDTH, HEIGHT, TRANSPARENT_CIRCLES, TRANSPARENT_SPECIAL_CIRCLES = \
+    theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT, theme.TRANSPARENT_CIRCLES, theme.TRANSPARENT_SPECIAL_CIRCLES
+
     free_moves = [move for move in valid_moves if move not in valid_captures]
     # Create surface allowing for transparaency with alpha transparency values defined in colors 
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -493,17 +560,22 @@ def draw_transparent_circles(valid_moves, valid_captures, valid_specials):
     return transparent_surface
 
 # Helper Function to get x, y coordinates from board coordinates
-def get_coordinates(row, col):
+def get_coordinates(row, col, GRID_SIZE):
     x = row * GRID_SIZE
     y = col * GRID_SIZE
     return x, y
 
-def draw_arrow(arrow, inverse_view):
+# Helper Function to draw an arrow
+def draw_arrow(theme, arrow, inverse_view):
+    # Simplify variable names
+    ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
+        theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
+    
     # Arrow color depends on turn
     arrow_color = ARROW_WHITE if not inverse_view else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
-    start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0])), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0]))
+    start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
     # Center start and end positions on Square
     start, end = start + pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2),  end + pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2) 
     y1, x1 = arrow[0]
@@ -512,9 +584,9 @@ def draw_arrow(arrow, inverse_view):
     dy = abs(y2 - y1)
     intermediate_col, intermediate_row, intermediate_end = None, None, None
     # Customizable arrow features
-    body_width = ARROW_BODY_WIDTH
-    head_height = ARROW_HEAD_HEIGHT
-    head_width = ARROW_HEAD_WIDTH
+    body_width = theme.ARROW_BODY_WIDTH
+    head_height = theme.ARROW_HEAD_HEIGHT
+    head_width = theme.ARROW_HEAD_WIDTH
 
     if (dx == 1 and dy == 2 ) or (dx == 2 and dy == 1):
         # Knight's move: L-shaped path
@@ -540,8 +612,8 @@ def draw_arrow(arrow, inverse_view):
         
         # Need to offset to the midpoint as well
         offset = pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2)
-        intermediate_end = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row)) + offset + translate
-        intermediate_point = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row)) + offset
+        intermediate_end = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row, GRID_SIZE)) + offset + translate
+        intermediate_point = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row, GRID_SIZE)) + offset
     else:
         intermediate_point = start
 
@@ -611,12 +683,23 @@ def draw_arrow(arrow, inverse_view):
     return transparent_surface
 
 # Helper Function to highlight selected squares on left or right click
-def draw_highlight(window, row, col, left):
+def draw_highlight(window, theme, row, col, left):
+    # Simplify variable names
+    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
+    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
+
     square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
     colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else [HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED]
     HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
+
+# Helper function to shift coordinates as inputs to those of a reversed board
+def map_to_reversed_board(original_row, original_col, board_size=8):
+    reversed_row = board_size - 1 - original_row
+    reversed_col = board_size - 1 - original_col
+    
+    return reversed_row, reversed_col
 
 # Helper function to reverse the view of a board
 def reverse_chessboard(board):
@@ -625,13 +708,6 @@ def reverse_chessboard(board):
         reversed_row = row[::-1]
         reversed_board.append(reversed_row)
     return reversed_board
-
-# Helper function to shift coordinates as inputs to those of a reversed board
-def map_to_reversed_board(original_row, original_col, board_size=8):
-    reversed_row = board_size - 1 - original_row
-    reversed_col = board_size - 1 - original_col
-    
-    return reversed_row, reversed_col
 
 # Helper function for reversing coordinates of input parameters
 def reverse_coordinates(params):
@@ -664,7 +740,8 @@ def reverse_coordinates(params):
 # Helper Function for drawing the board
 def draw_board(params):
     window = params['window']
-    inverse_view = params['inverse_view']
+    theme = params['theme']
+    inverse_view = params['theme'].INVERSE_PLAYER_VIEW
     if inverse_view:
         params = reverse_coordinates(params)
     board = params['board']
@@ -673,8 +750,8 @@ def draw_board(params):
     current_position = params['current_position']
     previous_position = params['previous_position']
     right_clicked_squares = params['right_clicked_squares']
+    coordinate_surface = params['coordinate_surface']
     drawn_arrows = params['drawn_arrows']
-    current_turn = params['current_turn']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
@@ -688,59 +765,34 @@ def draw_board(params):
     # Highlight left clicked selected squares
     left = True
     if selected_piece is not None:
-        draw_highlight(window, selected_piece[0], selected_piece[1], left)
+        draw_highlight(window, theme, selected_piece[0], selected_piece[1], left)
     if current_position is not None:
-        draw_highlight(window, current_position[0], current_position[1], left)
+        draw_highlight(window, theme, current_position[0], current_position[1], left)
     if previous_position is not None:
-        draw_highlight(window, previous_position[0], previous_position[1], left)
+        draw_highlight(window, theme, previous_position[0], previous_position[1], left)
 
     # Highlight right clicked selected squares
     left = False
     for square in right_clicked_squares:
-        draw_highlight(window, square[0], square[1], left)
-
-    # Perhaps this will be could be moved out like chessboard and only depends on player view 
-    # without needing to recreate the surface each time
-    # Blit the coordinates onto the reference image
-    coordinate_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    if not inverse_view:
-        for i, letter in enumerate(white_letter_surfaces):
-            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
-            square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
-            coordinate_surface.blit(letter, (square_x, square_y))
-
-        for i, number in enumerate(number_surfaces):
-            square_x = 5
-            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
-            coordinate_surface.blit(number, (square_x, square_y))
-    else:
-        for i, letter in enumerate(black_letter_surfaces[::-1]):
-            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
-            square_x = i * GRID_SIZE + 5
-            coordinate_surface.blit(letter, (square_x, square_y))
-
-        for i, number in enumerate(number_surfaces[::-1]):
-            square_x = 8 * GRID_SIZE - 5 - FONT_SIZE // 2
-            square_y = (7 - i) * GRID_SIZE + TEXT_OFFSET
-            coordinate_surface.blit(number, (square_x, square_y))
+        draw_highlight(window, theme, square[0], square[1], left)
 
     # Draw coordinates after highlights
     window.blit(coordinate_surface, (0, 0))
 
     # Highlight valid move squares
-    transparent_circles = draw_transparent_circles(valid_moves, valid_captures, valid_specials)
+    transparent_circles = draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     window.blit(transparent_circles, (0, 0))
 
     # Draw the chess pieces on top of the reference board
-    draw_pieces(window, board, pieces)
+    draw_pieces(window, theme, board, pieces)
 
     # Draw the hover outline if a square is hovered
     if hovered_square is not None:
-        draw_hover_outline(window, hovered_square[0], hovered_square[1])
+        draw_hover_outline(window, theme, hovered_square[0], hovered_square[1])
 
     # Draw arrows
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(arrow, inverse_view)
+        transparent_arrow = draw_arrow(theme, arrow, inverse_view)
         # Blit each arrow to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
@@ -749,8 +801,8 @@ def draw_board(params):
     if selected_piece_image is not None:
         x, y = pygame.mouse.get_pos()
         # Calculate the position to center the image on the mouse
-        image_x = x - GRID_SIZE // 2
-        image_y = y - GRID_SIZE // 2
+        image_x = x - theme.GRID_SIZE // 2
+        image_y = y - theme.GRID_SIZE // 2
         window.blit(selected_piece_image, (image_x, image_y))
 
 # Pawn Promotion Button
@@ -774,7 +826,11 @@ class Pawn_Button:
 
 # Helper Function for displaying and running until a pawn is promoted 
 def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
+    # Instantiate default outputs
     new_current_position, new_previous_position, end_position, end_state = None, None, False, None
+    # Simplify variable names
+    theme = draw_board_params['theme']
+    GRID_SIZE, WIDTH, HEIGHT = theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT
 
     # Draw buttons onto a surface
     if row == 0:

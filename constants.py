@@ -1,46 +1,63 @@
 import pygame
 
-# Constants
-WIDTH, HEIGHT = 800, 800
-GRID_SIZE = WIDTH // 8
-WHITE_SQUARE = (255, 230, 155)
-BLACK_SQUARE = (140, 215, 230)
-TRANSPARENT_CIRCLES = (255, 180, 155, 160)
-TRANSPARENT_SPECIAL_CIRCLES = (140, 95, 80, 160)
-HOVER_OUTLINE_COLOR_WHITE = (255, 240, 200)
-HOVER_OUTLINE_COLOR_BLACK = (200, 235, 245)
-TEXT_OFFSET = 7
-HIGHLIGHT_WHITE = (255, 215, 105)
-HIGHLIGHT_BLACK = (75, 215, 230)
-HIGHLIGHT_WHITE_RED = (255, 100, 70)
-HIGHLIGHT_BLACK_RED = (150, 60, 40)
-ARROW_WHITE = (235, 180, 50, 150)
-ARROW_BLACK = (0, 100, 100, 150)
-ARROW_BODY_WIDTH = 20
-ARROW_HEAD_HEIGHT = 35
-ARROW_HEAD_WIDTH = 48
-PREVIOUS_WHITE = (255, 215, 105)
-PREVIOUS_BLACK = (75, 215, 230)
-STARTING_PLAYER = True
-INVERSE_PLAYER_VIEW = False
+class Theme:
+    def __init__(self):
+        # Constants
+        self.WIDTH, self.HEIGHT = 800, 800
+        self.GRID_SIZE = self.WIDTH // 8
+        self.WHITE_SQUARE = (255, 230, 155)
+        self.BLACK_SQUARE = (140, 215, 230)
+        self.TRANSPARENT_CIRCLES = (255, 180, 155, 160)
+        self.TRANSPARENT_SPECIAL_CIRCLES = (140, 95, 80, 160)
+        self.HOVER_OUTLINE_COLOR_WHITE = (255, 240, 200)
+        self.HOVER_OUTLINE_COLOR_BLACK = (200, 235, 245)
+        self.TEXT_OFFSET = 7
+        self.FONT_SIZE = 36
+        self.HIGHLIGHT_WHITE = (255, 215, 105)
+        self.HIGHLIGHT_BLACK = (75, 215, 230)
+        self.HIGHLIGHT_WHITE_RED = (255, 100, 70)
+        self.HIGHLIGHT_BLACK_RED = (150, 60, 40)
+        self.ARROW_WHITE = (235, 180, 50, 150)
+        self.ARROW_BLACK = (0, 100, 100, 150)
+        self.ARROW_BODY_WIDTH = 20
+        self.ARROW_HEAD_HEIGHT = 35
+        self.ARROW_HEAD_WIDTH = 48
+        self.STARTING_PLAYER = True
+        self.INVERSE_PLAYER_VIEW = False
+
+    def apply_theme(self, theme):
+        self.WIDTH = theme.get("width", self.WIDTH)
+        self.HEIGHT = theme.get("height", self.HEIGHT)
+        self.GRID_SIZE = theme.get("grid_size", self.GRID_SIZE)
+        self.WHITE_SQUARE = theme.get("white_square", self.WHITE_SQUARE)
+        self.BLACK_SQUARE = theme.get("black_square", self.BLACK_SQUARE)
+        self.TRANSPARENT_CIRCLES = theme.get("transparent_circles", self.TRANSPARENT_CIRCLES)
+        self.TRANSPARENT_SPECIAL_CIRCLES = theme.get("transparent_special_circles", self.TRANSPARENT_SPECIAL_CIRCLES)
+        self.HOVER_OUTLINE_COLOR_WHITE = theme.get("hover_outline_color_white", self.HOVER_OUTLINE_COLOR_WHITE)
+        self.HOVER_OUTLINE_COLOR_BLACK = theme.get("hover_outline_color_black", self.HOVER_OUTLINE_COLOR_BLACK)
+        self.TEXT_OFFSET = theme.get("text_offset", self.TEXT_OFFSET)
+        self.FONT_SIZE = theme.get("font_size", self.FONT_SIZE)
+        self.HIGHLIGHT_WHITE = theme.get("highlight_white", self.HIGHLIGHT_WHITE)
+        self.HIGHLIGHT_BLACK = theme.get("highlight_black", self.HIGHLIGHT_BLACK)
+        self.HIGHLIGHT_WHITE_RED = theme.get("highlight_white_red", self.HIGHLIGHT_WHITE_RED)
+        self.HIGHLIGHT_BLACK_RED = theme.get("highlight_black_red", self.HIGHLIGHT_BLACK_RED)
+        self.ARROW_WHITE = theme.get("arrow_white", self.ARROW_WHITE)
+        self.ARROW_BLACK = theme.get("arrow_black", self.ARROW_BLACK)
+        self.ARROW_BODY_WIDTH = theme.get("arrow_body_width", self.ARROW_BODY_WIDTH)
+        self.ARROW_HEAD_HEIGHT = theme.get("arrow_head_height", self.ARROW_HEAD_HEIGHT)
+        self.ARROW_HEAD_WIDTH = theme.get("arrow_head_width", self.ARROW_HEAD_WIDTH)
+        self.STARTING_PLAYER = theme.get("starting_player", self.STARTING_PLAYER)
+        self.INVERSE_PLAYER_VIEW = theme.get("inverse_player_view", self.INVERSE_PLAYER_VIEW)
 
 # Initialize Pygame to initialize fonts
 pygame.init()
 
-# Coordinate font
-FONT_SIZE = 36
-font = pygame.font.Font(None, FONT_SIZE) # default font is called freesansbold
-COORDINATES = ['a','b','c','d','e','f','g','h']
-NUMBERS = ['1','2','3','4','5','6','7','8']
-white_letter_surfaces = []
-black_letter_surfaces = []
-number_surfaces = []
-for i, letter in enumerate(COORDINATES):
-    SQUARE = WHITE_SQUARE if i % 2 == 0 else BLACK_SQUARE
-    white_letter_surfaces.append(font.render(letter, True, SQUARE))
-    OTHER_SQUARE = BLACK_SQUARE if i % 2 == 0 else WHITE_SQUARE
-    black_letter_surfaces.append(font.render(letter, True, OTHER_SQUARE))
-    number_surfaces.append(font.render(NUMBERS[i], True, SQUARE))
+# Initialize mixer for sounds
+pygame.mixer.init()
+
+# Sound Effects
+move_sound = pygame.mixer.Sound('sounds/move.mp3')
+capture_sound = pygame.mixer.Sound('sounds/capture.mp3')
 
 pygame.quit()
 

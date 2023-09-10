@@ -1,29 +1,22 @@
 import pygame
 import sys
+import json
 from game import *
 from constants import *
 from helpers import *
 
-# Consider first publishing a version that is the classical variant of chess. Decide when the two versions branch off.
 # Initialize Pygame
 pygame.init()
-# Initialize mixer for sounds
-pygame.mixer.init()
 
-# Sound Effects
-move_sound = pygame.mixer.Sound('sounds/move.mp3')
-capture_sound = pygame.mixer.Sound('sounds/capture.mp3')
+current_theme = Theme()
+
+# Read themes from JSON file
+with open('themes.json', 'r') as file:
+    themes = json.load(file)
 
 # Initialize Pygame window
-window = pygame.display.set_mode((WIDTH, HEIGHT))
+window = pygame.display.set_mode((current_theme.WIDTH, current_theme.HEIGHT))
 pygame.display.set_caption("Chess")
-
-# Load the chessboard as a reference image (drawn only once)
-chessboard = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-for row in range(8):
-    for col in range(8):
-        color = WHITE_SQUARE if (row + col) % 2 == 0 else BLACK_SQUARE
-        pygame.draw.rect(chessboard, color, (col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE))
 
 # Load the chess pieces dynamically
 pieces = {}
@@ -31,7 +24,7 @@ transparent_pieces = {}
 for color in ['w', 'b']:
     for piece_lower in ['r', 'n', 'b', 'q', 'k', 'p']:
         piece_key, image_name_key = name_keys(color, piece_lower)
-        pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key)
+        pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key, current_theme.GRID_SIZE)
 
 # Main loop piece selection logic that updates state
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
@@ -173,7 +166,7 @@ def handle_piece_special_move(game, selected_piece, row, col):
 
 # Main loop
 def main():
-    game = Game(new_board.copy(), STARTING_PLAYER, INVERSE_PLAYER_VIEW)
+    game = Game(new_board.copy(), current_theme.STARTING_PLAYER)
     running = True
     end_position = False
 
@@ -198,6 +191,11 @@ def main():
     left_mouse_button_down = False
     right_mouse_button_down = False
 
+    # Only draw these surfaces as needed; once per selection of theme
+    chessboard = generate_chessboard(current_theme)
+    coordinate_surface = generate_coordinate_surface(current_theme)
+    theme_index = 0
+
     # Main game loop
     while running:
         for event in pygame.event.get():
@@ -218,8 +216,8 @@ def main():
                     valid_moves, valid_captures, valid_specials = [], [], []
                     
                     x, y = pygame.mouse.get_pos()
-                    row, col = get_board_coordinates(x, y)
-                    if game.inverse_view:
+                    row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
+                    if current_theme.INVERSE_PLAYER_VIEW:
                         row, col = map_to_reversed_board(row, col)
                     if not left_mouse_button_down:
                         current_right_clicked_square = (row, col)
@@ -231,8 +229,8 @@ def main():
                     drawn_arrows = []
 
                     x, y = pygame.mouse.get_pos()
-                    row, col = get_board_coordinates(x, y)
-                    if game.inverse_view:
+                    row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
+                    if current_theme.INVERSE_PLAYER_VIEW:
                         row, col = map_to_reversed_board(row, col)
                     piece = game.board[row][col]
                     is_white = piece.isupper()
@@ -291,9 +289,9 @@ def main():
 
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
-                row, col = get_board_coordinates(x, y)
-                if game.inverse_view:
-                        row, col = map_to_reversed_board(row, col)
+                row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
+                if current_theme.INVERSE_PLAYER_VIEW:
+                    row, col = map_to_reversed_board(row, col)
 
                 # Only draw hover outline when left button is down and a piece is selected
                 if left_mouse_button_down and selected_piece is not None:  
@@ -352,13 +350,15 @@ def main():
                             right_clicked_squares.remove((row, col))
                     elif current_right_clicked_square is not None:
                         x, y = pygame.mouse.get_pos()
-                        row, col = get_board_coordinates(x, y)
-                        if game.inverse_view:
+                        row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
+                        if current_theme.INVERSE_PLAYER_VIEW:
                             row, col = map_to_reversed_board(row, col)
 
                         end_right_released_square = (row, col)
                         if [current_right_clicked_square, end_right_released_square] not in drawn_arrows:
-                            drawn_arrows.append([current_right_clicked_square, end_right_released_square])
+                            # Disallow out of bound arrows
+                            if 0 <= end_right_released_square[0] < 8 and 0 <= end_right_released_square[1] < 8:
+                                drawn_arrows.append([current_right_clicked_square, end_right_released_square])
                         else:
                             drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
 
@@ -392,21 +392,29 @@ def main():
                     game.add_end_game_notation(False)
                     break
 
+                # Theme cycle
+                elif event.key == pygame.K_t:
+                    theme_index += 1
+                    theme_index %= len(themes)
+                    current_theme.apply_theme(themes[theme_index])
+                    chessboard = generate_chessboard(current_theme)
+                    coordinate_surface = generate_coordinate_surface(current_theme)
+
         # Clear the screen
         window.fill((0, 0, 0))
 
         # Draw the board
         draw_board({
             'window': window,
-            'inverse_view': game.inverse_view,
+            'theme': current_theme,
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
             'current_position': current_position,
             'previous_position': previous_position,
             'right_clicked_squares': right_clicked_squares,
+            'coordinate_surface': coordinate_surface,
             'drawn_arrows': drawn_arrows,
-            'current_turn': game.current_turn,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -422,15 +430,15 @@ def main():
             # Display an overlay or popup with promotion options
             draw_board_params = {
                 'window': window,
-                'inverse_view': game.inverse_view,
+                'theme': current_theme,
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
                 'current_position': current_position,
                 'previous_position': previous_position,
                 'right_clicked_squares': right_clicked_squares,
+                'coordinate_surface': coordinate_surface,
                 'drawn_arrows': drawn_arrows,
-                'current_turn': game.current_turn,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -460,14 +468,14 @@ def main():
             # We likely need to reinput the arguments and can't use the above params as they are updated.
             draw_board({
                 'window': window,
-                'inverse_view': game.inverse_view,
+                'theme': current_theme,
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
                 'current_position': current_position,
                 'previous_position': previous_position,
                 'right_clicked_squares': right_clicked_squares,
-                'current_turn': game.current_turn,
+                'coordinate_surface': coordinate_surface,
                 'drawn_arrows': drawn_arrows,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
@@ -513,14 +521,14 @@ def main():
         # Draw the board
         draw_board({
             'window': window,
-            'inverse_view': game.inverse_view,
+            'theme': current_theme,
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
             'current_position': current_position,
             'previous_position': previous_position,
             'right_clicked_squares': right_clicked_squares,
-            'current_turn': game.current_turn,
+            'coordinate_surface': coordinate_surface,
             'drawn_arrows': drawn_arrows,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
@@ -531,7 +539,7 @@ def main():
         })
 
         # Darken the screen
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
 
         # Blit the overlay surface onto the main window

@@ -2,10 +2,9 @@ from helpers import *
 
 class Game:
 
-    def __init__(self, board, current_turn, inverse_view = False):
+    def __init__(self, board, current_turn):
         # current_turn = True for white, False for black, the final version will always default to True, but for now we keep it like this
         self.current_turn = current_turn
-        self.inverse_view = inverse_view
         self.board = board
         self.moves = []
         self.alg_moves = []
@@ -39,6 +38,7 @@ class Game:
         elif special:
             castle = True
             special_string = 'castle'
+        
         # Need to calculate alg_moves before we update board to settle disambiguities
         algebraic_move = self.translate_into_notation(new_row, new_col, piece, selected_piece, potential_capture, castle, enpassant)
 
@@ -237,7 +237,7 @@ class Game:
             for row in range(8):
                 for col in range(8):
                     current_piece = self.board[row][col]
-                    if current_piece.islower() == self.current_turn and current_piece != ' ':
+                    if current_piece.islower() != self.current_turn and current_piece != ' ':
                         _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
                         current_special_moves.extend(specials)
             _current_board_state = tuple(tuple(r) for r in self.board)
