@@ -1,6 +1,8 @@
 # README
  A chess variant with simultaneous play
 
+See the `dev-classical` branch for current development...
+
 ## Installation and Usage
 
 1. We recommend using a virtual environment to run the project and isolate dependencies. If you don't have `pipenv` installed, you can install it using pip:
