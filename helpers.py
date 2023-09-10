@@ -3,7 +3,30 @@ import sys
 from constants import *
 
 ## General Helpers
-# Helper Function for generating bespoke Game moves
+# Helper function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping
+def name_keys(color, piece):
+    piece_key = piece
+    if color == 'w':
+        piece_key = piece_key.upper()
+    return piece_key, color + piece 
+
+# Helper function to load chess piece images dynamically and output a transparent version as well
+def load_piece_image(piece, GRID_SIZE):
+    filename = f'images/{piece}.png'
+    img = pygame.image.load(filename)
+    img = pygame.transform.smoothscale(img, (GRID_SIZE, GRID_SIZE))
+
+    # Create a transparent surface with the same size as GRID_SIZE x GRID_SIZE
+    transparent_surface = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
+    # Add transparency alpha
+    transparent_surface.set_alpha(128)
+
+    # Blit the image onto the transparent surface with transparency
+    transparent_surface.blit(img, (0, 0))
+
+    return img, transparent_surface
+
+# Helper function for generating bespoke Game moves
 def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
     return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]
 
@@ -45,6 +68,7 @@ def pawn_moves(board, row, col, is_white):
         and board[row + forwards][col + 1].islower() == is_white:
         moves.append((row + forwards, col + 1))
         captures.append((row + forwards, col + 1))
+    
     # Edge case diagonal captures
     if row > 0 and col == 7 and board[row + forwards][col - 1] != ' ' \
         and board[row + forwards][col - 1].islower() == is_white:
@@ -99,6 +123,7 @@ def rook_moves(board, row, col, is_white):
                 moves.append((i, col))
                 captures.append((i, col))
             break
+
     return moves, captures
 
 # Helper function to calculate moves for a knight
@@ -139,6 +164,7 @@ def bishop_moves(board, row, col, is_white):
                 break
             else: # Allied pieces encountered
                 break
+
     for i in range(1, 8):
         # Top-right diagonal
         if row - i >= 0 and col + i < 8:
@@ -150,6 +176,7 @@ def bishop_moves(board, row, col, is_white):
                 break
             else:
                 break
+
     for i in range(1, 8):
         # Bottom-left diagonal
         if row + i < 8 and col - i >= 0:
@@ -161,6 +188,7 @@ def bishop_moves(board, row, col, is_white):
                 break
             else:
                 break
+
     for i in range(1, 8):
         # Bottom-right diagonal
         if row + i < 8 and col + i < 8:
@@ -197,7 +225,7 @@ def king_moves(board, row, col, is_white):
     moves = []
     captures = []
 
-    # King can move in all eight adjacent squares
+    # King can move to all eight adjacent squares
     king_moves = [(row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
                   (row, col - 1),                     (row, col + 1),
                   (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)]
@@ -215,8 +243,10 @@ def king_moves(board, row, col, is_white):
 
     return moves, captures
 
-# Helper Function to return moves for the selected piece
+# Helper function to return moves for the selected piece
 def calculate_moves(board, row, col, game_history, castle_attributes=None, only_specials=False):
+    # only_specials input for only calculating special moves, this is used when updating the dictionary of board states
+    # of the game class. Special available moves are one attribute of a unique state
     piece = board[row][col]
     moves = []
     captures = []
@@ -229,6 +259,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             p_moves, p_captures = pawn_moves(board, row, col, is_white)
             moves.extend(p_moves)
             captures.extend(p_captures)
+        
         if game_history is not None and len(game_history) != 0:
             previous_turn = game_history[-1]
             
@@ -275,7 +306,9 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             k_moves, k_captures = king_moves(board, row, col, is_white)
             moves.extend(k_moves)
             captures.extend(k_captures)
-        # Having these attributes instead of a game copy eliminates need to deepcopy the game below
+        
+        # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
+        # and instead use a temp board
         if castle_attributes is not None:
             # Castling
             queen_castle = True
@@ -361,7 +394,7 @@ def is_invalid_capture(board, is_color):
                 king_position = (row, col)
                 break
     if king_position is None:
-        return True # Illegal move not allowed for now until turns are implemented
+        return True # Illegal move that is not allowed, likely in debug mode
     else:
         return False
 
@@ -387,16 +420,15 @@ def is_check(board, is_color, moves):
 # Helper function to search for end-game state
 def is_checkmate_or_stalemate(board, is_color, moves):
     possible_moves = 0
-    pos_moves = [] # For DEBUG only, TO REMOVE IN FINAL VERSION
     # Consider this as a potential checkmate if under check
     checkmate = is_check(board, is_color, moves)
+    
     # Iterate through all the player's pieces
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
             if piece.isupper() == is_color and piece != ' ':
                 other_moves, _, other_specials = calculate_moves(board, row, col, moves)
-                # and it will never be the only move left if available
                 for move in other_moves:
                     # Try each move and see if it removes the check
                     # Before making the move, create a copy of the board where the piece has moved
@@ -408,8 +440,9 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                     if not is_check(temp_board, is_color, temp_moves):
                         possible_moves += 1
                         checkmate = False
-                        pos_moves.append([move, row, col]) # For DEBUG only, TO REMOVE IN FINAL VERSION
-                # Can implement an if checkmate == True check here for efficiency but it's probably best to accurately update possible_moves
+                
+                # Could implement an if checkmate == True check here for efficiency to skip the next portion 
+                # but it's probably best to accurately update possible_moves
                 # En-passants can remove checks
                 for move in other_specials:
                     # We never have to try castling moves because you can never castle under check
@@ -424,34 +457,10 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                         if not is_check(temp_board, is_color, temp_moves):
                             possible_moves += 1
                             checkmate = False
-                            pos_moves.append([move, row, col]) # For DEBUG only, TO REMOVE IN FINAL VERSION
 
     return checkmate, possible_moves
 
 ## Drawing Logic
-# Helper Function to load chess piece images dynamically
-def load_piece_image(piece, GRID_SIZE):
-    filename = f'images/{piece}.png'
-    img = pygame.image.load(filename)
-    img = pygame.transform.smoothscale(img, (GRID_SIZE, GRID_SIZE))
-
-    # Create a transparent surface with the same size as GRID_SIZE x GRID_SIZE
-    transparent_surface = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
-    # Add transparency alpha
-    transparent_surface.set_alpha(128)
-
-    # Blit the image onto the transparent surface with transparency
-    transparent_surface.blit(img, (0, 0))
-
-    return img, transparent_surface
-
-# Helper Function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping
-def name_keys(color, piece):
-    piece_key = piece
-    if color == 'w':
-        piece_key = piece_key.upper()
-    return piece_key, color + piece 
-
 # Helper Function to get the chessboard coordinates from mouse click coordinates
 def get_board_coordinates(x, y, GRID_SIZE):
     col = x // GRID_SIZE
@@ -516,7 +525,7 @@ def generate_coordinate_surface(theme):
     
     return coordinate_surface
 
-# Helper Function to draw a temporary rectangle with only an outline on a square
+# Helper function to draw a temporary rectangle with only an outline on a square
 def draw_hover_outline(window, theme, row, col):
     # Simplify variable names
     GRID_SIZE, HOVER_OUTLINE_COLOR_WHITE, HOVER_OUTLINE_COLOR_BLACK = \
@@ -527,7 +536,7 @@ def draw_hover_outline(window, theme, row, col):
     pygame.draw.rect(hover_outline, HOVER_OUTLINE_COLOR, (0, 0, GRID_SIZE, GRID_SIZE), 5)
     window.blit(hover_outline, (col * GRID_SIZE, row * GRID_SIZE))
 
-# Helper Function to draw the chess pieces
+# Helper function to draw the chess pieces
 def draw_pieces(window, theme, board, pieces):
     for row in range(8):
         for col in range(8):
@@ -535,7 +544,7 @@ def draw_pieces(window, theme, board, pieces):
             if piece != ' ':
                 window.blit(pieces[piece], (col * theme.GRID_SIZE, row * theme.GRID_SIZE))
 
-# Helper Function to draw transparent circles on half of the tiles
+# Helper function to draw transparent circles on half of the tiles
 def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials):
     # Simplify variable names
     GRID_SIZE, WIDTH, HEIGHT, TRANSPARENT_CIRCLES, TRANSPARENT_SPECIAL_CIRCLES = \
@@ -559,20 +568,20 @@ def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
 
     return transparent_surface
 
-# Helper Function to get x, y coordinates from board coordinates
+# Helper function to get x, y coordinates from board coordinates
 def get_coordinates(row, col, GRID_SIZE):
     x = row * GRID_SIZE
     y = col * GRID_SIZE
     return x, y
 
-# Helper Function to draw an arrow
-def draw_arrow(theme, arrow, inverse_view):
+# Helper function to draw an arrow
+def draw_arrow(theme, arrow):
     # Simplify variable names
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
     # Arrow color depends on turn
-    arrow_color = ARROW_WHITE if not inverse_view else ARROW_BLACK
+    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -610,7 +619,7 @@ def draw_arrow(theme, arrow, inverse_view):
         elif intermediate_row > y1:
             translate = pygame.Vector2(0, body_width / 2)
         
-        # Need to offset to the midpoint as well
+        # Need to offset/center to the midpoint as well
         offset = pygame.Vector2(GRID_SIZE / 2, GRID_SIZE / 2)
         intermediate_end = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row, GRID_SIZE)) + offset + translate
         intermediate_point = pygame.Vector2(get_coordinates(intermediate_col, intermediate_row, GRID_SIZE)) + offset
@@ -632,11 +641,11 @@ def draw_arrow(theme, arrow, inverse_view):
         pygame.Vector2(-head_width / 2, -head_height / 2),  # Bottom Left
     ]
     # Rotate and translate the head into place
-    translation = pygame.Vector2(0, arrow.length() - (head_height / 2)).rotate(-angle)
+    translation = pygame.Vector2(0, arrow.length() - (head_height / 2)).rotate(-angle) # Rotates CCW as per documentation
     for i in range(len(head_verts)):
-        head_verts[i].rotate_ip(-angle)
-        head_verts[i] += translation
-        head_verts[i] += intermediate_point
+        head_verts[i].rotate_ip(-angle)     # Rotate the head CCW as per documentation without a length change
+        head_verts[i] += translation        # Apply translation from start
+        head_verts[i] += intermediate_point # Apply starting vector translation
 
     pygame.draw.polygon(transparent_surface, arrow_color, head_verts)
 
@@ -654,7 +663,7 @@ def draw_arrow(theme, arrow, inverse_view):
     ]
     translation = pygame.Vector2(0, body_length / 2).rotate(-angle) # Rotates CCW as per documentation
     for i in range(len(body_verts)):
-        body_verts[i].rotate_ip(-angle) # Rotates CCW as per documentation without a length change
+        body_verts[i].rotate_ip(-angle)     # Rotate the body CCW as per documentation without a length change
         body_verts[i] += translation
         body_verts[i] += intermediate_point
     
@@ -663,7 +672,7 @@ def draw_arrow(theme, arrow, inverse_view):
         rectangle = start - intermediate_end
         rec_angle = rectangle.angle_to(pygame.Vector2(0, -1))
         rec_length = rectangle.length()
-        offset = pygame.Vector2(0, GRID_SIZE * 0.25)
+        offset = pygame.Vector2(0, GRID_SIZE * 0.25) # Must offset these lines
         intermediate_verts = [
             pygame.Vector2(-body_width / 2, rec_length / 2),
             pygame.Vector2(body_width / 2, rec_length / 2),
@@ -682,7 +691,7 @@ def draw_arrow(theme, arrow, inverse_view):
     
     return transparent_surface
 
-# Helper Function to highlight selected squares on left or right click
+# Helper function to highlight selected squares on left or right click
 def draw_highlight(window, theme, row, col, left):
     # Simplify variable names
     GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
@@ -737,12 +746,11 @@ def reverse_coordinates(params):
 
     return params
 
-# Helper Function for drawing the board
+# Helper function for drawing the board
 def draw_board(params):
     window = params['window']
     theme = params['theme']
-    inverse_view = params['theme'].INVERSE_PLAYER_VIEW
-    if inverse_view:
+    if theme.INVERSE_PLAYER_VIEW:
         params = reverse_coordinates(params)
     board = params['board']
     chessboard = params['chessboard']
@@ -792,7 +800,7 @@ def draw_board(params):
 
     # Draw arrows
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(theme, arrow, inverse_view)
+        transparent_arrow = draw_arrow(theme, arrow)
         # Blit each arrow to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
@@ -805,7 +813,7 @@ def draw_board(params):
         image_y = y - theme.GRID_SIZE // 2
         window.blit(selected_piece_image, (image_x, image_y))
 
-# Pawn Promotion Button
+# Helper class for a Pawn Promotion Button
 class Pawn_Button:
     def __init__(self, x, y, width, height, piece):
         self.rect = pygame.Rect(x, y, width, height)
@@ -824,7 +832,7 @@ class Pawn_Button:
         if event.type == pygame.MOUSEMOTION:
                 self.check_hover(event.pos)
 
-# Helper Function for displaying and running until a pawn is promoted 
+# Helper function for displaying and running until a pawn is promoted 
 def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
     # Instantiate default outputs
     new_current_position, new_previous_position, end_position, end_state = None, None, False, None
@@ -834,8 +842,13 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
 
     # Draw buttons onto a surface
     if row == 0:
-        button_x = col * GRID_SIZE
+        button_col = col
         button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
+        if theme.INVERSE_PLAYER_VIEW:
+            button_y_values = [i * GRID_SIZE for i in [7, 6, 5, 4]]
+            button_col = 8 - 1 - col
+        button_x = button_col * GRID_SIZE
+
         promotion_buttons = [
             Pawn_Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'Q'),
             Pawn_Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'R'),
@@ -843,8 +856,13 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
             Pawn_Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'N'),
         ]
     elif row == 7:
-        button_x = col * GRID_SIZE
+        button_col = col
         button_y_values = [i * GRID_SIZE for i in [7, 6, 5, 4]]
+        if theme.INVERSE_PLAYER_VIEW:
+            button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
+            button_col = 8 - 1 - col
+        button_x = button_col * GRID_SIZE
+
         promotion_buttons = [
             Pawn_Button(button_x, button_y_values[0], GRID_SIZE, GRID_SIZE, 'q'),
             Pawn_Button(button_x, button_y_values[1], GRID_SIZE, GRID_SIZE, 'r'),
@@ -892,9 +910,9 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
         
         # Clear the screen
         window.fill((0, 0, 0))
-
-        # Draw the board
-        draw_board(draw_board_params)
+        
+        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
+        draw_board(draw_board_params.copy())
         
         # Darken the screen
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)

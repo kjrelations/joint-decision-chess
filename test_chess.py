@@ -187,22 +187,5 @@ def test_piece_blocking(chess_board):
 
     # Add more cases if needed
 
-# TODO
-# # Sub-test 3: Edge Cases
-# def test_edge_cases(chess_board):
-#     # Edge Case 1: Ensure that pieces on the edge of the board can't move off the board or wrap around.
-#     assert (0, 0) not in calculate_moves(chess_board, 0, 0, None)[0]  # Corner piece can't move off the board
-#     assert (7, 7) not in calculate_moves(chess_board, 7, 7, None)[0]  # Corner piece can't move off the board
-#     assert (0, 7) not in calculate_moves(chess_board, 0, 7, None)[0]  # Corner piece can't move off the board
-#     assert (7, 0) not in calculate_moves(chess_board, 7, 0, None)[0]  # Corner piece can't move off the board
-
-#     # Edge Case 2: Test that pieces on the corner of the board can move diagonally but not horizontally or vertically out of bounds.
-#     assert (0, 0) in calculate_moves(chess_board, 0, 0, None)[0]  # Corner piece can move diagonally
-#     assert (7, 7) in calculate_moves(chess_board, 7, 7, None)[0]  # Corner piece can move diagonally
-#     assert (0, 7) in calculate_moves(chess_board, 0, 7, None)[0]  # Corner piece can move diagonally
-#     assert (7, 0) in calculate_moves(chess_board, 7, 0, None)[0]  # Corner piece can move diagonally
-
-#     # Add more edge case tests here if needed
-
 if __name__ == "__main__":
     pytest.main()

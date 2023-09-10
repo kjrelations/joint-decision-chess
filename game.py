@@ -2,7 +2,7 @@ from helpers import *
 
 class Game:
 
-    def __init__(self, board, current_turn):
+    def __init__(self, board, current_turn=True):
         # current_turn = True for white, False for black, the final version will always default to True, but for now we keep it like this
         self.current_turn = current_turn
         self.board = board
@@ -80,6 +80,7 @@ class Game:
             # Change turns once a standard move is played, not during a pawn promotion
             if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
                 self.current_turn = not self.current_turn
+                
                 # Update dictionary of board states
                 current_special_moves = []
                 for row in range(8):
@@ -91,6 +92,7 @@ class Game:
                 _current_board_state = tuple(tuple(r) for r in self.board)
                 _current_board_state = _current_board_state + (tuple(current_special_moves),)
                 _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+                
                 if _current_board_state in self.board_states:
                     self.board_states[_current_board_state] += 1
                 else:
@@ -127,6 +129,7 @@ class Game:
                     other_moves, _, _ = calculate_moves(self.board, row, col, self.moves)
                     if (new_row, new_col) in other_moves:
                         similar_pieces.append((row,col))
+        
         added_file, added_rank = '', ''
         for similar in similar_pieces:
             row, col = similar
@@ -161,6 +164,7 @@ class Game:
         temp_moves.append(output_move(piece, selected_piece, new_row, new_col, potential_capture))
         temp_board[new_row][new_col] = temp_board[selected_piece[0]][selected_piece[1]]
         temp_board[selected_piece[0]][selected_piece[1]] = ' '
+        
         if enpassant:
             capture_row = 4 if new_row == 3 else 5
             temp_board[capture_row][new_col] = ' '
@@ -182,9 +186,12 @@ class Game:
                 print('ALG_MOVES: ', self.alg_moves)
 
     def promote_to_piece(self, current_row, current_col, piece):
-        is_white = piece.isupper()
+        # Update board
         self.board[current_row][current_col] = piece
-        # Need to edit the temporary last moves/alg_moves in state one a decision is made
+        
+        is_white = piece.isupper()
+        
+        # Need to edit the temporary last moves/alg_moves in state once a decision is made
         string_list = list(self.moves[-1][1])
         string_list[0] = piece
         self.moves[-1][1] = ''.join(string_list)
@@ -232,32 +239,34 @@ class Game:
     def undo_move(self):
         # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
         if len(self.moves) != 0:
-            # Deincrement or remove current state from dictionary of board states
-            current_special_moves = []
-            for row in range(8):
-                for col in range(8):
-                    current_piece = self.board[row][col]
-                    if current_piece.islower() != self.current_turn and current_piece != ' ':
-                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
-                        current_special_moves.extend(specials)
-            _current_board_state = tuple(tuple(r) for r in self.board)
-            _current_board_state = _current_board_state + (tuple(current_special_moves),)
-            _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
-            
-            if self.board_states[_current_board_state] == 1:
-                del self.board_states[_current_board_state]
-            else:
-                self.board_states[_current_board_state] -= 1
+            # If we are not undoing a move during pawn promotion the current state of the board is saved
+            if 'p' not in self.board[7] and 'P' not in self.board[0]:
+                # Deincrement or remove current state from dictionary of board states
+                current_special_moves = []
+                for row in range(8):
+                    for col in range(8):
+                        current_piece = self.board[row][col]
+                        if current_piece.islower() != self.current_turn and current_piece != ' ':
+                            _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                            current_special_moves.extend(specials)
+                _current_board_state = tuple(tuple(r) for r in self.board)
+                _current_board_state = _current_board_state + (tuple(current_special_moves),)
+                _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+                
+                if self.board_states[_current_board_state] == 1:
+                    del self.board_states[_current_board_state]
+                else:
+                    self.board_states[_current_board_state] -= 1
             
             move = self.moves[-1]
 
-            prev_move = list(move[0])
-            curr_move = list(move[1])
+            prev_pos = list(move[0])
+            curr_pos = list(move[1])
             potential_capture = move[2]
             special = move[3]
 
-            piece, prev_row, prev_col = prev_move[0], int(prev_move[1]), int(prev_move[2])
-            curr_row, curr_col = int(curr_move[1]), int(curr_move[2])
+            piece, prev_row, prev_col = prev_pos[0], int(prev_pos[1]), int(prev_pos[2])
+            curr_row, curr_col = int(curr_pos[1]), int(curr_pos[2])
 
             self.board[prev_row][prev_col] = piece
             if special != 'enpassant':
@@ -295,15 +304,17 @@ class Game:
                 # Change turns once a standard move is played, not during a pawn promotion
                 if piece.lower() != 'p' or (piece.lower() == 'p' and (curr_row != 7 and curr_row != 0)):
                     self.current_turn = not self.current_turn
+                # Change turn right after a pawn promotion by checking that the piece type changed
+                elif piece.lower() == 'p' and (curr_row == 7 or curr_row == 0) and curr_pos[0].lower() != piece.lower():
+                    self.current_turn = not self.current_turn
 
             if len(self.moves) != 0:
                 new_recent_positions = self.moves[-1]
-                new_last_move, new_current_move = list(new_recent_positions[0]), list(new_recent_positions[1])
+                new_last_pos, new_current_pos = list(new_recent_positions[0]), list(new_recent_positions[1])
 
-                new_curr_row, new_curr_col = int(new_current_move[1]), int(new_current_move[2])
-                last_row, last_col = int(new_last_move[1]), int(new_last_move[2])
+                new_curr_row, new_curr_col = int(new_current_pos[1]), int(new_current_pos[2])
+                new_last_row, new_last_col = int(new_last_pos[1]), int(new_last_pos[2])
 
-                return (new_curr_row, new_curr_col), (last_row, last_col)
-            
+                return (new_curr_row, new_curr_col), (new_last_row, new_last_col)
             
         return None, None
