@@ -21,7 +21,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -46,7 +45,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -71,7 +69,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -96,7 +93,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -121,7 +117,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -146,7 +141,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -171,7 +165,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -196,7 +189,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     },
     {
@@ -221,7 +213,6 @@
         "arrow_body_width": 20,
         "arrow_head_height": 35,
         "arrow_head_width": 48,
-        "starting_player": true,
         "inverse_player_view": false
     }
 ]

@@ -22,7 +22,6 @@ class Theme:
         self.ARROW_BODY_WIDTH = 20
         self.ARROW_HEAD_HEIGHT = 35
         self.ARROW_HEAD_WIDTH = 48
-        self.STARTING_PLAYER = True
         self.INVERSE_PLAYER_VIEW = False
 
     def apply_theme(self, theme):
@@ -46,7 +45,6 @@ class Theme:
         self.ARROW_BODY_WIDTH = theme.get("arrow_body_width", self.ARROW_BODY_WIDTH)
         self.ARROW_HEAD_HEIGHT = theme.get("arrow_head_height", self.ARROW_HEAD_HEIGHT)
         self.ARROW_HEAD_WIDTH = theme.get("arrow_head_width", self.ARROW_HEAD_WIDTH)
-        self.STARTING_PLAYER = theme.get("starting_player", self.STARTING_PLAYER)
         self.INVERSE_PLAYER_VIEW = theme.get("inverse_player_view", self.INVERSE_PLAYER_VIEW)
 
 # Initialize Pygame to initialize fonts

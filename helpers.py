@@ -252,7 +252,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     captures = []
     special_moves = []
 
-    is_white = piece.isupper() # Check if the piece is white
+    is_white = piece.isupper()
 
     if piece.lower() == 'p':  # Pawn
         if not only_specials:
@@ -551,7 +551,7 @@ def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT, theme.TRANSPARENT_CIRCLES, theme.TRANSPARENT_SPECIAL_CIRCLES
 
     free_moves = [move for move in valid_moves if move not in valid_captures]
-    # Create surface allowing for transparaency with alpha transparency values defined in colors 
+    # Alpha transparency values defined in theme colors 
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for row, col in free_moves:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
@@ -575,13 +575,13 @@ def get_coordinates(row, col, GRID_SIZE):
     return x, y
 
 # Helper function to draw an arrow
-def draw_arrow(theme, arrow):
+def draw_arrow(theme, starting_player, arrow):
     # Simplify variable names
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    # Arrow color depends on turn
-    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    # Arrow color depends on view
+    arrow_color = ARROW_WHITE if starting_player else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -760,6 +760,7 @@ def draw_board(params):
     right_clicked_squares = params['right_clicked_squares']
     coordinate_surface = params['coordinate_surface']
     drawn_arrows = params['drawn_arrows']
+    starting_player = params['starting_player']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
@@ -767,7 +768,7 @@ def draw_board(params):
     hovered_square = params['hovered_square']
     selected_piece_image = params['selected_piece_image']
     
-    # Draw the reference chessboard (constructed only once)
+    # Draw the reference chessboard
     window.blit(chessboard, (0, 0))
 
     # Highlight left clicked selected squares
@@ -784,7 +785,7 @@ def draw_board(params):
     for square in right_clicked_squares:
         draw_highlight(window, theme, square[0], square[1], left)
 
-    # Draw coordinates after highlights
+    # Draw reference coordinates after highlights
     window.blit(coordinate_surface, (0, 0))
 
     # Highlight valid move squares
@@ -800,12 +801,12 @@ def draw_board(params):
 
     # Draw arrows
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(theme, arrow)
+        transparent_arrow = draw_arrow(theme, starting_player, arrow)
         # Blit each arrow to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
     # On mousedown and a piece is selected draw a transparent copy of the piece
-    # Draw after outline and previous layers
+    # Draw after/above outline and previous layers
     if selected_piece_image is not None:
         x, y = pygame.mouse.get_pos()
         # Calculate the position to center the image on the mouse
@@ -835,12 +836,11 @@ class Pawn_Button:
 # Helper function for displaying and running until a pawn is promoted 
 def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
     # Instantiate default outputs
-    new_current_position, new_previous_position, end_position, end_state = None, None, False, None
+    promoted, end_state = False, None
     # Simplify variable names
     theme = draw_board_params['theme']
     GRID_SIZE, WIDTH, HEIGHT = theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT
 
-    # Draw buttons onto a surface
     if row == 0:
         button_col = col
         button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
@@ -882,30 +882,31 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
                     if button.rect.collidepoint(x, y):
                         game.promote_to_piece(row, col, button.piece)
                         promotion_required = False  # Exit promotion state condition
+                        promoted = True
             if event.type == pygame.KEYDOWN:
 
                 # Undo move
                 if event.key == pygame.K_u:
                     # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
+                    game.undo_move()
                     promotion_required = False
                 
                 # Resignation
                 elif event.key == pygame.K_r:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    print("RESIGNATION")
+                    game.undo_move()
+                    game.forced_end = "WHITE RESIGNATION" if game._starting_player else "BLACK RESIGNATION"
+                    print(game.forced_end)
                     promotion_required = False
-                    end_position = True
+                    game.end_position = True
                     end_state = True
                 
                 # Draw
                 elif event.key == pygame.K_d:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
+                    game.undo_move()
                     print("DRAW")
                     promotion_required = False
-                    end_position = True
+                    game.end_position = True
+                    game.forced_end = "DRAW"
                     end_state = False
         
         # Clear the screen
@@ -932,4 +933,4 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
 
         pygame.display.flip()
     
-    return new_current_position, new_previous_position, end_position, end_state
+    return promoted, end_state

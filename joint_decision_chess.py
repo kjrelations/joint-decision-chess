@@ -4,19 +4,18 @@ import json
 from game import *
 from constants import *
 from helpers import *
+from network import Network
 
 # Initialize Pygame
 pygame.init()
 
 current_theme = Theme()
 
-# Read themes from JSON file
 with open('themes.json', 'r') as file:
     themes = json.load(file)
 
 # Initialize Pygame window
 window = pygame.display.set_mode((current_theme.WIDTH, current_theme.HEIGHT))
-pygame.display.set_caption("Chess")
 
 # Load the chess pieces dynamically
 pieces = {}
@@ -30,7 +29,7 @@ for color in ['w', 'b']:
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
-    if game.current_turn == is_white or game._debug:
+    if game._starting_player == is_white or game._debug:
         first_intent = True
         selected_piece = (row, col)
         selected_piece_image = transparent_pieces[piece]
@@ -63,7 +62,6 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     for move in valid_specials.copy():
         # Castling moves are already validated in calculate moves, this is only for enpassant
         if (move[0], move[1]) not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-            # Before making the move, create a copy of the board where the piece has moved
             temp_board = [rank[:] for rank in game.board]  
             temp_moves = game.moves.copy()
             temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
@@ -88,20 +86,17 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
     piece = game.board[selected_piece[0]][selected_piece[1]]
     is_white = piece.isupper()
 
-    # Before making the move, create a copy of the game where the piece has moved
     temp_board = [rank[:] for rank in game.board]  
     temp_moves = game.moves.copy()
     temp_moves.append(output_move(piece, selected_piece, row, col, temp_board[row][col]))
     temp_board[row][col] = temp_board[selected_piece[0]][selected_piece[1]]
     temp_board[selected_piece[0]][selected_piece[1]] = ' '
 
+    # Move the piece if the king does not enter check
     if not is_check(temp_board, is_white, temp_moves):
-        # Move the piece if the king does not enter check
         game.update_state(row, col, selected_piece)
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print("ALG_MOVES:", game.alg_moves)
-        previous_position = (selected_piece[0], selected_piece[1])
-        current_position = (row, col)
         
         if (row, col) in valid_captures:
             capture_sound.play()
@@ -110,32 +105,32 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         
         selected_piece = None
 
-        # Check for checkmate or stalemate
         checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
         if checkmate:
             print("CHECKMATE")
+            game.end_position = True
             game.add_end_game_notation(checkmate)
-            return True, None, previous_position, current_position, promotion_required
-        if remaining_moves == 0:
+            return None, promotion_required
+        elif remaining_moves == 0:
             print("STALEMATE")
+            game.end_position = True
             game.add_end_game_notation(checkmate)
-            return True, None, previous_position, current_position, promotion_required
-        if game.threefold_check():
+            return None, promotion_required
+        elif game.threefold_check():
             print("DRAW BY THREEFOLD REPETITION")
+            game.end_position = True
             game.add_end_game_notation(checkmate)
-            return True, None, previous_position, current_position, promotion_required
+            return None, promotion_required
 
     # Pawn Promotion
     if game.board[row][col].lower() == 'p' and (row == 0 or row == 7):
         promotion_required = True
         promotion_square = (row, col)
 
-    return False, promotion_square, previous_position, current_position, promotion_required
+    return promotion_square, promotion_required
 
 # Main loop piece special move selection logic that updates state
 def handle_piece_special_move(game, selected_piece, row, col):
-    # Initialize Variables
-    previous_position, current_position = selected_piece, (row, col)
     # Need to be considering the selected piece for this section not an old piece
     piece = game.board[selected_piece[0]][selected_piece[1]]
     is_white = piece.isupper()
@@ -148,32 +143,39 @@ def handle_piece_special_move(game, selected_piece, row, col):
     else:
         capture_sound.play()
 
-    # Check for checkmate or stalemate
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
         print("CHECKMATE")
+        game.end_position = True
         game.add_end_game_notation(checkmate)
-        return True, previous_position, current_position, piece, is_white
-    if remaining_moves == 0:
+        return piece, is_white
+    elif remaining_moves == 0:
         print("STALEMATE")
+        game.end_position = True
         game.add_end_game_notation(checkmate)
-        return True, previous_position, current_position, piece, is_white
-    if game.threefold_check():
+        return piece, is_white
+    elif game.threefold_check():
         print("DRAW BY THREEFOLD REPETITION")
+        game.end_position = True
         game.add_end_game_notation(checkmate)
-        return True, previous_position, current_position, piece, is_white
+        return piece, is_white
 
-    return False, previous_position, current_position, piece, is_white
+    return piece, is_white
 
 # Main loop
 def main():
-    game = Game(new_board.copy(), current_theme.STARTING_PLAYER)
+    n = Network()
+    starting_player = n.get_player()
+    current_theme.INVERSE_PLAYER_VIEW = not starting_player
+    if starting_player:
+        pygame.display.set_caption("Chess - White")
+    else:
+        pygame.display.set_caption("Chess - Black")
+    game = Game(new_board.copy(), starting_player)
     running = True
-    end_position = False
+    waiting = True
 
     selected_piece = None
-    current_position = None
-    previous_position = None
     hovered_square = None
     current_right_clicked_square = None
     end_right_released_square = None
@@ -197,8 +199,129 @@ def main():
     coordinate_surface = generate_coordinate_surface(current_theme)
     theme_index = 0
 
+    print("Waiting to connect to second game...")
+    while waiting:
+        try:
+            games = n.send(game)
+            if len(games) == 1:
+                game = games[0]
+                # Need to pump the event queque like below in order to move window
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                        waiting = False
+
+                # Clear the screen
+                window.fill((0, 0, 0))
+
+                # Draw the board
+                draw_board({
+                    'window': window,
+                    'theme': current_theme,
+                    'board': game.board,
+                    'chessboard': chessboard,
+                    'selected_piece': selected_piece,
+                    'current_position': game.current_position,
+                    'previous_position': game.previous_position,
+                    'right_clicked_squares': right_clicked_squares,
+                    'coordinate_surface': coordinate_surface,
+                    'drawn_arrows': drawn_arrows,
+                    'starting_player': game._starting_player,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': hovered_square,
+                    'selected_piece_image': selected_piece_image
+                })
+
+                # Darken the screen
+                overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+                overlay.fill((0, 0, 0, 128))
+
+                # Blit the overlay surface onto the main window
+                window.blit(overlay, (0, 0))
+                pygame.display.flip()
+            else:
+                waiting = False
+        except Exception as err:
+            running = False
+            print("Could not get game, connection to server failed... ", err)
+            break
+
     # Main game loop
     while running:
+        try:
+            games = n.send(game)
+            if starting_player:
+                if game._sync:
+                    # Previously had the redundant games[0].current_turn == game._starting_player and game.current_turn != game._starting_player and in the first condition
+                    if (len(games[1].alg_moves) > len(game.alg_moves)) or (len(games[1].alg_moves) < len(game.alg_moves) and games[1]._move_undone) or \
+                        games[1].end_position:
+                        game.synchronize(games[1])
+                        if game.alg_moves != []:
+                            if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                if "x" not in game.alg_moves[-1]:
+                                    move_sound.play()
+                                else:
+                                    capture_sound.play()
+                            if game.end_position:
+                                running = False
+                                is_white = True
+                                checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, is_white, game.moves)
+                                if checkmate:
+                                    print("CHECKMATE")
+                                elif remaining_moves == 0:
+                                    print("STALEMATE")
+                                elif game.threefold_check():
+                                    print("DRAW BY THREEFOLD REPETITION")
+                                elif game.forced_end != "":
+                                    print(game.forced_end)
+                                print("ALG_MOVES: ", game.alg_moves)
+                                break
+                            print("ALG_MOVES: ", game.alg_moves)
+                else:
+                    if games[1].board == game.board:
+                        print("Syncing White...")
+                        game._sync = True
+                        game._move_undone = False
+                        games = n.send(game)
+            else:
+                if game._sync:
+                    if (len(games[0].alg_moves) > len(game.alg_moves)) or (len(games[0].alg_moves) < len(game.alg_moves) and games[0]._move_undone) or \
+                        games[0].end_position:
+                        game.synchronize(games[0])
+                        if game.alg_moves != []:
+                            if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
+                                if "x" not in game.alg_moves[-1]:
+                                    move_sound.play()
+                                else:
+                                    capture_sound.play()
+                            if game.end_position:
+                                running = False
+                                is_white = False
+                                checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, is_white, game.moves)
+                                if checkmate:
+                                    print("CHECKMATE")
+                                elif remaining_moves == 0:
+                                    print("STALEMATE")
+                                elif game.threefold_check():
+                                    print("DRAW BY THREEFOLD REPETITION")
+                                elif game.forced_end != "":
+                                    print(game.forced_end)
+                                print("ALG_MOVES: ", game.alg_moves)
+                                break
+                            print("ALG_MOVES: ", game.alg_moves)
+                else:
+                    if games[0].board == game.board:
+                        print("Syncing Black...")
+                        game._sync = True
+                        game._move_undone = False
+                        games = n.send(game)
+        except Exception as err:
+            running = False
+            print("Could not get game... ", err)
+            break
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -245,32 +368,33 @@ def main():
                                 handle_new_piece_selection(game, row, col, is_white, hovered_square)
                             
                     else:
-                        ## Free moves or captures
-                        if (row, col) in valid_moves:
-                            end_position, promotion_square, previous_position, current_position, promotion_required = \
-                                handle_piece_move(game, selected_piece, row, col, valid_captures)
+                        if game.current_turn == game._starting_player:
+                            ## Free moves or captures
+                            if (row, col) in valid_moves:
+                                promotion_square, promotion_required = \
+                                    handle_piece_move(game, selected_piece, row, col, valid_captures)
+                                
+                                # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                                valid_moves, valid_captures, valid_specials = [], [], []
+                                # Reset selected piece variables to represent state
+                                selected_piece, selected_piece_image = None, None
+                                
+                                if game.end_position:
+                                    running = False
+                                    break
                             
-                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                            valid_moves, valid_captures, valid_specials = [], [], []
-                            # Reset selected piece variables to represent state
-                            selected_piece, selected_piece_image = None, None
-                            # End-game condition
-                            if end_position:
-                                running = False
-                                break
-                        
-                        ## Specials
-                        elif (row, col) in valid_specials:
-                            end_position, previous_position, current_position, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
-                            
-                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                            valid_moves, valid_captures, valid_specials = [], [], []
-                            # Reset selected piece variables to represent state
-                            selected_piece, selected_piece_image = None, None
-                            # End-game condition
-                            if end_position:
-                                running = False
-                                break
+                            ## Specials
+                            elif (row, col) in valid_specials:
+                                piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
+                                
+                                # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                                valid_moves, valid_captures, valid_specials = [], [], []
+                                # Reset selected piece variables to represent state
+                                selected_piece, selected_piece_image = None, None
+
+                                if game.end_position:
+                                    running = False
+                                    break
 
                         else:
                             # Otherwise we are considering another piece or a re-selected piece
@@ -283,7 +407,6 @@ def main():
                                     # Redraw the transparent dragged piece on subsequent clicks
                                     selected_piece_image = transparent_pieces[piece]
                                 
-                                # New piece
                                 if (row, col) != selected_piece:
                                      first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
                                         handle_new_piece_selection(game, row, col, is_white, hovered_square)
@@ -294,7 +417,7 @@ def main():
                 if current_theme.INVERSE_PLAYER_VIEW:
                     row, col = map_to_reversed_board(row, col)
 
-                # Only draw hover outline when left button is down and a piece is selected
+                # Draw new hover with a selected piece and LMB
                 if left_mouse_button_down and selected_piece is not None:  
                     if (row, col) != hovered_square:
                         hovered_square = (row, col)
@@ -314,34 +437,35 @@ def main():
                     if first_intent and (row, col) == selected_piece:
                         first_intent = not first_intent
                     
-                    ## Free moves or captures
-                    if (row, col) in valid_moves:
-                        end_position, promotion_square, previous_position, current_position, promotion_required = \
-                            handle_piece_move(game, selected_piece, row, col, valid_captures)
-                        
-                        # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                        valid_moves, valid_captures, valid_specials = [], [], []
-                        # Reset selected piece variables to represent state
-                        selected_piece, selected_piece_image = None, None
-                        # End-game condition
-                        if end_position:
-                            running = False
-                            break
+                    if game.current_turn == game._starting_player:
+                        ## Free moves or captures
+                        if (row, col) in valid_moves:
+                            promotion_square, promotion_required = \
+                                handle_piece_move(game, selected_piece, row, col, valid_captures)
+                            
+                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                            valid_moves, valid_captures, valid_specials = [], [], []
+                            # Reset selected piece variables to represent state
+                            selected_piece, selected_piece_image = None, None
 
-                    ## Specials
-                    elif (row, col) in valid_specials:
-                        end_position, previous_position, current_position, piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
-                        
-                        # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                        valid_moves, valid_captures, valid_specials = [], [], []
-                        # Reset selected piece variables to represent state
-                        selected_piece, selected_piece_image = None, None
-                        # End-game condition
-                        if end_position:
-                            running = False
-                            break
+                            if game.end_position:
+                                running = False
+                                break
 
-                if event.button == 3:  # Right mouse button
+                        ## Specials
+                        elif (row, col) in valid_specials:
+                            piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
+                            
+                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                            valid_moves, valid_captures, valid_specials = [], [], []
+                            # Reset selected piece variables to represent state
+                            selected_piece, selected_piece_image = None, None
+
+                            if game.end_position:
+                                running = False
+                                break
+
+                if event.button == 3:
                     right_mouse_button_down = False
                     # Highlighting individual squares at will
                     if (row, col) == current_right_clicked_square:
@@ -365,10 +489,12 @@ def main():
 
             elif event.type == pygame.KEYDOWN:
 
+                # Only allow for undoing moves on your turn, multiple one-sided undos break sync
+                # if game.current_turn == game._starting_player: # Implement this later maybe have another and not game._undo_debug condition
                 # Undo move
                 if event.key == pygame.K_u:
                     # Update current and previous position highlighting
-                    current_position, previous_position = game.undo_move()
+                    game.undo_move()
                     hovered_square = None
                     selected_piece_image = None
                     selected_piece = None
@@ -379,9 +505,10 @@ def main():
 
                 # Resignation
                 if event.key == pygame.K_r:
-                    print("RESIGNATION")
+                    game.forced_end = "WHITE RESIGNATION" if game._starting_player else "BLACK RESIGNATION"
+                    print(game.forced_end)
                     running = False
-                    end_position = True
+                    game.end_position = True
                     game.add_end_game_notation(True)
                     break
                 
@@ -389,7 +516,8 @@ def main():
                 elif event.key == pygame.K_d:
                     print("DRAW")
                     running = False
-                    end_position = True
+                    game.end_position = True
+                    game.forced_end = "DRAW"
                     game.add_end_game_notation(False)
                     break
 
@@ -398,6 +526,13 @@ def main():
                     theme_index += 1
                     theme_index %= len(themes)
                     current_theme.apply_theme(themes[theme_index])
+                    # Redraw board and coordinates
+                    chessboard = generate_chessboard(current_theme)
+                    coordinate_surface = generate_coordinate_surface(current_theme)
+
+                # Flip Perspective
+                elif event.key == pygame.K_i:
+                    current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
                     # Redraw board and coordinates
                     chessboard = generate_chessboard(current_theme)
                     coordinate_surface = generate_coordinate_surface(current_theme)
@@ -412,11 +547,12 @@ def main():
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
-            'current_position': current_position,
-            'previous_position': previous_position,
+            'current_position': game.current_position,
+            'previous_position': game.previous_position,
             'right_clicked_squares': right_clicked_squares,
             'coordinate_surface': coordinate_surface,
             'drawn_arrows': drawn_arrows,
+            'starting_player': game._starting_player,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -436,11 +572,12 @@ def main():
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
-                'current_position': current_position,
-                'previous_position': previous_position,
+                'current_position': game.current_position,
+                'previous_position': game.previous_position,
                 'right_clicked_squares': right_clicked_squares,
                 'coordinate_surface': coordinate_surface,
                 'drawn_arrows': drawn_arrows,
+                'starting_player': game._starting_player,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -449,19 +586,17 @@ def main():
                 'selected_piece_image': selected_piece_image
             }
 
-            new_current_position, new_previous_position, end_position, end_state = \
-                display_promotion_options(draw_board_params, window, promotion_square[0], promotion_square[1], pieces, promotion_required, game)
+            promoted, end_state = display_promotion_options(draw_board_params, window, promotion_square[0], promotion_square[1], pieces, promotion_required, game)
             promotion_required, promotion_square = False, None
 
-            if new_current_position is not None:
-                current_position, previous_position = new_current_position, new_previous_position
+            if promoted:
                 hovered_square = None
                 selected_piece_image = None
                 selected_piece = None
                 first_intent = False
                 valid_moves, valid_captures, valid_specials = [], [], []
                 
-            if end_position:
+            if game.end_position:
                 running = False
                 game.add_end_game_notation(end_state)
 
@@ -474,11 +609,12 @@ def main():
                 'board': game.board,
                 'chessboard': chessboard,
                 'selected_piece': selected_piece,
-                'current_position': current_position,
-                'previous_position': previous_position,
+                'current_position': game.current_position,
+                'previous_position': game.previous_position,
                 'right_clicked_squares': right_clicked_squares,
                 'coordinate_surface': coordinate_surface,
                 'drawn_arrows': drawn_arrows,
+                'starting_player': game._starting_player,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -491,32 +627,48 @@ def main():
             # In the case of an undo this is fine and checkmate is always false
             piece = game.board[row][col]
             is_white = piece.isupper()
-            # Check for checkmate or stalemate
+
             checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
             if checkmate:
                 print("CHECKMATE")
                 running = False
-                end_position = True
+                game.end_position = True
                 game.add_end_game_notation(checkmate)
-            if remaining_moves == 0:
+            elif remaining_moves == 0:
                 print("STALEMATE")
                 running = False
-                end_position = True
+                game.end_position = True
                 game.add_end_game_notation(checkmate)
             # This seems redundant as promotions should lead to unique boards but we leave it in anyway
-            if game.threefold_check():
+            elif game.threefold_check():
                 print("DRAW BY THREEFOLD REPETITION")
                 running = False
-                end_position = True
+                game.end_position = True
                 game.add_end_game_notation(checkmate)
         
-        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary
+        try:
+            if game.current_turn != game._starting_player or not game._sync:
+                _ = n.send(game)
+        except Exception as err:
+            running = False
+            game.end_position = True
+            print("Could not send/get games... ", err)
+            break
+
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         pygame.display.flip()
     
-    while end_position:
+    if game.end_position:
+        try:
+            _ = n.send(game)
+        except Exception as err:
+            print("Could not send game... ", err)
+
+    while game.end_position:
         # Clear any selected highlights
         right_clicked_squares = []
         drawn_arrows = []
+        
         # Clear the screen
         window.fill((0, 0, 0))
 
@@ -527,11 +679,12 @@ def main():
             'board': game.board,
             'chessboard': chessboard,
             'selected_piece': selected_piece,
-            'current_position': current_position,
-            'previous_position': previous_position,
+            'current_position': game.current_position,
+            'previous_position': game.previous_position,
             'right_clicked_squares': right_clicked_squares,
             'coordinate_surface': coordinate_surface,
             'drawn_arrows': drawn_arrows,
+            'starting_player': game._starting_player,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -549,7 +702,7 @@ def main():
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                end_position = False
+                game.end_position = False
 
     # Quit Pygame
     pygame.quit()
