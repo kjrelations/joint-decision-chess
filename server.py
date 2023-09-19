@@ -1,6 +1,7 @@
 import socket
-from _thread import *
 import pickle
+import struct
+from _thread import *
 from game import *
 
 server = ""
@@ -30,14 +31,41 @@ new_board = [
     ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
 ]
 
+def send_data(conn, data):
+    """
+    Send data over the connection by first sending its length as a 4-byte integer,
+    followed by the actual data.
+    """
+    data_pickle = pickle.dumps(data)
+    data_length = len(data_pickle)
+    conn.send(struct.pack("!I", data_length))  # Send message length
+    conn.send(data_pickle)  # Send the actual data
+
+def receive_data(conn):
+    """
+    Receive data from the connection by first reading the message length,
+    then reading the actual data.
+    """
+    data_length_bytes = conn.recv(4)  # Read 4 bytes for message length
+    if not data_length_bytes:
+        return None
+    data_length = struct.unpack("!I", data_length_bytes)[0]  # Unpack message length
+    data = b""
+    while len(data) < data_length:
+        packet = conn.recv(data_length - len(data))
+        if not packet:
+            return None
+        data += packet
+    return pickle.loads(data)
+
 def threaded_client(conn, starting_player, game_id):
     global id_count
-    conn.send(pickle.dumps(starting_player))
+    send_data(conn, starting_player)
 
     reply = ""
     while True:
         try:
-            data = pickle.loads(conn.recv(2048*59))
+            data = receive_data(conn)
 
             if game_id in games:
                 paired_games = games[game_id]
@@ -57,10 +85,11 @@ def threaded_client(conn, starting_player, game_id):
                     print("Received: ", data)
                     print("Sending: ", reply)
 
-                conn.sendall(pickle.dumps(reply))
+                send_data(conn, reply)
             else:
                 break
-        except:
+        except Exception as err:
+            print("Error receiving, handling, or sending data...", err)
             break
     print("Lost connection")
     try:
