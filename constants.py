@@ -50,12 +50,12 @@ class Theme:
 # Initialize Pygame to initialize fonts
 pygame.init()
 
-# # Initialize mixer for sounds
-# pygame.mixer.init()
+# Initialize mixer for sounds
+pygame.mixer.init()
 
-# # Sound Effects
-# move_sound = pygame.mixer.Sound('sounds/move.mp3')
-# capture_sound = pygame.mixer.Sound('sounds/capture.mp3')
+# Sound Effects
+move_sound = pygame.mixer.Sound('sounds/move.ogg')
+capture_sound = pygame.mixer.Sound('sounds/capture.ogg')
 
 pygame.quit()
 

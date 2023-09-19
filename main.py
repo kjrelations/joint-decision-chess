@@ -99,10 +99,10 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print("ALG_MOVES:", game.alg_moves)
         
-        # if (row, col) in valid_captures:
-        #     capture_sound.play()
-        # else:
-        #     move_sound.play()
+        if (row, col) in valid_captures:
+            capture_sound.play()
+        else:
+            move_sound.play()
         
         selected_piece = None
 
@@ -139,10 +139,10 @@ def handle_piece_special_move(game, selected_piece, row, col):
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
     print("ALG_MOVES:", game.alg_moves)
-    # if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-    #     move_sound.play()
-    # else:
-    #     capture_sound.play()
+    if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
+        move_sound.play()
+    else:
+        capture_sound.play()
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -204,8 +204,12 @@ async def main():
     while waiting:
         try:
             games = n.send(game)
-            if len(games) == 1:
-                game = games[0]
+            if games is None or len(games) == 1:
+                if games is not None:
+                    game = games[0]
+                    print("Connected to current game...")
+                else:
+                    print("Hmmmmm", games)
                 # Need to pump the event queque like below in order to move window
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -262,11 +266,11 @@ async def main():
                         games[1].end_position:
                         game.synchronize(games[1])
                         if game.alg_moves != []:
-                            # if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                            #     if "x" not in game.alg_moves[-1]:
-                            #         move_sound.play()
-                            #     else:
-                            #         capture_sound.play()
+                            if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                if "x" not in game.alg_moves[-1]:
+                                    move_sound.play()
+                                else:
+                                    capture_sound.play()
                             if game.end_position:
                                 running = False
                                 is_white = True
@@ -294,11 +298,11 @@ async def main():
                         games[0].end_position:
                         game.synchronize(games[0])
                         if game.alg_moves != []:
-                            # if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
-                            #     if "x" not in game.alg_moves[-1]:
-                            #         move_sound.play()
-                            #     else:
-                            #         capture_sound.play()
+                            if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
+                                if "x" not in game.alg_moves[-1]:
+                                    move_sound.play()
+                                else:
+                                    capture_sound.play()
                             if game.end_position:
                                 running = False
                                 is_white = False
