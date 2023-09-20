@@ -163,6 +163,76 @@ def handle_piece_special_move(game, selected_piece, row, col):
 
     return piece, is_white
 
+async def promotion_state(promotion_square, game, row, col, draw_board_params):
+    promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
+    promoted, promotion_required, end_state = False, True, None
+    
+    while promotion_required:
+        for event in pygame.event.get():
+            for button in promotion_buttons:
+                button.handle_event(event)
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = pygame.mouse.get_pos()
+                    if button.rect.collidepoint(x, y):
+                        game.promote_to_piece(row, col, button.piece)
+                        promotion_required = False  # Exit promotion state condition
+                        promoted = True
+            if event.type == pygame.KEYDOWN:
+
+                # Undo move
+                if event.key == pygame.K_u:
+                    # Update current and previous position highlighting
+                    game.undo_move()
+                    promotion_required = False
+                
+                # Resignation
+                elif event.key == pygame.K_r:
+                    game.undo_move()
+                    game.forced_end = "WHITE RESIGNATION" if game.current_turn else "BLACK RESIGNATION"
+                    print(game.forced_end)
+                    promotion_required = False
+                    game.end_position = True
+                    end_state = True
+                
+                # Draw
+                elif event.key == pygame.K_d:
+                    game.undo_move()
+                    print("DRAW")
+                    promotion_required = False
+                    game.end_position = True
+                    game.forced_end = "DRAW"
+                    end_state = False
+        
+        # Clear the screen
+        window.fill((0, 0, 0))
+        
+        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
+        draw_board(draw_board_params.copy())
+        
+        # Darken the screen
+        overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 128))
+
+        # Blit the overlay surface onto the main window
+        window.blit(overlay, (0, 0))
+
+        # Draw buttons and update the display
+        for button in promotion_buttons:
+            img = pieces[button.piece]
+            img_x, img_y = button.rect.x, button.rect.y
+            if button.is_hovered:
+                img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
+                img_x, img_y = button.scaled_x, button.scaled_y
+            window.blit(img, (img_x, img_y))
+
+        pygame.display.flip()
+        await asyncio.sleep(0)
+
+    return promoted, end_state
+
 # Main loop
 async def main():
     starting_player = True
@@ -454,73 +524,7 @@ async def main():
                 'selected_piece_image': selected_piece_image
             }
 
-            promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
-
-            promoted, promotion_required, end_state = False, True, None
-            while promotion_required:
-                for event in pygame.event.get():
-                    for button in promotion_buttons:
-                        button.handle_event(event)
-                        if event.type == pygame.QUIT:
-                            pygame.quit()
-                            sys.exit()
-                        elif event.type == pygame.MOUSEBUTTONDOWN:
-                            x, y = pygame.mouse.get_pos()
-                            if button.rect.collidepoint(x, y):
-                                game.promote_to_piece(row, col, button.piece)
-                                promotion_required = False  # Exit promotion state condition
-                                promoted = True
-                    if event.type == pygame.KEYDOWN:
-
-                        # Undo move
-                        if event.key == pygame.K_u:
-                            # Update current and previous position highlighting
-                            game.undo_move()
-                            promotion_required = False
-                        
-                        # Resignation
-                        elif event.key == pygame.K_r:
-                            game.undo_move()
-                            game.forced_end = "WHITE RESIGNATION" if game.current_turn else "BLACK RESIGNATION"
-                            print(game.forced_end)
-                            promotion_required = False
-                            game.end_position = True
-                            end_state = True
-                        
-                        # Draw
-                        elif event.key == pygame.K_d:
-                            game.undo_move()
-                            print("DRAW")
-                            promotion_required = False
-                            game.end_position = True
-                            game.forced_end = "DRAW"
-                            end_state = False
-                
-                # Clear the screen
-                window.fill((0, 0, 0))
-                
-                # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
-                draw_board(draw_board_params.copy())
-                
-                # Darken the screen
-                overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 128))
-
-                # Blit the overlay surface onto the main window
-                window.blit(overlay, (0, 0))
-
-                # Draw buttons and update the display
-                for button in promotion_buttons:
-                    img = pieces[button.piece]
-                    img_x, img_y = button.rect.x, button.rect.y
-                    if button.is_hovered:
-                        img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
-                        img_x, img_y = button.scaled_x, button.scaled_y
-                    window.blit(img, (img_x, img_y))
-
-                pygame.display.flip()
-                await asyncio.sleep(0)
-
+            promoted, end_state = await promotion_state(promotion_square, game, row, col, draw_board_params)
             promotion_required, promotion_square = False, None
 
             if promoted:
