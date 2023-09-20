@@ -1,37 +1,62 @@
 from helpers import *
+import json
 
 class Game:
 
-    def __init__(self, board, starting_player, current_turn=True):
-        # current_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
-        self.current_turn = current_turn
-        self.board = board
-        self.moves = []
-        self.alg_moves = []
-        self.castle_attributes = {
-            'white_king_moved' : False,
-            'left_white_rook_moved' : False,
-            'right_white_rook_moved' : False,
-            'black_king_moved' : False,
-            'left_black_rook_moved' : False,
-            'right_black_rook_moved' : False
-        }
-        self.current_position = None
-        self.previous_position = None
-        # Appending an empty set of special states and initialised castling states to rows of board row tuples
-        _current_board_state = tuple(tuple(row) for row in board)
-        _current_board_state = _current_board_state + ((),) # Empty set of specials
-        _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
-        self.board_states = { _current_board_state: 1}
-        # Apparently highest move count for a legal game so far is like 269 moves, not sure if only for one player or not
-        # hence 500 is reasonable
-        self.max_states = 500 
-        self.end_position = False
-        self.forced_end = ""
-        self._debug = False # Dev private attribute for removing turns, need to remove network with this option initialised somewhere else in the main loop
-        self._starting_player = starting_player
-        self._move_undone = False
-        self._sync = True
+    def __init__(self, board=None, starting_player=None, current_turn=True, custom_params=None):
+        if custom_params is None:
+            if board is None or starting_player is None:
+                raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
+            # current_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
+            self.current_turn = current_turn
+            self.board = board
+            self.moves = []
+            self.alg_moves = []
+            self.castle_attributes = {
+                'white_king_moved' : False,
+                'left_white_rook_moved' : False,
+                'right_white_rook_moved' : False,
+                'black_king_moved' : False,
+                'left_black_rook_moved' : False,
+                'right_black_rook_moved' : False
+            }
+            self.current_position = None
+            self.previous_position = None
+            # Appending an empty set of special states and initialised castling states to rows of board row tuples
+            _current_board_state = tuple(tuple(row) for row in board)
+            _current_board_state = _current_board_state + ((),) # Empty set of specials
+            _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+            self.board_states = { _current_board_state: 1}
+            # Apparently highest move count for a legal game so far is like 269 moves, not sure if only for one player or not
+            # hence 500 is reasonable
+            self.max_states = 500 
+            self.end_position = False
+            self.forced_end = ""
+            self._debug = False # Dev private attribute for removing turns, need to remove network with this option initialised somewhere else in the main loop
+            self._starting_player = starting_player
+            self._move_undone = False
+            self._sync = True
+        else:
+            self.current_turn = custom_params["current_turn"]
+            self.board = custom_params["board"]
+            self.moves = custom_params["moves"]
+            self.alg_moves = custom_params["alg_moves"]
+            self.castle_attributes = custom_params["castle_attributes"]
+            self.current_position = custom_params["current_position"]
+            self.previous_position = custom_params["previous_position"]
+            self.board_states = {}
+            for inserted_dict in custom_params["board_states"]:
+                key = ()
+                for item in inserted_dict["key"]:
+                    key = key + (tuple(item),)
+                self.board_states[key] = inserted_dict["value"]
+            self.max_states = custom_params["max_states"]
+            self.end_position = custom_params["end_position"]
+            self.forced_end = custom_params["forced_end"]
+            self._debug = custom_params["_debug"]
+            self._starting_player = custom_params["_starting_player"]
+            self._move_undone = custom_params["_move_undone"]
+            self._sync = custom_params["_sync"]
 
     def synchronize(self, new_game):
         self.current_turn = new_game.current_turn
@@ -352,3 +377,29 @@ class Game:
             else:
                 self.current_position = None
                 self.previous_position = None
+    
+    def to_json(self):
+        return json.dumps(self, cls=GameEncoder)
+
+class GameEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Game):
+            # Define how to serialize a Game object to JSON
+            return {
+                "current_turn": obj.current_turn,
+                "board": obj.board,
+                "moves": obj.moves,
+                "alg_moves": obj.alg_moves,
+                "castle_attributes": obj.castle_attributes,
+                "current_position": obj.current_position,
+                "previous_position": obj.previous_position,
+                "board_states": [{"key": k, "value": v} for k, v in obj.board_states.items()],
+                "max_states": obj.max_states,
+                "end_position": obj.end_position,
+                "forced_end": obj.forced_end,
+                "_debug": obj._debug,
+                "_starting_player": obj._starting_player,
+                "_move_undone": obj._move_undone,
+                "_sync": obj._sync
+            }
+        return super().default(obj)

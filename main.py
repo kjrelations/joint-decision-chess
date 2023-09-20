@@ -207,9 +207,6 @@ async def main():
             if games is None or len(games) == 1:
                 if games is not None:
                     game = games[0]
-                    print("Connected to current game...")
-                else:
-                    print("Hmmmmm", games)
                 # Need to pump the event queque like below in order to move window
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:

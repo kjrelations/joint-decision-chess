@@ -1,8 +1,9 @@
 import socket
-import pickle
 import struct
+import time
+import json
+import game
 from _thread import *
-from game import *
 
 server = ""
 port = 5555
@@ -15,10 +16,12 @@ except socket.error as err:
     str(err)
 
 s.listen(2)
+s.settimeout(10) # 10 seconds seems reasonable with a max 35 s before it breaks threads
 print("Waiting for Connection, Server Started...")
 
 games = {}
 id_count = 0
+reconnecting = False # Silly temporary implementation
 
 new_board = [
     ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -36,10 +39,14 @@ def send_data(conn, data):
     Send data over the connection by first sending its length as a 4-byte integer,
     followed by the actual data.
     """
-    data_pickle = pickle.dumps(data)
-    data_length = len(data_pickle)
+    if isinstance(data, list):
+        game_dicts = [game_obj.to_json() for game_obj in data]
+        data_json = json.dumps(game_dicts)
+    else:
+        data_json = json.dumps(data)
+    data_length = len(data_json)
     conn.send(struct.pack("!I", data_length))  # Send message length
-    conn.send(data_pickle)  # Send the actual data
+    conn.send(data_json.encode())  # Send the actual data
 
 def receive_data(conn):
     """
@@ -56,10 +63,14 @@ def receive_data(conn):
         if not packet:
             return None
         data += packet
-    return pickle.loads(data)
 
-def threaded_client(conn, starting_player, game_id):
-    global id_count
+    result = json.loads(data.decode())
+    return result
+
+def threaded_client(conn, starting_player, game_id, orig_addr):
+    global id_count, reconnecting
+    max_reconnection_attempts = 3
+    retry_delay = 2
     send_data(conn, starting_player)
 
     reply = ""
@@ -72,8 +83,33 @@ def threaded_client(conn, starting_player, game_id):
 
                 if not data:
                     print("Disconnected")
-                    break
+                    reconnected, reconnecting = False, True
+                    # Reconnection loop
+                    for attempt in range(max_reconnection_attempts):  
+                        try:
+                            print("Waiting for client to reconnect, attempt {}/{}...".format(attempt + 1, max_reconnection_attempts))
+                            conn, addr = s.accept()
+                            if addr[0] == orig_addr[0]: # I know this isn't how things are done, this is only for prototyping
+                                reconnected = True
+                                print("Reconnected to the same client: ", addr)
+                                send_data(conn, starting_player)  # Send starting player info again, ##### or maybe an ok signal
+                                reconnecting = False
+                                break  # Break out of the reconnection loop and continue receiving data
+                            else:
+                                print("Connection from a different client: ", addr)
+                                conn.close()  # Close the connection from a different client
+
+                        except Exception as reconnect_error:
+                            if attempt < max_reconnection_attempts - 1:
+                                print("Reconnection error, waiting before attempting to reconnect... ", reconnect_error)
+                                time.sleep(retry_delay)  # Sleep for 2 seconds before trying to reconnect again
+                                continue
+
+                    if not reconnected:
+                        print("Failed to reconnect, terminating...")
+                        break
                 else:
+                    data = game.Game(custom_params=data)
                     if starting_player:
                         if data.current_turn != paired_games[0].current_turn or data._sync != paired_games[0]._sync or data.end_position != paired_games[0].end_position:
                             paired_games[0] = data
@@ -82,8 +118,9 @@ def threaded_client(conn, starting_player, game_id):
                         if data.current_turn != paired_games[1].current_turn or data._sync != paired_games[1]._sync or data.end_position != paired_games[1].end_position:
                             paired_games[1] = data
                     reply = paired_games
-                    print("Received: ", data)
-                    print("Sending: ", reply)
+                    # TODO Could have sending and receiving as debug log, also need to define game __str__ method
+                    # print("Received: ", data)
+                    # print("Sending: ", reply)
 
                 send_data(conn, reply)
             else:
@@ -101,17 +138,23 @@ def threaded_client(conn, starting_player, game_id):
     conn.close()
 
 while True:
-    conn, addr = s.accept()
-    print("Connected to: ", addr)
+    if not reconnecting:
+        try:
+            conn, addr = s.accept()
+            print("Connected to: ", addr)
+        except:
+            continue
+    else:
+        continue
 
     id_count += 1
     starting_player = True
     game_id = (id_count - 1) // 2
     if id_count % 2 == 1:
-        games[game_id] = [Game(new_board.copy(), starting_player)]
+        games[game_id] = [game.Game(new_board.copy(), starting_player)]
         print("Creating a new game...")
     else:
         starting_player = False
-        games[game_id].append(Game(new_board.copy(), starting_player))
-    start_new_thread(threaded_client, (conn, starting_player, game_id))
+        games[game_id].append(game.Game(new_board.copy(), starting_player))
+    start_new_thread(threaded_client, (conn, starting_player, game_id, addr))
     starting_player = not starting_player
