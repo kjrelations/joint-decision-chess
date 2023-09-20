@@ -833,7 +833,7 @@ class Pawn_Button:
         if event.type == pygame.MOUSEMOTION:
                 self.check_hover(event.pos)
 
-# Helper function for displaying and running until a pawn is promoted 
+# Helper function for creating promotion buttons at the right locations 
 def display_promotion_options(theme,row, col):
     # Simplify variable names
     GRID_SIZE = theme.GRID_SIZE
