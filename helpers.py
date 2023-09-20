@@ -1,5 +1,6 @@
 import pygame
 import sys
+import asyncio
 from constants import *
 
 ## General Helpers
@@ -252,7 +253,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     captures = []
     special_moves = []
 
-    is_white = piece.isupper() # Check if the piece is white
+    is_white = piece.isupper()
 
     if piece.lower() == 'p':  # Pawn
         if not only_specials:
@@ -551,7 +552,7 @@ def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT, theme.TRANSPARENT_CIRCLES, theme.TRANSPARENT_SPECIAL_CIRCLES
 
     free_moves = [move for move in valid_moves if move not in valid_captures]
-    # Create surface allowing for transparaency with alpha transparency values defined in colors 
+    # Alpha transparency values defined in theme colors 
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for row, col in free_moves:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
@@ -580,8 +581,8 @@ def draw_arrow(theme, arrow):
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    # Arrow color depends on turn
-    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    # Arrow color depends on view
+    arrow_color = ARROW_WHITE if theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -767,7 +768,7 @@ def draw_board(params):
     hovered_square = params['hovered_square']
     selected_piece_image = params['selected_piece_image']
     
-    # Draw the reference chessboard (constructed only once)
+    # Draw the reference chessboard
     window.blit(chessboard, (0, 0))
 
     # Highlight left clicked selected squares
@@ -784,7 +785,7 @@ def draw_board(params):
     for square in right_clicked_squares:
         draw_highlight(window, theme, square[0], square[1], left)
 
-    # Draw coordinates after highlights
+    # Draw reference coordinates after highlights
     window.blit(coordinate_surface, (0, 0))
 
     # Highlight valid move squares
@@ -805,7 +806,7 @@ def draw_board(params):
         window.blit(transparent_arrow, (0, 0))
     
     # On mousedown and a piece is selected draw a transparent copy of the piece
-    # Draw after outline and previous layers
+    # Draw after/above outline and previous layers
     if selected_piece_image is not None:
         x, y = pygame.mouse.get_pos()
         # Calculate the position to center the image on the mouse
@@ -833,14 +834,10 @@ class Pawn_Button:
                 self.check_hover(event.pos)
 
 # Helper function for displaying and running until a pawn is promoted 
-def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
-    # Instantiate default outputs
-    new_current_position, new_previous_position, end_position, end_state = None, None, False, None
+def display_promotion_options(theme,row, col):
     # Simplify variable names
-    theme = draw_board_params['theme']
-    GRID_SIZE, WIDTH, HEIGHT = theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT
+    GRID_SIZE = theme.GRID_SIZE
 
-    # Draw buttons onto a surface
     if row == 0:
         button_col = col
         button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
@@ -869,67 +866,4 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
             Pawn_Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b'),
             Pawn_Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n'),
         ]
-    
-    while promotion_required:
-        for event in pygame.event.get():
-            for button in promotion_buttons:
-                button.handle_event(event)
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    x, y = pygame.mouse.get_pos()
-                    if button.rect.collidepoint(x, y):
-                        game.promote_to_piece(row, col, button.piece)
-                        promotion_required = False  # Exit promotion state condition
-            if event.type == pygame.KEYDOWN:
-
-                # Undo move
-                if event.key == pygame.K_u:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    promotion_required = False
-                
-                # Resignation
-                elif event.key == pygame.K_r:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    print("RESIGNATION")
-                    promotion_required = False
-                    end_position = True
-                    end_state = True
-                
-                # Draw
-                elif event.key == pygame.K_d:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    print("DRAW")
-                    promotion_required = False
-                    end_position = True
-                    end_state = False
-        
-        # Clear the screen
-        window.fill((0, 0, 0))
-        
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
-        draw_board(draw_board_params.copy())
-        
-        # Darken the screen
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-
-        # Blit the overlay surface onto the main window
-        window.blit(overlay, (0, 0))
-
-        # Draw buttons and update the display
-        for button in promotion_buttons:
-            img = pieces[button.piece]
-            img_x, img_y = button.rect.x, button.rect.y
-            if button.is_hovered:
-                img = pygame.transform.smoothscale(img, (GRID_SIZE * 1.5, GRID_SIZE * 1.5))
-                img_x, img_y = button.scaled_x, button.scaled_y
-            window.blit(img, (img_x, img_y))
-
-        pygame.display.flip()
-    
-    return new_current_position, new_previous_position, end_position, end_state
+    return promotion_buttons

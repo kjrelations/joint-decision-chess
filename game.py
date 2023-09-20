@@ -2,8 +2,8 @@ from helpers import *
 
 class Game:
 
-    def __init__(self, board, current_turn=True):
-        # current_turn = True for white, False for black, the final version will always default to True, but for now we keep it like this
+    def __init__(self, board, starting_player, current_turn=True):
+        # current_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
         self.current_turn = current_turn
         self.board = board
         self.moves = []
@@ -16,13 +16,20 @@ class Game:
             'left_black_rook_moved' : False,
             'right_black_rook_moved' : False
         }
+        self.current_position = None
+        self.previous_position = None
         # Appending an empty set of special states and initialised castling states to rows of board row tuples
         _current_board_state = tuple(tuple(row) for row in board)
         _current_board_state = _current_board_state + ((),) # Empty set of specials
         _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
         self.board_states = { _current_board_state: 1}
-        self.max_states = 1000
-        self._debug = False # Dev private attribute for removing turns
+        # Apparently highest move count for a legal game so far is like 269 moves, not sure if only for one player or not
+        # hence 500 is reasonable
+        self.max_states = 500 
+        self.end_position = False
+        self.forced_end = ""
+        self._debug = False # Dev private attribute for removing turns, need to remove network with this option initialised somewhere else in the main loop
+        self._starting_player = starting_player
 
     def update_state(self, new_row, new_col, selected_piece, special=False):
         piece = self.board[selected_piece[0]][selected_piece[1]]
@@ -44,6 +51,9 @@ class Game:
 
         self.board[new_row][new_col] = piece
         self.board[selected_piece[0]][selected_piece[1]] = ' '
+        self.current_position = (new_row, new_col)
+        self.previous_position = (selected_piece[0], selected_piece[1])
+        
         if enpassant:
             self.board[capture_row][new_col] = ' '
         elif castle:
@@ -239,7 +249,7 @@ class Game:
     def undo_move(self):
         # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
         if len(self.moves) != 0:
-            # If we are not undoing a move during pawn promotion the current state of the board is saved
+            # If we are not undoing a move during pawn promotion the current state of the board is saved, else skip
             if 'p' not in self.board[7] and 'P' not in self.board[0]:
                 # Deincrement or remove current state from dictionary of board states
                 current_special_moves = []
@@ -315,6 +325,8 @@ class Game:
                 new_curr_row, new_curr_col = int(new_current_pos[1]), int(new_current_pos[2])
                 new_last_row, new_last_col = int(new_last_pos[1]), int(new_last_pos[2])
 
-                return (new_curr_row, new_curr_col), (new_last_row, new_last_col)
-            
-        return None, None
+                self.current_position = (new_curr_row, new_curr_col)
+                self.previous_position = (new_last_row, new_last_col)
+            else:
+                self.current_position = None
+                self.previous_position = None
