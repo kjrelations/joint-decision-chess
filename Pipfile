@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 pygame = "*"
+django = "*"
+crispy-bootstrap4 = "*"
+pygbag = "*"
 
 [dev-packages]
 pytest = "*"

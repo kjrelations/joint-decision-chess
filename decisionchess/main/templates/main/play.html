@@ -1,0 +1,41 @@
+# play.html
+{% extends "main/base.html" %}
+
+{% load static %}
+
+{% block title %}
+Play
+{% endblock %}
+
+{% block style%}
+    <style>
+        #iframe-container {
+            position: relative;
+            width: 100%; /* Set the initial width as a percentage */
+        }
+        #embedded-iframe {
+            width: 100%; /* Make the iframe fill the container horizontally */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="iframe-container">
+        <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0></iframe>
+    </div>
+    <script>
+        // Initial height calculation
+        window.addEventListener('load', function() {
+            var iframeContainer = document.getElementById('iframe-container');
+            var width = iframeContainer.offsetWidth;
+            document.getElementById('embedded-iframe').style.height = width + 'px';
+        });
+
+        // Calculate and set the height to match the width
+        window.addEventListener('resize', function() {
+            var iframeContainer = document.getElementById('iframe-container');
+            var width = iframeContainer.offsetWidth;
+            document.getElementById('embedded-iframe').style.height = width + 'px';
+        });
+    </script>
+{% endblock %}
