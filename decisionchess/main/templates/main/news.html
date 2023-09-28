@@ -1,0 +1,47 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+
+{% block style %} 
+<!-- Allow table of contents featuring introduction -->
+<style>
+    .homeblock {
+        height: 5%;
+    }
+
+    .sidenav {
+        height: 95%;
+    }
+
+    html {
+        scroll-behavior: smooth;
+      }
+</style>
+{% endblock %}
+
+{% block title %}
+News
+{% endblock %}
+
+{% block side_head_content %}
+{% endblock %}
+
+{% block content %}
+<div id="content", name="content", class="content">
+    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+        <div class="col-5">
+            <h1>News</h1>
+        </div>
+    </div>
+    {% for post in blogs.all %}
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <div class="col-5">
+                <h2>{{post.timestamp|date:"F d, Y"}}:</h2>
+                <h3>{{post.title}}</h3>
+                {{post.author}} <!--small-->
+                <p>{{post.content|safe}}</p>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

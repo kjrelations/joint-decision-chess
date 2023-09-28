@@ -8,6 +8,7 @@ pygame = "*"
 django = "*"
 crispy-bootstrap4 = "*"
 pygbag = "*"
+markdown = "*"
 
 [dev-packages]
 pytest = "*"

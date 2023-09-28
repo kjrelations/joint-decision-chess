@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a547f5c43f8a6b4de828ef8903331cc4fba79ff05a00c69e121ec12c45fe1ca7"
+            "sha256": "350b3a8fdd265c6253be76900f7bdb40950dbb7f7d025d3e8b4cdf6315077ee0"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -340,6 +340,15 @@
             "markers": "python_version >= '3.7'",
             "version": "==0.7.0"
         },
+        "markdown": {
+            "hashes": [
+                "sha256:225c6123522495d4119a90b3a3ba31a1e87a70369e03f14799ea9c0d7183a3d6",
+                "sha256:a4c1b65c0957b4bd9e7d86ddc7b3c9868fb9670660f6f99f6d1bca8954d5a941"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.7'",
+            "version": "==3.4.4"
+        },
         "multidict": {
             "hashes": [
                 "sha256:01a3a55bd90018c9c080fbb0b9f4891db37d148a0a18722b42f94694f8b6d4c9",
@@ -494,12 +503,12 @@
         },
         "pygbag": {
             "hashes": [
-                "sha256:2754270fa7e848e1c0ca60e616480e414adc6d69f09227e33ba3cb59c02dfbe9",
-                "sha256:38e50b885c65d3f6dbe4cd996931387b462615e55816f453aa7e1f669389fb15"
+                "sha256:3608fb1600054c1ffcca5792f8ab8778a1f9fd0d22777b708bfbf2aff9674e8b",
+                "sha256:bb9d1db90fd7ceb37bfb96de4a99bb57597d38d6729f246fa0a8c16d82ad3445"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==0.8.0"
+            "version": "==0.8.2"
         },
         "pyparsing": {
             "hashes": [
