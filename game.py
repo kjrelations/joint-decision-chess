@@ -27,6 +27,7 @@ class Game:
         # hence 500 is reasonable
         self.max_states = 500 
         self.end_position = False
+        # TODO list values in function description
         self.forced_end = ""
         self._debug = False # Dev private attribute for removing turns, need to remove network with this option initialised somewhere else in the main loop
         self._starting_player = starting_player

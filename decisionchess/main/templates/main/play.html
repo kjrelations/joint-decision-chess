@@ -16,6 +16,7 @@ Play
     .sidenav {
         height: 95%;
     }
+
     #iframe-container {
         position: relative;
         width: 100%; /* Set the initial width as a percentage */
@@ -23,37 +24,246 @@ Play
     #embedded-iframe {
         width: 100%; /* Make the iframe fill the container horizontally */
     }
+
+    .scrollable-moves-list {
+        overflow-y: scroll;
+        max-height: 40%; /* 10% above for the username */
+    }
+
+    .move-row {
+        display: flex;
+    }
+
+    .move-row > div {
+        width: 50%;
+    }
+
+    .even-move-row {
+        background-color: rgb(150, 150, 150);
+    }
 </style>
+<script>
+    var webGameMetadata = {
+        end_state: '',
+        forced_end: '',
+        player_color: '',
+        alg_moves: [],
+        undo_move: {
+            execute: false,
+            update_executed: false
+        },
+        resign: {
+            execute: false,
+            update_executed: false
+        },
+        draw_offer: {
+            execute: false,
+            update_executed: false
+        },
+        cycle_theme: {
+            execute: false,
+            update_executed: false
+        },
+        flip_board: {
+            execute: false,
+            update_executed: false
+        },
+        console_messages: []
+    };
+    localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+</script>
 {% endblock %}
 
 {% block content %}
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <!-- Gicen side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
+        <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
         <!-- 3 columns for chat and notes -->
-        <!-- Consider if this col-6 should be present for all play views or just the main one-->
+        <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
-        <div class="col-6">
+        <div class="col-5">
             <div id="iframe-container">
-                <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0></iframe>
+                <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0 scrolling="no"></iframe>
+            </div>
+        </div>
+        <!-- 3 columns for command center-->
+        <div class="col-3 d-flex align-items-center">
+            <div id="command-center" class="bg-secondary d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
+                <!-- Content will be dynamically added here -->
+                <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
+                    <!-- Content will be dynamically added here -->
+                </div>
+                <div id="final-score" class="text-white font-weight-bold text-lg mt-2"></div>
+                <div id="end-message" class="text-white"></div>
+                <div class="d-flex justify-content-center">
+                    <!-- Need a button class here -->
+                    <div id="undoButton" class="bg-success mr-2">Undo</div>
+                    <div id="resignButton" class="bg-success mr-2">Resign</div>
+                    <div id="drawOfferButton" class="bg-success mr-2">Draw</div>
+                    <div id="cycleThemeButton" class="bg-success mr-2">Cycle Theme</div>
+                    <div id="flipButton" class="bg-success">Flip</div>
+                </div>
             </div>
             <script>
-                // Initial height calculation
+                // Initial height calculation for game window and command center
                 window.addEventListener('load', function() {
                     var iframeContainer = document.getElementById('iframe-container');
                     var width = iframeContainer.offsetWidth;
                     document.getElementById('embedded-iframe').style.height = width + 'px';
+                    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
                 });
     
-                // Calculate and set the height to match the width
+                // Calculate and set the height to match the width for game window
+                // Set height of command center to be the same
                 window.addEventListener('resize', function() {
                     var iframeContainer = document.getElementById('iframe-container');
                     var width = iframeContainer.offsetWidth;
                     document.getElementById('embedded-iframe').style.height = width + 'px';
+                    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
                 });
+
+                // Function to check local storage value and update command center content
+                function updateCommandCenter() {
+                    var webGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                    var moves = webGameMetadata.alg_moves;
+                    var movesListContainer = document.getElementById('moves-list');
+                    var endState = webGameMetadata.end_state;
+
+                    movesListContainer.innerHTML = '';
+
+                    // Loop through the moves and add them to the list
+                    for (var i = 0; i < moves.length; i += 2) {
+                        var move1 = moves[i];
+                        var move2 = (
+                            (i + 1 < moves.length) && 
+                            moves[i + 1] !== '1-0' && 
+                            moves[i + 1] !== '0-1' && 
+                            moves[i + 1] !== '½–½'
+                        ) ? moves[i + 1] : '';
+
+                        var moveRow = document.createElement('div');
+                        moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
+                        
+                        var leftHalf = document.createElement('div');
+                        leftHalf.style.width = '50%';
+                        leftHalf.textContent = move1;
+
+                        var rightHalf = document.createElement('div');
+                        rightHalf.style.width = '50%';
+                        rightHalf.textContent = move2;
+
+                        // Append the halves to the row if it's not a final score
+                        if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
+                            moveRow.appendChild(leftHalf);
+                            moveRow.appendChild(rightHalf);
+
+                            // Append the row to the moves list container
+                            movesListContainer.appendChild(moveRow);
+                        }
+
+                    }
+
+                    // Update end message
+                    if (endState === "\u00bd\u2013\u00bd") {
+                        endState = '½–½'
+                    }
+                    var forcedEnd = webGameMetadata.forced_end;
+                    var endMessagebox = document.getElementById('end-message');
+                    var finalScorebox = document.getElementById('final-score');
+                    var endmessage = ''
+                    if (forcedEnd !== '') {
+                        if (forcedEnd === 'Draw by mutual agreement' || forcedEnd === 'Stalemate by Threefold Repetition') {
+                            endmessage += forcedEnd;
+                            finalScorebox.innerHTML = '½–½';
+                        } else {
+                            endmessage += forcedEnd + ' • ';
+                        }
+                    }
+
+                    if (endState === '1-0') {
+                        endmessage += `White is Triumphant`;
+                        endMessagebox.innerHTML = `White is Triumphant`;
+                        finalScorebox.innerHTML = '1-0'
+                    } else if (endState === '0-1') {
+                        endmessage += `Black is Triumphant`;
+                        finalScorebox.innerHTML = '0-1'
+                    } else if (endState === '½–½' && forcedEnd !== 'Draw by mutual agreement' && forcedEnd !== 'Stalemate by Threefold Repetition') {
+                        endmessage += `Stalemate was Reached`;
+                        finalScorebox.innerHTML = '½–½'
+                    }
+
+                    if (endmessage !== '') {
+                        endMessagebox.innerHTML = endmessage
+                    }
+
+                }
+            
+                // Call the function on page load
+                window.addEventListener('load', updateCommandCenter);
+            
+                // Set up an interval to check the local storage value periodically
+                setInterval(updateCommandCenter, 100);
+
+                function handleWebtoGameAction(buttonId, localStorageObjectName) {
+                    // Disable the button to prevent multiple clicks
+                    document.getElementById(buttonId).disabled = true;
+                    var webGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                    webGameMetadata[localStorageObjectName].execute = true
+                    localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+
+                    // Perform the update action
+                    // loop and keep grabbing the game object
+                    function checkActionandEnable() {
+                        var webGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                        var actionCommandStatus = webGameMetadata[localStorageObjectName];
+                        
+                        if (!actionCommandStatus.update_executed) {
+                            setTimeout(checkActionandEnable, 10); // Check again
+                        } else {
+                            webGameMetadata[localStorageObjectName].execute = false
+                            webGameMetadata[localStorageObjectName].update_executed = false
+                            localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+                            
+                            // Enable the button again after the update is complete
+                            document.getElementById(buttonId).disabled = false;
+                        }
+                    }
+                    // Start the checking loop
+                    checkActionandEnable();
+                }
+
+                // Define an array of inputs with button IDs and localStorage object names
+                var inputList = [
+                    { buttonId: "flipButton", localStorageObjectName: "flip_board" },
+                    { buttonId: "undoButton", localStorageObjectName: "undo_move" },
+                    { buttonId: "resignButton", localStorageObjectName: "resign" },
+                    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer" },
+                    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme" },
+                ];
+
+                // Iterate through the inputList and attach event handlers
+                inputList.forEach(function(input) {
+                    document.getElementById(input.buttonId).addEventListener("click", function() {
+                        handleWebtoGameAction(input.buttonId, input.localStorageObjectName);
+                    });
+                });
+
+                document.getElementById("flipButton").addEventListener("click", handleWebtoGameAction)
+
+                // // Logging Debug python console messages; Only for development
+                // function pythonDebugLogger() {
+                //     var logs = webGameMetadata.console_messages
+                //     for (var i = 0; i < logs.length; i++) {
+                //         console.log(logs[i])
+                //     }
+                // }
+
+                // window.addEventListener('load', pythonDebugLogger);
+            
+                // // Set up an interval to log debug print statements
+                // setInterval(pythonDebugLogger, 1000);
             </script>
         </div>
-        <!-- 3 columns for move list buttons and command center-->
     </div>
 </div>
 {% endblock %}

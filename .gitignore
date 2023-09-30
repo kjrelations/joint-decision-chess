@@ -1,2 +1,3 @@
 build
 decisionchess/db.sqlite3
+*.pyc
