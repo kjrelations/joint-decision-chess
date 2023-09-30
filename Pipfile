@@ -9,6 +9,8 @@ django = "*"
 crispy-bootstrap4 = "*"
 pygbag = "*"
 markdown = "*"
+psycopg = {extras = ["binary"], version = "*"}
+python-decouple = "*"
 
 [dev-packages]
 pytest = "*"
