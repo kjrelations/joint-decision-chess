@@ -14,21 +14,17 @@
 {% endblock %}
 
 {% block title %}
-Create an Account
+Account Activated
 {% endblock %}
-
-{% load crispy_forms_tags %}
 
 {% block content %}
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <div class="col-5">
-            <form method="POST" class="form-group">
-                {% csrf_token %}
-                {{form|crispy}}
-                <button type="submit" class="btn btn-success">Register</button>
-            </form>
+            <h1>Your account has been activated successfully.</h1>
+            <p>You can now <a href="/login">log in</a> to your account.</p>
         </div>
     </div>
 </div>
 {% endblock %}
+

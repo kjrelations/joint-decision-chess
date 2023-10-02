@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block title %}
-Create an Account
+Activation Failed
 {% endblock %}
 
 {% load crispy_forms_tags %}
@@ -23,12 +23,22 @@ Create an Account
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <div class="col-5">
-            <form method="POST" class="form-group">
+            <form method="post" class="from-group">
+                <h1>Activation failed.</h1>
+                <p>The activation link is invalid or has expired. Resend the email?</p>
                 {% csrf_token %}
                 {{form|crispy}}
-                <button type="submit" class="btn btn-success">Register</button>
+                <button type="submit" class="btn btn-success">Resend</button>	
             </form>
+            {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
+

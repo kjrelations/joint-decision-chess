@@ -1,5 +1,17 @@
-<!-- # login.html
 {% extends "main/base.html" %}
+
+{% block style %} 
+<!-- Allow table of contents featuring introduction -->
+<style>
+    .homeblock {
+        height: 5%;
+    }
+
+    .sidenav {
+        height: 95%;
+    }
+</style>
+{% endblock %}
 
 {% block title %}
 Login Here
@@ -8,10 +20,16 @@ Login Here
 {% load crispy_forms_tags %}
 
 {% block content %}
-     <form method="post" class="from-group">
-        {% csrf_token %}
-        {{form|crispy}}
-        <p>Don't have an account? Create one <a href="/register">here</a></p>
-        <button type="submit" class="btn btn-success">Login</button>	
-    </form>
-{% endblock %} -->
+<div id="content", name="content", class="content">
+    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+    <div class="col-5">
+        <form method="post" class="from-group">
+            {% csrf_token %}
+            {{form|crispy}}
+            <p>Don't have an account? Create one <a href="/register">here</a></p>
+            <button type="submit" class="btn btn-success">Login</button>	
+        </form>
+    </div>
+    </div>
+</div>
+{% endblock %}

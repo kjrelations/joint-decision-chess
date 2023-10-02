@@ -95,7 +95,16 @@ DATABASES = {
 }
 
 SECRET_KEY = config('SECRET_KEY')
+# Need to force it to bool else it reads as string same with others below
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+EMAIL_BACKEND = config('EMAIL_BACKEND')
+EMAIL_HOST = config('EMAIL_HOST')
+EMAIL_PORT = config('EMAIL_PORT')  # Port for TLS (587) or SSL (465)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)  # Use TLS for secure connection
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool) # Set to True if you prefer SSL
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD') # The App Password you generated
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -147,7 +156,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CRISPY_TEMPLATE_PACK="bootstrap4"
 
 LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login"
 
+AUTH_USER_MODEL = "main.User"
 # Add the following line at the end of the 'settings.py' file to ensure that the 'static' template tag is available.
 from django.templatetags.static import static

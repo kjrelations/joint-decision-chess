@@ -1,6 +1,5 @@
 from django.contrib import admin
-# from .models import BlogPost
+from django.contrib.auth.admin import UserAdmin
+from .models import User
 
-# Register your models here.
-# TODO Register blog models
-# admin.site.register(BlogPost)
+admin.site.register(User, UserAdmin)
