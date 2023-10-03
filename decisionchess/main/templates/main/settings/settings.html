@@ -1,0 +1,48 @@
+{% extends 'main/base.html' %}
+
+{% block style %} 
+<style>
+    .homeblock {
+        height: 5%;
+    }
+
+    .sidenav {
+        height: 95%;
+    }
+
+    .settingssidenav {
+        overflow-x: hidden;
+    }
+
+    .settingssidenav a {
+        padding: 6px 8px 6px 16px;
+        text-decoration: none;
+        font-size: 20px;
+        color: #5c67a3;
+        display: block;
+    }
+
+    .settingssidenav a:hover{
+        color: #e4a03a;
+        text-decoration: none;
+    }	
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content", name="content", class="main"> <!-- maybe custom class here -->
+    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+        <div class="col-8 bg-secondary">
+        {% block setting_window %}
+        {% endblock %}
+        </div>
+        <div class="col-1">
+            <div class="settingssidenav">
+                <a href="/account/profile">Edit Profile</a>
+                <a href="/account/passwd">Change Password</a>
+                <a href="/account/email">Change Email</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -12,8 +12,9 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from base64 import binascii
 from .forms import RegisterForm, ResendActivationEmailForm
+# from main.models import User
 
-User = get_user_model()
+User = get_user_model() # TODO Just import user above dont call it here if possible
 
 def register(response):
     if response.method == "POST":

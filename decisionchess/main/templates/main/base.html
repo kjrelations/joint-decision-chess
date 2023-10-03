@@ -23,6 +23,7 @@
 		
 		.homeblock a:hover{
 			color: #ecac22;
+			text-decoration: none;
 		}	
 
 		.sidenav {
@@ -46,6 +47,7 @@
  
 		.sidenav a:hover{
 			color: #f1f1f1;
+			text-decoration: none;
 		}	
  
 		.sidenav a:last-child {
@@ -85,6 +87,7 @@
 		<a href="/news">News</a>
 		{% if user %}
 			{% if user.is_authenticated %}
+			<a href="/account/email">Settings</a>
 			<a href="/profile/{{ user.username }}">Profile</a>
 			{% endif %}
 		{% else %}

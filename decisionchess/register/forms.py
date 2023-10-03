@@ -15,6 +15,7 @@ class RegisterForm(UserCreationForm):
 class ResendActivationEmailForm(forms.Form):
     email = forms.EmailField(label='Email Address')
 
+    # TODO Consider whether this init is necessary
     def __init__(self, *args, **kwargs):
         super(ResendActivationEmailForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -34,4 +35,3 @@ class ResendActivationEmailForm(forms.Form):
             raise forms.ValidationError('No user with this email address found')
 
         return email
-    
