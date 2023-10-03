@@ -29,8 +29,9 @@ class ResendActivationEmailForm(forms.Form):
         try:
             user = User.objects.get(email=email)
             if user.is_active:
-                raise forms.ValidationError('This account is already active.')
+                raise forms.ValidationError('This account is already active')
         except ObjectDoesNotExist:
-            raise forms.ValidationError('No user with this email address found.')
+            raise forms.ValidationError('No user with this email address found')
 
         return email
+    
