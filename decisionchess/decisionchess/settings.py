@@ -164,5 +164,9 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login"
 
 AUTH_USER_MODEL = "main.User"
+
+# 1 week session expire
+SESSION_COOKIE_AGE = 604800
+
 # Add the following line at the end of the 'settings.py' file to ensure that the 'static' template tag is available.
 from django.templatetags.static import static
