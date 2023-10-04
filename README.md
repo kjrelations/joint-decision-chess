@@ -1,5 +1,7 @@
 # README
-Currently this is a prototype of classical chess. With AI and local multiplayer yet to be implemented, one player alternates between playing sides. This will be extended with the above features by including a server and later embedding it on a website. More features are to come once an initial version is fully implemented.
+Currently this is a prototype of classical chess. With AI and local multiplayer yet to be implemented, one player alternates between playing sides. This will be extended with the above features by including a server and later embedding the multiplayer version on a website. More features are to come once an initial version is fully implemented.
+
+The following project is under active development and some inputs and parts of the README below are outdated and have been moved to embedded site functionality. See the dev-base branch if you wish to test the prototype version where the README is accurate. Otherwise if you understand how to launch Django locally, try this branch. I do not yet share the setup details here. If you wish to test a basic form of local multiplayer try the dev-pygbag branch.
 
 Current the main features include:
 
