@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'crispy_bootstrap4',
     'main.apps.MainConfig',
     'register.apps.RegisterConfig',
-    'middleware'
+    'middleware',
+    'django_countries',
 ]
 
 MIDDLEWARE = [

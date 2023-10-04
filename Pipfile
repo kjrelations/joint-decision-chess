@@ -11,6 +11,7 @@ pygbag = "*"
 markdown = "*"
 psycopg = {extras = ["binary"], version = "*"}
 python-decouple = "*"
+django-countries = "*"
 
 [dev-packages]
 pytest = "*"

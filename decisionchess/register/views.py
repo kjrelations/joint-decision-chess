@@ -12,13 +12,12 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from base64 import binascii
 from .forms import RegisterForm, ResendActivationEmailForm
-# from main.models import User
 
-User = get_user_model() # TODO Just import user above dont call it here if possible
+User = get_user_model()
 
-def register(response):
-    if response.method == "POST":
-        form = RegisterForm(response.POST)
+def register(request):
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             user.is_active = False  # Mark the user as inactive until they validate their email
@@ -29,7 +28,7 @@ def register(response):
 
             # Create a validation link with the user's ID and token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            validation_link = f"{get_current_site(response)}/register/validate/{uid}/{token}/"
+            validation_link = f"{get_current_site(request)}/register/validate/{uid}/{token}/"
 
             # Send an email with the validation link to the user
             subject = "Decision Chess Account Activation"
@@ -45,9 +44,9 @@ def register(response):
     else:
         form = RegisterForm()    
 
-    return render(response, "register/register.html", {"form": form })
+    return render(request, "register/register.html", {"form": form })
 
-def activate_account(response, uidb64, token):
+def activate_account(request, uidb64, token):
     try:
         # Decode the user ID and get the user
         uid = urlsafe_base64_decode(uidb64).decode()
@@ -72,12 +71,12 @@ def activate_account(response, uidb64, token):
     except Exception:
         return redirect('activation_failed')
 
-def account_activated(response):
-    return render(response, "register/account_activated.html")
+def account_activated(request):
+    return render(request, "register/account_activated.html")
 
-def activation_failed(response):
-    if response.method == 'POST':
-        form = ResendActivationEmailForm(response.POST)
+def activation_failed(request):
+    if request.method == 'POST':
+        form = ResendActivationEmailForm(request.POST)
         if form.is_valid():
             to_email = form.cleaned_data.get('email')
             
@@ -90,7 +89,7 @@ def activation_failed(response):
 
                     # Create a new validation link with the user's ID and token
                     uid = urlsafe_base64_encode(force_bytes(user.pk))
-                    validation_link = f"{response.get_host()}/register/validate/{uid}/{token}/"
+                    validation_link = f"{request.get_host()}/register/validate/{uid}/{token}/"
 
                     # Send the new activation email
                     subject = "Decision Chess Account Activation"
@@ -101,17 +100,17 @@ def activation_failed(response):
                     from_email = 'DecisionChess <decisionchess@gmail.com>'
                     send_mail(subject, "", from_email, [to_email], html_message=html_message)
 
-                    messages.success(response, 'A new activation email has been sent to your email address')
+                    messages.success(request, 'A new activation email has been sent to your email address')
                     
                     form = ResendActivationEmailForm()
-                    return render(response, "register/activation_failed.html", {'form': form})
+                    return render(request, "register/activation_failed.html", {'form': form})
                 else:
-                    messages.error(response, 'Your account is already active')
+                    messages.error(request, 'Your account is already active')
             except User.DoesNotExist:
-                messages.error(response, 'No user with that email address found')
+                messages.error(request, 'No user with that email address found')
             except Exception:
-                messages.error(response, 'An error occurred')
+                messages.error(request, 'An error occurred')
     else:
         form = ResendActivationEmailForm()
 
-    return render(response, "register/activation_failed.html", {'form': form})
+    return render(request, "register/activation_failed.html", {'form': form})
