@@ -36,6 +36,12 @@ def profile(request, username):
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since})
 
+def terms_of_service(request):
+    return render(request, "main/terms.html", {})
+
+def privacy_policy(request):
+    return render(request, "main/privacy.html", {})
+
 @login_required
 def change_email(request):
     if request.method == "POST":
