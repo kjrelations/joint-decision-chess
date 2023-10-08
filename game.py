@@ -143,7 +143,8 @@ class Game:
                             _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
                             current_special_moves.extend(specials)
                 _current_board_state = tuple(tuple(r) for r in self.board)
-                _current_board_state = _current_board_state + (tuple(current_special_moves),)
+                special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+                _current_board_state = _current_board_state + special_tuple
                 _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
                 
                 if _current_board_state in self.board_states:
@@ -270,7 +271,8 @@ class Game:
                         _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
                         current_special_moves.extend(specials)
             _current_board_state = tuple(tuple(r) for r in self.board)
-            _current_board_state = _current_board_state + (tuple(current_special_moves),)
+            special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+            _current_board_state = _current_board_state + special_tuple
             _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
             
             if _current_board_state in self.board_states:
@@ -305,7 +307,8 @@ class Game:
                             _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
                             current_special_moves.extend(specials)
                 _current_board_state = tuple(tuple(r) for r in self.board)
-                _current_board_state = _current_board_state + (tuple(current_special_moves),)
+                special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+                _current_board_state = _current_board_state + special_tuple
                 _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
                 
                 if self.board_states[_current_board_state] == 1:

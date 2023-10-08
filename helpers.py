@@ -1,5 +1,6 @@
 import pygame
 import sys
+import asyncio
 from constants import *
 
 ## General Helpers
@@ -833,13 +834,10 @@ class Pawn_Button:
         if event.type == pygame.MOUSEMOTION:
                 self.check_hover(event.pos)
 
-# Helper function for displaying and running until a pawn is promoted 
-def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
-    # Instantiate default outputs
-    promoted, end_state = False, None
+# Helper function for creating promotion buttons at the right locations 
+def display_promotion_options(theme, row, col):
     # Simplify variable names
-    theme = draw_board_params['theme']
-    GRID_SIZE, WIDTH, HEIGHT = theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT
+    GRID_SIZE = theme.GRID_SIZE
 
     if row == 0:
         button_col = col
@@ -869,68 +867,4 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
             Pawn_Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b'),
             Pawn_Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n'),
         ]
-    
-    while promotion_required:
-        for event in pygame.event.get():
-            for button in promotion_buttons:
-                button.handle_event(event)
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    x, y = pygame.mouse.get_pos()
-                    if button.rect.collidepoint(x, y):
-                        game.promote_to_piece(row, col, button.piece)
-                        promotion_required = False  # Exit promotion state condition
-                        promoted = True
-            if event.type == pygame.KEYDOWN:
-
-                # Undo move
-                if event.key == pygame.K_u:
-                    # Update current and previous position highlighting
-                    game.undo_move()
-                    promotion_required = False
-                
-                # Resignation
-                elif event.key == pygame.K_r:
-                    game.undo_move()
-                    game.forced_end = "WHITE RESIGNATION" if game._starting_player else "BLACK RESIGNATION"
-                    print(game.forced_end)
-                    promotion_required = False
-                    game.end_position = True
-                    end_state = True
-                
-                # Draw
-                elif event.key == pygame.K_d:
-                    game.undo_move()
-                    print("DRAW")
-                    promotion_required = False
-                    game.end_position = True
-                    game.forced_end = "DRAW"
-                    end_state = False
-        
-        # Clear the screen
-        window.fill((0, 0, 0))
-        
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
-        draw_board(draw_board_params.copy())
-        
-        # Darken the screen
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-
-        # Blit the overlay surface onto the main window
-        window.blit(overlay, (0, 0))
-
-        # Draw buttons and update the display
-        for button in promotion_buttons:
-            img = pieces[button.piece]
-            img_x, img_y = button.rect.x, button.rect.y
-            if button.is_hovered:
-                img = pygame.transform.smoothscale(img, (GRID_SIZE * 1.5, GRID_SIZE * 1.5))
-                img_x, img_y = button.scaled_x, button.scaled_y
-            window.blit(img, (img_x, img_y))
-
-        pygame.display.flip()
-    
-    return promoted, end_state
+    return promotion_buttons
