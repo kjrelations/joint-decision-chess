@@ -1,3 +1,4 @@
+# Copyright (c) 2023 pygame wasm
 import pygbag.aio as asyncio
 
 import sys
