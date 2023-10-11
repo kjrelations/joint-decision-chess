@@ -1,4 +1,6 @@
 # Copyright (c) 2023 pygame wasm
+## This code is part of the original pygame wasm repository or officially/exactly the "pygame-web" repository
+## Source: https://github.com/pygame-web/pygbag.net
 import pygbag.aio as asyncio
 
 import sys
