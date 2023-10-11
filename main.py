@@ -5,7 +5,9 @@ import asyncio
 from game import *
 from constants import *
 from helpers import *
-from network import Network
+import pygbag.aio as asyncio
+import pygbag_net
+import builtins
 
 # # Handle Persistent Storage
 # if __import__("sys").platform == "emscripten":
@@ -205,31 +207,33 @@ async def promotion_state(promotion_square, game, row, col, draw_board_params):
                         game.promote_to_piece(row, col, button.piece)
                         promotion_required = False  # Exit promotion state condition
                         promoted = True
-            # if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN:
 
-            #     # Undo move
-            #     if event.key == pygame.K_u:
-            #         # Update current and previous position highlighting
-            #         game.undo_move()
-            #         promotion_required = False
+                # Undo move
+                if event.key == pygame.K_u:
+                    # Update current and previous position highlighting
+                    game.undo_move()
+                    promotion_required = False
+                    game._sync = True
+                    game._move_undone = False
                 
-            #     # Resignation
-            #     elif event.key == pygame.K_r:
-            #         game.undo_move()
-            #         print(game.forced_end)
-            #         game.forced_end = "White Resigned" if game.current_turn else "Black Resigned"
-            #         promotion_required = False
-            #         game.end_position = True
-            #         end_state = True
+                # Resignation
+                elif event.key == pygame.K_r:
+                    game.undo_move()
+                    print(game.forced_end)
+                    game.forced_end = "White Resigned" if game.current_turn else "Black Resigned"
+                    promotion_required = False
+                    game.end_position = True
+                    end_state = True
                 
-            #     # Draw
-            #     elif event.key == pygame.K_d:
-            #         game.undo_move()
-            #         print(game.forced_end)
-            #         game.forced_end = "Draw by mutual agreement"
-            #         promotion_required = False
-            #         game.end_position = True
-            #         end_state = False
+                # Draw
+                elif event.key == pygame.K_d:
+                    game.undo_move()
+                    print(game.forced_end)
+                    game.forced_end = "Draw by mutual agreement"
+                    promotion_required = False
+                    game.end_position = True
+                    end_state = False
         
         # Clear the screen
         game_window.fill((0, 0, 0))
@@ -258,19 +262,16 @@ async def promotion_state(promotion_square, game, row, col, draw_board_params):
 
     return promoted, end_state
 
+class Node(pygbag_net.Node):
+    ...
+
 # Main loop
 async def main():
-    n = Network()
-    starting_player = n.get_player()
-    current_theme.INVERSE_PLAYER_VIEW = not starting_player
-    if starting_player:
-        pygame.display.set_caption("Chess - White")
-    else:
-        pygame.display.set_caption("Chess - Black")
-    client_game = Game(new_board.copy(), starting_player)
-    running = True
-    waiting = True
-
+    # n = Network()
+    # starting_player = n.get_player()
+    builtins.node = Node(gid=222, groupname="Simple Chess Board", offline="offline" in sys.argv)
+    node = builtins.node
+    running, waiting, initializing, initialized = True, True, False, False
     # # Web Browser actions affect these only. Even if players try to alter it, 
     # # It simply enables the buttons or does a local harmless action
     # # The following are client-side status variables, the first is whether an action should be performed,
@@ -306,58 +307,6 @@ async def main():
     chessboard = generate_chessboard(current_theme)
     coordinate_surface = generate_coordinate_surface(current_theme)
     theme_index = 0
-
-    print("Waiting to connect to second game...")
-    while waiting:
-        try:
-            games = n.send(client_game)
-            if games is None or len(games) == 1:
-                if games is not None:
-                    client_game = games[0]
-                # Need to pump the event queque like below in order to move window
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        running = False
-                        waiting = False
-
-                # Clear the screen
-                game_window.fill((0, 0, 0))
-
-                # Draw the board
-                draw_board({
-                    'window': game_window,
-                    'theme': current_theme,
-                    'board': client_game.board,
-                    'chessboard': chessboard,
-                    'selected_piece': selected_piece,
-                    'current_position': client_game.current_position,
-                    'previous_position': client_game.previous_position,
-                    'right_clicked_squares': right_clicked_squares,
-                    'coordinate_surface': coordinate_surface,
-                    'drawn_arrows': drawn_arrows,
-                    'starting_player': client_game._starting_player,
-                    'valid_moves': valid_moves,
-                    'valid_captures': valid_captures,
-                    'valid_specials': valid_specials,
-                    'pieces': pieces,
-                    'hovered_square': hovered_square,
-                    'selected_piece_image': selected_piece_image
-                })
-
-                # Darken the screen
-                overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 128))
-
-                # Blit the overlay surface onto the main window
-                game_window.blit(overlay, (0, 0))
-                pygame.display.flip()
-            else:
-                waiting = False
-        except Exception as err:
-            running = False
-            print("Could not get game, connection to server failed... ", err)
-            break
-        await asyncio.sleep(0)
 
     # Main game loop
     while running:
@@ -414,78 +363,255 @@ async def main():
         #     flip = False
         #     flip_executed = True
 
-        try:
-            games = n.send(client_game)
+        for ev in node.get_events():
+            try:
+                if ev == node.SYNC:
+                    print("SYNC:", node.proto, node.data[node.CMD])
+                    cmd = node.data[node.CMD]
+                    if cmd == "initialize":
+                        starting_player = node.data.pop("start")
+                        initializing = True
+                        sent = int(not starting_player)
+                    elif cmd == f"{opponent} ready":
+                        waiting = False
+                    elif f"{opponent}_update" in cmd:
+                        game = Game(custom_params=json.loads(node.data.pop("game")))
+                        if client_game._sync:
+                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
+                                game.end_position:
+                                    client_game.synchronize(game)
+                                    sent = 0
+                                    if client_game.alg_moves != []:
+                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                            if "x" not in client_game.alg_moves[-1]:
+                                                move_sound.play()
+                                            else:
+                                                capture_sound.play()
+                                        if client_game.end_position:
+                                            running = False
+                                            is_white = True
+                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
+                                            if checkmate:
+                                                print("CHECKMATE")
+                                            elif remaining_moves == 0:
+                                                print("STALEMATE")
+                                            elif client_game.threefold_check():
+                                                print("DRAW BY THREEFOLD REPETITION")
+                                            elif client_game.forced_end != "":
+                                                print(client_game.forced_end)
+                                            print("ALG_MOVES: ", client_game.alg_moves)
+                                            break
+                                        print("ALG_MOVES: ", client_game.alg_moves)
+                    if "_sync" in cmd:
+                        # Need to set game here if no update cmd is trigerred, else we have an old game
+                        if "game" in node.data:
+                            game = Game(custom_params=json.loads(node.data.pop("game")))
+                        if game.board == client_game.board and not client_game._sync:
+                            print(f"Syncing {player.capitalize()}...")
+                            client_game._sync = True
+                            client_game._move_undone = False
+                            sent = 0
+                        # elif both games are unsynced, synchronize and send something to halt infinite sync signals?
+                        elif "req_sync" in cmd:
+                            txdata = {node.CMD: f"_sync"}
+                            send_game = client_game.to_json()
+                            print(client_game._sync)
+                            if client_game._sync:
+                                txdata.update({"game": send_game})
+                                node.tx(txdata, shm=True)
+                                sent = 0
+
+                elif ev == node.GAME:
+                    print("GAME:", node.proto, node.data[node.CMD])
+                    cmd = node.data[node.CMD]
+
+                    if cmd == f"{opponent} initialized":
+                        node.tx({node.CMD: f"{player} ready"})
+                        waiting = False
+                    elif f"{opponent}_update" in cmd or "_sync" in cmd:
+                        if f"{opponent}_update" in cmd:
+                            game = Game(custom_params=json.loads(node.data.pop("game")))
+                            if client_game._sync:
+                                if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
+                                    game.end_position:
+                                        client_game.synchronize(game)
+                                        sent = 0
+                                        if client_game.alg_moves != []:
+                                            if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                                if "x" not in client_game.alg_moves[-1]:
+                                                    move_sound.play()
+                                                else:
+                                                    capture_sound.play()
+                                            if client_game.end_position:
+                                                running = False
+                                                is_white = True
+                                                checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
+                                                if checkmate:
+                                                    print("CHECKMATE")
+                                                elif remaining_moves == 0:
+                                                    print("STALEMATE")
+                                                elif client_game.threefold_check():
+                                                    print("DRAW BY THREEFOLD REPETITION")
+                                                elif client_game.forced_end != "":
+                                                    print(client_game.forced_end)
+                                                print("ALG_MOVES: ", client_game.alg_moves)
+                                                break
+                                            print("ALG_MOVES: ", client_game.alg_moves)
+                        if "_sync" in cmd:
+                            # Need to set game here if no update cmd is trigerred, else we have an old game
+                            if "game" in node.data:
+                                game = Game(custom_params=json.loads(node.data.pop("game")))
+                            if game.board == client_game.board and not client_game._sync:
+                                print(f"Syncing {player.capitalize()}...")
+                                client_game._sync = True
+                                client_game._move_undone = False
+                                sent = 1
+                            # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
+                            elif "req_sync" in cmd:
+                                txdata = {node.CMD: f"_sync"}
+                                send_game = client_game.to_json()
+                                if client_game._sync:
+                                    txdata.update({"game": send_game})
+                                    node.tx(txdata, shm=True)
+                                    sent = 0
+
+                    elif cmd == "clone":
+                        # send all history to child
+                        node.checkout_for(node.data)
+                        starting_player = True
+                        node.tx({node.CMD: "initialize", "start": not starting_player})
+                        initializing = True
+                        sent = int(not starting_player)
+
+                    elif cmd == "ingame":
+                        print("TODO: join game")
+                    else:
+                        print("87 ?", node.data)
+
+                elif ev == node.CONNECTED:
+                    print(f"CONNECTED as {node.nick}")
+
+                elif ev == node.JOINED:
+                    print("Entered channel", node.joined)
+                    if node.joined == node.lobby_channel:
+                        node.tx({node.CMD: "ingame", node.PID: node.pid})
+
+                elif ev == node.TOPIC:
+                    print(f'[{node.channel}] TOPIC "{node.topics[node.channel]}"')
+
+                elif ev in [node.LOBBY, node.LOBBY_GAME]:
+                    cmd, pid, nick, info = node.proto
+
+                    if cmd == node.HELLO:
+                        print("Lobby/Game:", "Welcome", nick)
+                        # publish if main
+                        if not node.fork:
+                            node.publish()
+
+                    elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
+                        if node.fork:
+                            print("cannot fork, already a clone/fork pid=", node.fork)
+                        elif len(node.pstree[node.pid]["forks"]):
+                            print("cannot fork, i'm main for", node.pstree[node.pid]["forks"])
+                        else:
+                            print("forking to game offer", node.hint)
+                            node.clone(pid)
+                            print("cloning", player, pid)
+
+                    else:
+                        print(f"\nLOBBY/GAME: {node.fork=} {node.proto=} {node.data=} {node.hint=}")
+
+                elif ev in [node.USERS]:
+                    ...
+
+                elif ev in [node.GLOBAL]:
+                    print("GLOBAL:", node.data)
+
+                elif ev in [node.SPURIOUS]:
+                    print(f"\nRAW: {node.proto=} {node.data=}")
+
+                elif ev in [node.USERLIST]:
+                    print(node.proto, node.users)
+
+                elif ev == node.RAW:
+                    print("RAW:", node.data)
+
+                elif ev == node.PING:
+                    # print("ping", node.data)
+                    ...
+                elif ev == node.PONG:
+                    # print("pong", node.data)
+                    ...
+
+                # promisc mode dumps everything.
+                elif ev == node.RX:
+                    ...
+
+                else:
+                    print(f"52:{ev=} {node.rxq=}")
+            except Exception as e:
+                print(f"52:{ev=} {node.rxq=} {node.proto=} {node.data=}")
+                sys.print_exception(e)
+
+        if initializing:
+            current_theme.INVERSE_PLAYER_VIEW = not starting_player
             if starting_player:
-                if client_game._sync:
-                    # Previously had the redundant and incorrect games[0].current_turn == game._starting_player and game.current_turn != game._starting_player as a first condition
-                    # but this won't work when undo button undoes two moves
-                    if (len(games[1].alg_moves) > len(client_game.alg_moves)) or (len(games[1].alg_moves) < len(client_game.alg_moves) and games[1]._move_undone) or \
-                        games[1].end_position:
-                        client_game.synchronize(games[1])
-                        if client_game.alg_moves != []:
-                            if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                                if "x" not in client_game.alg_moves[-1]:
-                                    move_sound.play()
-                                else:
-                                    capture_sound.play()
-                            if client_game.end_position:
-                                running = False
-                                is_white = True
-                                checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                if checkmate:
-                                    print("CHECKMATE")
-                                elif remaining_moves == 0:
-                                    print("STALEMATE")
-                                elif client_game.threefold_check():
-                                    print("DRAW BY THREEFOLD REPETITION")
-                                elif client_game.forced_end != "":
-                                    print(client_game.forced_end)
-                                print("ALG_MOVES: ", client_game.alg_moves)
-                                break
-                            print("ALG_MOVES: ", client_game.alg_moves)
-                else:
-                    if games[1].board == client_game.board:
-                        print("Syncing White...")
-                        client_game._sync = True
-                        client_game._move_undone = False
-                        games = n.send(client_game)
+                pygame.display.set_caption("Chess - White")
             else:
-                if client_game._sync:
-                    if (len(games[0].alg_moves) > len(client_game.alg_moves)) or (len(games[0].alg_moves) < len(client_game.alg_moves) and games[0]._move_undone) or \
-                        games[0].end_position:
-                        client_game.synchronize(games[0])
-                        if client_game.alg_moves != []:
-                            if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
-                                if "x" not in client_game.alg_moves[-1]:
-                                    move_sound.play()
-                                else:
-                                    capture_sound.play()
-                            if client_game.end_position:
-                                running = False
-                                is_white = False
-                                checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                if checkmate:
-                                    print("CHECKMATE")
-                                elif remaining_moves == 0:
-                                    print("STALEMATE")
-                                elif client_game.threefold_check():
-                                    print("DRAW BY THREEFOLD REPETITION")
-                                elif client_game.forced_end != "":
-                                    print(client_game.forced_end)
-                                print("ALG_MOVES: ", client_game.alg_moves)
-                                break
-                            print("ALG_MOVES: ", client_game.alg_moves)
-                else:
-                    if games[0].board == client_game.board:
-                        print("Syncing Black...")
-                        client_game._sync = True
-                        client_game._move_undone = False
-                        games = n.send(client_game)
-        except Exception as err:
-            running = False
-            print("Could not get game... ", err)
-            break
+                pygame.display.set_caption("Chess - Black")
+            client_game = Game(new_board.copy(), starting_player)
+            player = "white" if starting_player else "black"
+            opponent = "black" if starting_player else "white"
+            initializing, initialized = False, True
+            node.tx({node.CMD: f"{player} initialized"})
+        elif not initialized:
+            starting_player = True
+            current_theme.INVERSE_PLAYER_VIEW = not starting_player
+            pygame.display.set_caption("Chess - Waiting on Connection")
+            client_game = Game(new_board.copy(), starting_player)
+            player = "white"
+            opponent = "black"
+
+        if waiting:
+            # Need to pump the event queque like below in order to move window
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    waiting = False
+
+            # Clear the screen
+            game_window.fill((0, 0, 0))
+
+            # Draw the board
+            draw_board({
+                'window': game_window,
+                'theme': current_theme,
+                'board': client_game.board,
+                'chessboard': chessboard,
+                'selected_piece': selected_piece,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
+                'right_clicked_squares': right_clicked_squares,
+                'coordinate_surface': coordinate_surface,
+                'drawn_arrows': drawn_arrows,
+                'starting_player': client_game._starting_player,
+                'valid_moves': valid_moves,
+                'valid_captures': valid_captures,
+                'valid_specials': valid_specials,
+                'pieces': pieces,
+                'hovered_square': hovered_square,
+                'selected_piece_image': selected_piece_image
+            })
+
+            # Darken the screen
+            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
+
+            # Blit the overlay surface onto the main window
+            game_window.blit(overlay, (0, 0))
+            pygame.display.flip()
+            await asyncio.sleep(0)
+            continue
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -561,20 +687,34 @@ async def main():
                                     running = False
                                     break
 
-                        else:
-                            # Otherwise we are considering another piece or a re-selected piece
-                            if piece != ' ':
-                                if (row, col) == selected_piece:
-                                    # If the mouse stays on a square and a piece is clicked a second time 
-                                    # this ensures that mouseup on this square deselects the piece
-                                    if first_intent:
-                                        first_intent = False
-                                    # Redraw the transparent dragged piece on subsequent clicks
-                                    selected_piece_image = transparent_pieces[piece]
-                                
-                                if (row, col) != selected_piece:
-                                     first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
-                                        handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                            else:
+                                # Otherwise we are considering another piece or a re-selected piece
+                                if piece != ' ':
+                                    if (row, col) == selected_piece:
+                                        # If the mouse stays on a square and a piece is clicked a second time 
+                                        # this ensures that mouseup on this square deselects the piece
+                                        if first_intent:
+                                            first_intent = False
+                                        # Redraw the transparent dragged piece on subsequent clicks
+                                        selected_piece_image = transparent_pieces[piece]
+                                    
+                                    if (row, col) != selected_piece:
+                                        first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
+                                            handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                        
+                        # Otherwise (when not our move) we are considering another piece or a re-selected piece
+                        elif piece != ' ':
+                            if (row, col) == selected_piece:
+                                # If the mouse stays on a square and a piece is clicked a second time 
+                                # this ensures that mouseup on this square deselects the piece
+                                if first_intent:
+                                    first_intent = False
+                                # Redraw the transparent dragged piece on subsequent clicks
+                                selected_piece_image = transparent_pieces[piece]
+                            
+                            if (row, col) != selected_piece:
+                                first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
+                                    handle_new_piece_selection(client_game, row, col, is_white, hovered_square)    
 
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
@@ -651,6 +791,56 @@ async def main():
                                 drawn_arrows.append([current_right_clicked_square, end_right_released_square])
                         else:
                             drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
+
+            elif event.type == pygame.KEYDOWN:
+
+                # Only allow for undoing moves on your turn, multiple one-sided undos break sync
+                if client_game.current_turn == client_game._starting_player: # Implement this later maybe have another and not game._undo_debug condition
+                    # Undo move
+                    if event.key == pygame.K_u:
+                        # Update current and previous position highlighting
+                        client_game.undo_move()
+                        hovered_square = None
+                        selected_piece_image = None
+                        selected_piece = None
+                        first_intent = False
+                        valid_moves, valid_captures, valid_specials = [], [], []
+                        right_clicked_squares = []
+                        drawn_arrows = []
+
+                # Resignation
+                if event.key == pygame.K_r:
+                    client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
+                    print(client_game.forced_end)
+                    running = False
+                    client_game.end_position = True
+                    client_game.add_end_game_notation(True)
+                    break
+                
+                # Draw
+                elif event.key == pygame.K_d:
+                    print("Draw")
+                    running = False
+                    client_game.end_position = True
+                    client_game.forced_end = "Draw by Mutual Agreement"
+                    client_game.add_end_game_notation(False)
+                    break
+
+                # Theme cycle
+                elif event.key == pygame.K_t:
+                    theme_index += 1
+                    theme_index %= len(themes)
+                    current_theme.apply_theme(themes[theme_index])
+                    # Redraw board and coordinates
+                    chessboard = generate_chessboard(current_theme)
+                    coordinate_surface = generate_coordinate_surface(current_theme)
+
+                # Flip Perspective
+                elif event.key == pygame.K_i:
+                    current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+                    # Redraw board and coordinates
+                    chessboard = generate_chessboard(current_theme)
+                    coordinate_surface = generate_coordinate_surface(current_theme)
 
         # Clear the screen
         game_window.fill((0, 0, 0))
@@ -804,7 +994,14 @@ async def main():
         
         try:
             if client_game.current_turn != client_game._starting_player or not client_game._sync:
-                _ = n.send(client_game)
+                if not sent:
+                    txdata = {node.CMD: f"{player}_update"}
+                    if not client_game._sync:
+                        txdata[node.CMD] += "_req_sync"
+                    send_game = client_game.to_json()
+                    txdata.update({"game": send_game})
+                    node.tx(txdata, shm=True)
+                    sent = 1
         except Exception as err:
             running = False
             client_game.end_position = True
@@ -817,9 +1014,12 @@ async def main():
 
     if client_game.end_position:
         try:
-            _ = n.send(client_game)
+            txdata = {node.CMD: f"{player}_update"}
+            send_game = client_game.to_json()
+            txdata.update({"game": send_game})
+            node.tx(txdata, shm=True)
         except Exception as err:
-            print("Could not send game... ", err)
+            print("Could not send endgame position... ", err)
 
     while client_game.end_position:
         # Clear any selected highlights
