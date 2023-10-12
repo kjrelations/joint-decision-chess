@@ -2,6 +2,9 @@ import pygame
 import sys
 import json
 import asyncio
+import pygbag.aio as asyncio
+import pygbag_net
+import builtins
 from game import *
 from constants import *
 from helpers import *
@@ -20,7 +23,6 @@ with open('themes.json', 'r') as file:
 
 # Initialize Pygame window
 game_window = pygame.display.set_mode((current_theme.WIDTH, current_theme.HEIGHT))
-pygame.display.set_caption("Chess")
 
 # Load the chess pieces dynamically
 pieces = {}
@@ -34,7 +36,7 @@ for color in ['w', 'b']:
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
-    if game.current_turn == is_white or game._debug:
+    if game._starting_player == is_white or game._debug:
         first_intent = True
         selected_piece = (row, col)
         selected_piece_image = transparent_pieces[piece]
@@ -170,25 +172,29 @@ def handle_piece_special_move(game, selected_piece, row, col):
     return piece, is_white
 
 # Command-Action synchronization function
-def handle_command(command_name, client_action_status, client_executed_status, status_metadata_dict, status_metadata_name):
-    # Command to execute is received and no update is sent
-    if status_metadata_dict[command_name]['execute'] and not status_metadata_dict[command_name]['update_executed']:
-        client_action_status = True
-        if client_executed_status:
-            status_metadata_dict[command_name]['update_executed'] = True
-            json_metadata = json.dumps(status_metadata_dict)
-            window.localStorage.setItem(status_metadata_name, json_metadata)
-            client_action_status = False
+def handle_command(command_name, client_action_status, client_executed_status, web_metadata_dict, games_metadata_name, game_tab_id):
+    status_metadata_dict = web_metadata_dict[game_tab_id]
+    if status_metadata_dict.get(command_name) is not None:
+        # Command to execute is received and no update is sent
+        if status_metadata_dict[command_name]['execute'] and not status_metadata_dict[command_name]['update_executed']:
+            client_action_status = True
+            if client_executed_status:
+                status_metadata_dict[command_name]['update_executed'] = True
+                web_metadata_dict[game_tab_id] = status_metadata_dict
+                json_metadata = json.dumps(web_metadata_dict)
+                
+                window.localStorage.setItem(games_metadata_name, json_metadata)
+                client_action_status = False
 
-    # Handling race conditions assuming speed differences and sychronizing states with this.
-    # That is only once we stop receiving the command, after an execution, do we allow it to be executed again
-    if client_executed_status and not status_metadata_dict[command_name]['execute']:
-        client_executed_status = False    
+        # Handling race conditions assuming speed differences and sychronizing states with this.
+        # That is only once we stop receiving the command, after an execution, do we allow it to be executed again
+        if client_executed_status and not status_metadata_dict[command_name]['execute']:
+            client_executed_status = False    
 
     return client_action_status, client_executed_status
 
 # Game State loop for promotion
-async def promotion_state(promotion_square, game, row, col, draw_board_params):
+async def promotion_state(promotion_square, client_game, row, col, draw_board_params, client_state_actions, command_status_names, drawing_settings, game_tab_id):
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
     promoted, promotion_required, end_state = False, True, None
     
@@ -202,35 +208,57 @@ async def promotion_state(promotion_square, game, row, col, draw_board_params):
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
-                        game.promote_to_piece(row, col, button.piece)
+                        client_game.promote_to_piece(row, col, button.piece)
                         promotion_required = False  # Exit promotion state condition
                         promoted = True
-            if event.type == pygame.KEYDOWN:
-
-                # Undo move
-                if event.key == pygame.K_u:
-                    # Update current and previous position highlighting
-                    game.undo_move()
-                    promotion_required = False
-                
-                # Resignation
-                elif event.key == pygame.K_r:
-                    game.undo_move()
-                    print(game.forced_end)
-                    game.forced_end = "White Resigned" if game.current_turn else "Black Resigned"
-                    promotion_required = False
-                    game.end_position = True
-                    end_state = True
-                
-                # Draw
-                elif event.key == pygame.K_d:
-                    game.undo_move()
-                    print(game.forced_end)
-                    game.forced_end = "Draw by mutual agreement"
-                    promotion_required = False
-                    game.end_position = True
-                    end_state = False
+        if client_state_actions["undo"]:
+            # Update current and previous position highlighting
+            client_game.undo_move()
+            promotion_required = False
+            client_state_actions["undo"] = False
+            client_state_actions["undo_executed"] = True
         
+        if client_state_actions["resign"]:
+            client_game.undo_move()
+            client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+            print(client_game.forced_end)
+            client_game.end_position = True
+            client_game.add_end_game_notation(True)
+            promotion_required = False
+            end_state = True
+            client_state_actions["resign"] = False
+            client_state_actions["resign_executed"] = True
+
+        if client_state_actions["draw_offer"]:
+            client_game.undo_move()
+            client_game.forced_end = "Draw by mutual agreement"
+            print(client_game.forced_end)
+            client_game.end_position = True
+            client_game.add_end_game_notation(False)
+            promotion_required = False
+            end_state = True
+            client_state_actions["draw_offer"] = False
+            client_state_actions["draw_offer_executed"] = True
+
+        # Theme cycle
+        if client_state_actions["cycle_theme"]:
+            drawing_settings["theme_index"] += 1
+            drawing_settings["theme_index"] %= len(themes)
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            # Redraw board and coordinates
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["cycle_theme"] = False
+            client_state_actions["cycle_theme_executed"] = True
+
+        if client_state_actions["flip"]:
+            current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+            # Redraw board and coordinates
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["flip"] = False
+            client_state_actions["flip_executed"] = True
+
         # Clear the screen
         game_window.fill((0, 0, 0))
         
@@ -253,28 +281,62 @@ async def promotion_state(promotion_square, game, row, col, draw_board_params):
                 img_x, img_y = button.scaled_x, button.scaled_y
             game_window.blit(img, (img_x, img_y))
 
+        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+
+        web_game_metadata_dict = json.loads(web_game_metadata)
+
+        # DEV logs to console
+        # web_game_metadata_dict['console_messages'].extend(console_log_messages)
+
+        # TODO Can just put this into an asynchronous loop if I wanted or needed
+        # Undo move, resign, draw offer, cycle theme, flip command handle
+        for client_status in command_status_names:
+            command, client_action_status, client_executed_status = client_status
+            client_action_value, client_executed_value = client_state_actions[client_action_status], client_state_actions[client_executed_status]
+            client_state_actions[client_action_status], client_state_actions[client_executed_status] = \
+                handle_command(command, client_action_value, client_executed_value, web_game_metadata_dict, "web_game_metadata", game_tab_id)      
+
         pygame.display.flip()
         await asyncio.sleep(0)
 
     return promoted, end_state
 
+class Node(pygbag_net.Node):
+    ...
+
 # Main loop
 async def main():
-    starting_player = True
-    current_theme.INVERSE_PLAYER_VIEW = not starting_player
-    game = Game(new_board.copy(), starting_player)
-    running = True
-
+    builtins.node = Node(gid=222, groupname="Simple Chess Board", offline="offline" in sys.argv)
+    node = builtins.node
+    running, waiting, initializing, initialized = True, True, False, False
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
     # The following are client-side status variables, the first is whether an action should be performed,
     # the second on whether an action has been performed, the optional reset variable is unimplemented but indicates whether an action has been aborted
-    # based on other multiplayer actions.
-    undo, undo_executed, reset_undo = False, False, False
-    cycle_theme, cycle_theme_executed = False, False
-    resign, resign_executed, reset_resign = False, False, False
-    draw_offer, draw_offer_accepted_executed, reset_draw = False, False, False
-    flip, flip_executed = False, False
+    # based on other multiplayer actions. It will be necessary.
+    client_state_actions = {
+        "undo": False,
+        "undo_executed": False,
+        "undo_reset": False,
+        "cycle_theme": False,
+        "cycle_theme_executed": False,
+        "resign": False,
+        "resign_executed": False,
+        "resign_reset": False,
+        "draw_offer": False,
+        "draw_offer_executed": False,
+        "draw_offer_reset": False,
+        "flip": False,
+        "flip_executed": False,
+    }
+    # This holds the command name for the web and the associated keys in the dictionary
+    command_status_names = [
+        ("undo_move", "undo", "undo_executed"),
+        ("resign", "resign", "resign_executed"),
+        ("draw_offer", "draw_offer", "draw_offer_executed"),
+        ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
+        ("flip_board", "flip", "flip_executed")
+    ]
     console_log_messages = []
 
     selected_piece = None
@@ -297,65 +359,364 @@ async def main():
     right_mouse_button_down = False
 
     # Only draw these surfaces as needed; once per selection of theme
-    chessboard = generate_chessboard(current_theme)
-    coordinate_surface = generate_coordinate_surface(current_theme)
-    theme_index = 0
+    drawing_settings = {
+        "chessboard": generate_chessboard(current_theme),
+        "coordinate_surface": generate_coordinate_surface(current_theme),
+        "theme_index": 0
+    }
 
     # Main game loop
     while running:
+        # Network events
+        for ev in node.get_events():
+            try:
+                if ev == node.SYNC:
+                    print("SYNC:", node.proto, node.data[node.CMD])
+                    cmd = node.data[node.CMD]
+                    if cmd == "initialize":
+                        starting_player = node.data.pop("start")
+                        initializing = True
+                        sent = int(not starting_player)
+                    elif cmd == f"{opponent} ready":
+                        waiting = False
+                    elif f"{opponent}_update" in cmd:
+                        game = Game(custom_params=json.loads(node.data.pop("game")))
+                        if client_game._sync:
+                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
+                                game.end_position:
+                                    client_game.synchronize(game)
+                                    sent = 0
+                                    if client_game.alg_moves != []:
+                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                            if "x" not in client_game.alg_moves[-1]:
+                                                move_sound.play()
+                                            else:
+                                                capture_sound.play()
+                                        if client_game.end_position:
+                                            running = False
+                                            is_white = True
+                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
+                                            if checkmate:
+                                                print("CHECKMATE")
+                                            elif remaining_moves == 0:
+                                                print("STALEMATE")
+                                            elif client_game.threefold_check():
+                                                print("DRAW BY THREEFOLD REPETITION")
+                                            elif client_game.forced_end != "":
+                                                print(client_game.forced_end)
+                                            print("ALG_MOVES: ", client_game.alg_moves)
+                                            break
+                                        print("ALG_MOVES: ", client_game.alg_moves)
+                    if "_sync" in cmd:
+                        # Need to set game here if no update cmd is trigerred, else we have an old game
+                        if "game" in node.data:
+                            game = Game(custom_params=json.loads(node.data.pop("game")))
+                        if game.board == client_game.board and not client_game._sync:
+                            print(f"Syncing {player.capitalize()}...")
+                            client_game._sync = True
+                            client_game._move_undone = False
+                            sent = 0
+                        # elif both games are unsynced, synchronize and send something to halt infinite sync signals?
+                        elif "req_sync" in cmd:
+                            txdata = {node.CMD: f"_sync"}
+                            send_game = client_game.to_json()
+                            print(client_game._sync)
+                            if client_game._sync:
+                                txdata.update({"game": send_game})
+                                node.tx(txdata, shm=True)
+                                sent = 0
 
-        # Web browser actions/commands are received
-        if undo:
-            # Update current and previous position highlighting
-            game.undo_move()
-            hovered_square = None
-            selected_piece_image = None
-            selected_piece = None
-            first_intent = False
-            valid_moves, valid_captures, valid_specials = [], [], []
-            right_clicked_squares = []
-            drawn_arrows = []
-            undo = False
-            undo_executed = True
+                elif ev == node.GAME:
+                    print("GAME:", node.proto, node.data[node.CMD])
+                    cmd = node.data[node.CMD]
+
+                    if cmd == f"{opponent} initialized":
+                        node.tx({node.CMD: f"{player} ready"})
+                        waiting = False
+                    elif f"{opponent}_update" in cmd or "_sync" in cmd:
+                        if f"{opponent}_update" in cmd:
+                            game = Game(custom_params=json.loads(node.data.pop("game")))
+                            if client_game._sync:
+                                if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
+                                    game.end_position:
+                                        client_game.synchronize(game)
+                                        sent = 0
+                                        if client_game.alg_moves != []:
+                                            if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
+                                                if "x" not in client_game.alg_moves[-1]:
+                                                    move_sound.play()
+                                                else:
+                                                    capture_sound.play()
+                                            if client_game.end_position:
+                                                running = False
+                                                is_white = True
+                                                checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
+                                                if checkmate:
+                                                    print("CHECKMATE")
+                                                elif remaining_moves == 0:
+                                                    print("STALEMATE")
+                                                elif client_game.threefold_check():
+                                                    print("DRAW BY THREEFOLD REPETITION")
+                                                elif client_game.forced_end != "":
+                                                    print(client_game.forced_end)
+                                                print("ALG_MOVES: ", client_game.alg_moves)
+                                                break
+                                            print("ALG_MOVES: ", client_game.alg_moves)
+                        if "_sync" in cmd:
+                            # Need to set game here if no update cmd is trigerred, else we have an old game
+                            if "game" in node.data:
+                                game = Game(custom_params=json.loads(node.data.pop("game")))
+                            if game.board == client_game.board and not client_game._sync:
+                                print(f"Syncing {player.capitalize()}...")
+                                client_game._sync = True
+                                client_game._move_undone = False
+                                sent = 1
+                            # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
+                            elif "req_sync" in cmd:
+                                txdata = {node.CMD: f"_sync"}
+                                send_game = client_game.to_json()
+                                if client_game._sync:
+                                    txdata.update({"game": send_game})
+                                    node.tx(txdata, shm=True)
+                                    sent = 0
+
+                    elif cmd == "clone":
+                        # send all history to child
+                        node.checkout_for(node.data)
+                        starting_player = True
+                        node.tx({node.CMD: "initialize", "start": not starting_player})
+                        initializing = True
+                        sent = int(not starting_player)
+
+                    elif cmd == "ingame":
+                        print("TODO: join game")
+                    else:
+                        print("87 ?", node.data)
+
+                elif ev == node.CONNECTED:
+                    print(f"CONNECTED as {node.nick}")
+
+                elif ev == node.JOINED:
+                    print("Entered channel", node.joined)
+                    if node.joined == node.lobby_channel:
+                        node.tx({node.CMD: "ingame", node.PID: node.pid})
+
+                elif ev == node.TOPIC:
+                    print(f'[{node.channel}] TOPIC "{node.topics[node.channel]}"')
+
+                elif ev in [node.LOBBY, node.LOBBY_GAME]:
+                    cmd, pid, nick, info = node.proto
+
+                    if cmd == node.HELLO:
+                        print("Lobby/Game:", "Welcome", nick)
+                        # publish if main
+                        if not node.fork:
+                            node.publish()
+
+                    elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
+                        if node.fork:
+                            print("cannot fork, already a clone/fork pid=", node.fork)
+                        elif len(node.pstree[node.pid]["forks"]):
+                            print("cannot fork, i'm main for", node.pstree[node.pid]["forks"])
+                        else:
+                            print("forking to game offer", node.hint)
+                            node.clone(pid)
+                            print("cloning", player, pid)
+
+                    else:
+                        print(f"\nLOBBY/GAME: {node.fork=} {node.proto=} {node.data=} {node.hint=}")
+
+                elif ev in [node.USERS]:
+                    ...
+
+                elif ev in [node.GLOBAL]:
+                    print("GLOBAL:", node.data)
+
+                elif ev in [node.SPURIOUS]:
+                    print(f"\nRAW: {node.proto=} {node.data=}")
+
+                elif ev in [node.USERLIST]:
+                    print(node.proto, node.users)
+
+                elif ev == node.RAW:
+                    print("RAW:", node.data)
+
+                elif ev == node.PING:
+                    # print("ping", node.data)
+                    ...
+                elif ev == node.PONG:
+                    # print("pong", node.data)
+                    ...
+
+                # promisc mode dumps everything.
+                elif ev == node.RX:
+                    ...
+
+                else:
+                    print(f"52:{ev=} {node.rxq=}")
+            except Exception as e:
+                print(f"52:{ev=} {node.rxq=} {node.proto=} {node.data=}")
+                sys.print_exception(e)
+
+        # TODO Move the following into it's own function soon
+        if initializing:
+            current_theme.INVERSE_PLAYER_VIEW = not starting_player
+            if starting_player:
+                pygame.display.set_caption("Chess - White")
+            else:
+                pygame.display.set_caption("Chess - Black")
+            client_game = Game(new_board.copy(), starting_player)
+            player = "white" if starting_player else "black"
+            opponent = "black" if starting_player else "white"
+            game_tab_id = str(node.gid) + "-" + str(node.pid)
+            window.sessionStorage.setItem("current_game_id", game_tab_id)
+            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+            if web_game_metadata is not None:
+                web_game_metadata_dict = json.loads(web_game_metadata)
+            else:
+                web_game_metadata_dict = {}
+            # TODO extend this to load defaults for historic games in script or through browser
+            if isinstance(web_game_metadata_dict, dict) or web_game_metadata is None:
+                web_game_metadata_dict[game_tab_id] = {
+                    "end_state": '',
+                    "forced_end": '',
+                    "player_color": player,
+                    "alg_moves": [],
+                    "undo_move": {
+                        "execute": False,
+                        "update_executed": False
+                    },
+                    "resign": {
+                        "execute": False,
+                        "update_executed": False
+                    },
+                    "draw_offer": {
+                        "execute": False,
+                        "update_executed": False
+                    },
+                    "cycle_theme": {
+                        "execute": False,
+                        "update_executed": False
+                    },
+                    "flip_board": {
+                        "execute": False,
+                        "update_executed": False
+                    },
+                    "console_messages": []
+                }
+            else:
+                raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+            initializing, initialized = False, True
+            node.tx({node.CMD: f"{player} initialized"})
+        elif not initialized:
+            starting_player = True
+            current_theme.INVERSE_PLAYER_VIEW = not starting_player
+            pygame.display.set_caption("Chess - Waiting on Connection")
+            client_game = Game(new_board.copy(), starting_player)
+            player = "white"
+            opponent = "black"
+
+        # TODO move into it's own function
+        if waiting:
+            # Need to pump the event queque like below in order to move window
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    waiting = False
+
+            # Clear the screen
+            game_window.fill((0, 0, 0))
+
+            # Draw the board
+            draw_board({
+                'window': game_window,
+                'theme': current_theme,
+                'board': client_game.board,
+                'chessboard': drawing_settings["chessboard"],
+                'selected_piece': selected_piece,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
+                'right_clicked_squares': right_clicked_squares,
+                'coordinate_surface': drawing_settings["coordinate_surface"],
+                'drawn_arrows': drawn_arrows,
+                'starting_player': client_game._starting_player,
+                'valid_moves': valid_moves,
+                'valid_captures': valid_captures,
+                'valid_specials': valid_specials,
+                'pieces': pieces,
+                'hovered_square': hovered_square,
+                'selected_piece_image': selected_piece_image
+            })
+
+            # Darken the screen
+            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
+
+            # Blit the overlay surface onto the main window
+            game_window.blit(overlay, (0, 0))
+            pygame.display.flip()
+            await asyncio.sleep(0)
+            continue
+
+        # Web browser actions/commands are received in previous loop iterations
+        if client_state_actions["undo"]:
+            if client_game.current_turn == client_game._starting_player:
+                # Update current and previous position highlighting
+                client_game.undo_move()
+                hovered_square = None
+                selected_piece_image = None
+                selected_piece = None
+                first_intent = False
+                valid_moves, valid_captures, valid_specials = [], [], []
+                right_clicked_squares = []
+                drawn_arrows = []
+                client_state_actions["undo"] = False
+                client_state_actions["undo_executed"] = True
+            else:
+                client_state_actions["undo"] = False
+                client_state_actions["undo_executed"] = True
         
-        if resign:
-            game.forced_end = "White Resigned" if game.current_turn else "Black Resigned"
-            print(game.forced_end)
+        if client_state_actions["resign"]:
+            client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+            print(client_game.forced_end)
             running = False
-            game.end_position = True
-            game.add_end_game_notation(True)
-            resign = False
-            resign_executed = True
+            client_game.end_position = True
+            client_game.add_end_game_notation(True)
+            client_state_actions["resign"] = False
+            client_state_actions["resign_executed"] = True
             break
 
-        if draw_offer:
-            game.forced_end = "Draw by mutual agreement"
-            print(game.forced_end)
+        if client_state_actions["draw_offer"]:
+            client_game.forced_end = "Draw by mutual agreement"
+            print(client_game.forced_end)
             running = False
-            game.end_position = True
-            game.add_end_game_notation(False)
-            draw_offer = False
-            draw_offer_accepted_executed = True
+            client_game.end_position = True
+            client_game.add_end_game_notation(False)
+            client_state_actions["draw_offer"] = False
+            client_state_actions["draw_offer_executed"] = True
             break
 
         # Theme cycle
-        if cycle_theme:
-            theme_index += 1
-            theme_index %= len(themes)
-            current_theme.apply_theme(themes[theme_index])
+        if client_state_actions["cycle_theme"]:
+            drawing_settings["theme_index"] += 1
+            drawing_settings["theme_index"] %= len(themes)
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
             # Redraw board and coordinates
-            chessboard = generate_chessboard(current_theme)
-            coordinate_surface = generate_coordinate_surface(current_theme)
-            cycle_theme = False
-            cycle_theme_executed = True
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["cycle_theme"] = False
+            client_state_actions["cycle_theme_executed"] = True
 
-        if flip:
+        if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
             # Redraw board and coordinates
-            chessboard = generate_chessboard(current_theme)
-            coordinate_surface = generate_coordinate_surface(current_theme)
-            flip = False
-            flip_executed = True
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["flip"] = False
+            client_state_actions["flip_executed"] = True
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -393,57 +754,72 @@ async def main():
                     # Change input to reversed board given inverse view
                     if current_theme.INVERSE_PLAYER_VIEW:
                         row, col = map_to_reversed_board(row, col)
-                    piece = game.board[row][col]
+                    piece = client_game.board[row][col]
                     is_white = piece.isupper()
                     
                     if not selected_piece:
                         if piece != ' ':
                             # Update states with new piece selection
                             first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
-                                handle_new_piece_selection(game, row, col, is_white, hovered_square)
+                                handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                             
                     else:
-                        ## Free moves or captures
-                        if (row, col) in valid_moves:
-                            promotion_square, promotion_required = \
-                                handle_piece_move(game, selected_piece, row, col, valid_captures)
-                            
-                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                            valid_moves, valid_captures, valid_specials = [], [], []
-                            # Reset selected piece variables to represent state
-                            selected_piece, selected_piece_image = None, None
-                            
-                            if game.end_position:
-                                running = False
-                                break
-                        
-                        ## Specials
-                        elif (row, col) in valid_specials:
-                            piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
-                            
-                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                            valid_moves, valid_captures, valid_specials = [], [], []
-                            # Reset selected piece variables to represent state
-                            selected_piece, selected_piece_image = None, None
-
-                            if game.end_position:
-                                running = False
-                                break
-
-                        else:
-                            # Otherwise we are considering another piece or a re-selected piece
-                            if piece != ' ':
-                                if (row, col) == selected_piece:
-                                    # If the mouse stays on a square and a piece is clicked a second time 
-                                    # this ensures that mouseup on this square deselects the piece
-                                    if first_intent:
-                                        first_intent = False
-                                    # Redraw the transparent dragged piece on subsequent clicks
-                                    selected_piece_image = transparent_pieces[piece]
+                        if client_game.current_turn == client_game._starting_player:
+                            ## Free moves or captures
+                            if (row, col) in valid_moves:
+                                promotion_square, promotion_required = \
+                                    handle_piece_move(client_game, selected_piece, row, col, valid_captures)
                                 
-                                if (row, col) != selected_piece:
-                                     first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
-                                        handle_new_piece_selection(game, row, col, is_white, hovered_square)
+                                # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                                valid_moves, valid_captures, valid_specials = [], [], []
+                                # Reset selected piece variables to represent state
+                                selected_piece, selected_piece_image = None, None
+                                
+                                if client_game.end_position:
+                                    running = False
+                                    break
+                            
+                            ## Specials
+                            elif (row, col) in valid_specials:
+                                piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col)
+                                
+                                # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                                valid_moves, valid_captures, valid_specials = [], [], []
+                                # Reset selected piece variables to represent state
+                                selected_piece, selected_piece_image = None, None
+
+                                if client_game.end_position:
+                                    running = False
+                                    break
+
+                            else:
+                                # Otherwise we are considering another piece or a re-selected piece
+                                if piece != ' ':
+                                    if (row, col) == selected_piece:
+                                        # If the mouse stays on a square and a piece is clicked a second time 
+                                        # this ensures that mouseup on this square deselects the piece
+                                        if first_intent:
+                                            first_intent = False
+                                        # Redraw the transparent dragged piece on subsequent clicks
+                                        selected_piece_image = transparent_pieces[piece]
+                                    
+                                    if (row, col) != selected_piece:
+                                        first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
+                                            handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                        
+                        # Otherwise (when not our move) we are considering another piece or a re-selected piece
+                        elif piece != ' ':
+                            if (row, col) == selected_piece:
+                                # If the mouse stays on a square and a piece is clicked a second time 
+                                # this ensures that mouseup on this square deselects the piece
+                                if first_intent:
+                                    first_intent = False
+                                # Redraw the transparent dragged piece on subsequent clicks
+                                selected_piece_image = transparent_pieces[piece]
+                            
+                            if (row, col) != selected_piece:
+                                first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
+                                    handle_new_piece_selection(client_game, row, col, is_white, hovered_square)    
 
             elif event.type == pygame.MOUSEMOTION:
                 x, y = pygame.mouse.get_pos()
@@ -471,32 +847,33 @@ async def main():
                     if first_intent and (row, col) == selected_piece:
                         first_intent = not first_intent
                     
-                    ## Free moves or captures
-                    if (row, col) in valid_moves:
-                        promotion_square, promotion_required = \
-                            handle_piece_move(game, selected_piece, row, col, valid_captures)
-                        
-                        # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                        valid_moves, valid_captures, valid_specials = [], [], []
-                        # Reset selected piece variables to represent state
-                        selected_piece, selected_piece_image = None, None
+                    if client_game.current_turn == client_game._starting_player:
+                        ## Free moves or captures
+                        if (row, col) in valid_moves:
+                            promotion_square, promotion_required = \
+                                handle_piece_move(client_game, selected_piece, row, col, valid_captures)
+                            
+                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                            valid_moves, valid_captures, valid_specials = [], [], []
+                            # Reset selected piece variables to represent state
+                            selected_piece, selected_piece_image = None, None
 
-                        if game.end_position:
-                            running = False
-                            break
+                            if client_game.end_position:
+                                running = False
+                                break
 
-                    ## Specials
-                    elif (row, col) in valid_specials:
-                        piece, is_white = handle_piece_special_move(game, selected_piece, row, col)
-                        
-                        # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
-                        valid_moves, valid_captures, valid_specials = [], [], []
-                        # Reset selected piece variables to represent state
-                        selected_piece, selected_piece_image = None, None
+                        ## Specials
+                        elif (row, col) in valid_specials:
+                            piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col)
+                            
+                            # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
+                            valid_moves, valid_captures, valid_specials = [], [], []
+                            # Reset selected piece variables to represent state
+                            selected_piece, selected_piece_image = None, None
 
-                        if game.end_position:
-                            running = False
-                            break
+                            if client_game.end_position:
+                                running = False
+                                break
 
                 if event.button == 3:
                     right_mouse_button_down = False
@@ -527,14 +904,15 @@ async def main():
         draw_board({
             'window': game_window,
             'theme': current_theme,
-            'board': game.board,
-            'chessboard': chessboard,
+            'board': client_game.board,
+            'chessboard': drawing_settings["chessboard"],
             'selected_piece': selected_piece,
-            'current_position': game.current_position,
-            'previous_position': game.previous_position,
+            'current_position': client_game.current_position,
+            'previous_position': client_game.previous_position,
             'right_clicked_squares': right_clicked_squares,
-            'coordinate_surface': coordinate_surface,
+            'coordinate_surface': drawing_settings["coordinate_surface"],
             'drawn_arrows': drawn_arrows,
+            'starting_player': client_game._starting_player,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -551,14 +929,15 @@ async def main():
             draw_board_params = {
                 'window': game_window,
                 'theme': current_theme,
-                'board': game.board,
-                'chessboard': chessboard,
+                'board': client_game.board,
+                'chessboard': drawing_settings["chessboard"],
                 'selected_piece': selected_piece,
-                'current_position': game.current_position,
-                'previous_position': game.previous_position,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
                 'right_clicked_squares': right_clicked_squares,
-                'coordinate_surface': coordinate_surface,
+                'coordinate_surface': drawing_settings["coordinate_surface"],
                 'drawn_arrows': drawn_arrows,
+                'starting_player': client_game._starting_player,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -567,7 +946,18 @@ async def main():
                 'selected_piece_image': selected_piece_image
             }
 
-            promoted, end_state = await promotion_state(promotion_square, game, row, col, draw_board_params)
+            game_tab_id = str(node.gid) + "-" + str(node.pid)
+            promoted, end_state = await promotion_state(
+                promotion_square, 
+                client_game, 
+                row, 
+                col, 
+                draw_board_params, 
+                client_state_actions, 
+                command_status_names, 
+                drawing_settings, 
+                game_tab_id
+            )
             promotion_required, promotion_square = False, None
 
             if promoted:
@@ -576,10 +966,12 @@ async def main():
                 selected_piece = None
                 first_intent = False
                 valid_moves, valid_captures, valid_specials = [], [], []
+                right_clicked_squares = []
+                drawn_arrows = []
                 
-            if game.end_position:
+            if client_game.end_position:
                 running = False
-                game.add_end_game_notation(end_state)
+                client_game.add_end_game_notation(end_state)
 
             # Remove the overlay and buttons by redrawing the board
             game_window.fill((0, 0, 0))
@@ -587,14 +979,15 @@ async def main():
             draw_board({
                 'window': game_window,
                 'theme': current_theme,
-                'board': game.board,
-                'chessboard': chessboard,
+                'board': client_game.board,
+                'chessboard': drawing_settings["chessboard"],
                 'selected_piece': selected_piece,
-                'current_position': game.current_position,
-                'previous_position': game.previous_position,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
                 'right_clicked_squares': right_clicked_squares,
-                'coordinate_surface': coordinate_surface,
+                'coordinate_surface': drawing_settings["coordinate_surface"],
                 'drawn_arrows': drawn_arrows,
+                'starting_player': client_game._starting_player,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -605,72 +998,94 @@ async def main():
             # On MOUSEDOWN, piece could become whatever was there before and have the wrong color
             # We need to set the piece to be the pawn/new_piece to confirm checkmate immediately 
             # In the case of an undo this is fine and checkmate is always false
-            piece = game.board[row][col]
+            piece = client_game.board[row][col]
             is_white = piece.isupper()
 
-            checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
+            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, not is_white, client_game.moves)
             if checkmate:
                 print("CHECKMATE")
                 running = False
-                game.end_position = True
-                game.add_end_game_notation(checkmate)
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate)
             elif remaining_moves == 0:
                 print("STALEMATE")
                 running = False
-                game.end_position = True
-                game.add_end_game_notation(checkmate)
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate)
             # This seems redundant as promotions should lead to unique boards but we leave it in anyway
-            elif game.threefold_check():
+            elif client_game.threefold_check():
                 print("STALEMATE BY THREEFOLD REPETITION")
-                game.forced_end = "Stalemate by Threefold Repetition"
+                client_game.forced_end = "Stalemate by Threefold Repetition"
                 running = False
-                game.end_position = True
-                game.add_end_game_notation(checkmate)
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate)
         
         # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
+        game_tab_id = str(node.gid) + "-" + str(node.pid)
 
         # DEV logs to console
         # web_game_metadata_dict['console_messages'].extend(console_log_messages)
-
-        # TODO Can just put this into an asynchronous loop if I wanted or needed
-        command_status = [
-            ("undo_move", undo, undo_executed),
-            ("resign", resign, resign_executed),
-            ("draw_offer", draw_offer, draw_offer_accepted_executed),
-            ("cycle_theme", cycle_theme, cycle_theme_executed),
-            ("flip", flip, flip_executed)
-        ]
         
+        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing with true values
         # Undo move, resign, draw offer, cycle theme, flip command handle
-        for client_status in command_status:
+        for client_status in command_status_names:
             command, client_action_status, client_executed_status = client_status
-            client_action_status, client_executed_status = handle_command(command, client_action_status, client_executed_status, web_game_metadata_dict, "web_game_metadata")        
+            client_action_value, client_executed_value = client_state_actions[client_action_status], client_state_actions[client_executed_status]
+            client_state_actions[client_action_status], client_state_actions[client_executed_status] = \
+                handle_command(command, client_action_value, client_executed_value, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
-        if web_game_metadata_dict['alg_moves'] != game.alg_moves:
-            web_game_metadata_dict['alg_moves'] = game.alg_moves
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves:
+            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
         
-        # Maybe I just set this initially in a better way, this looks clunky
-        if game._starting_player and web_game_metadata_dict['player_color'] != 'white':
-            web_game_metadata_dict['player_color'] = 'white'
+        # Maybe I just set this initially in a better/DRY way, this looks clunky
+        # The following just sets web information so that we know the playing player side, it might be useless? Can't remember why I implemented this
+        if client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'white':
+            web_game_metadata_dict[game_tab_id]['player_color'] = 'white'
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        elif not game._starting_player and web_game_metadata_dict['player_color'] != 'black':
-            web_game_metadata_dict['player_color'] = 'black'
+        elif not client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'black':
+            web_game_metadata_dict[game_tab_id]['player_color'] = 'black'
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
+        
+        try:
+            if (client_game.current_turn != client_game._starting_player or not client_game._sync) and not client_game.end_position:
+                txdata = {node.CMD: f"{player}_update"}
+                if not client_game._sync:
+                    txdata[node.CMD] += "_req_sync"
+                send_game = client_game.to_json()
+                txdata.update({"game": send_game})
+                if not sent:
+                    node.tx(txdata, shm=True)
+                    sent = 1
+        except Exception as err:
+            running = False
+            client_game.end_position = True
+            print("Could not send/get games... ", err)
+            break
 
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         pygame.display.flip()
         await asyncio.sleep(0)
 
-    while game.end_position:
+    if client_game.end_position:
+        try:
+            txdata = {node.CMD: f"{player}_update"}
+            send_game = client_game.to_json()
+            txdata.update({"game": send_game})
+            node.tx(txdata, shm=True)
+        except Exception as err:
+            print("Could not send endgame position... ", err)
+
+    while client_game.end_position:
         # Clear any selected highlights
         right_clicked_squares = []
         drawn_arrows = []
@@ -682,14 +1097,15 @@ async def main():
         draw_board({
             'window': game_window,
             'theme': current_theme,
-            'board': game.board,
-            'chessboard': chessboard,
+            'board': client_game.board,
+            'chessboard': drawing_settings["chessboard"],
             'selected_piece': selected_piece,
-            'current_position': game.current_position,
-            'previous_position': game.previous_position,
+            'current_position': client_game.current_position,
+            'previous_position': client_game.previous_position,
             'right_clicked_squares': right_clicked_squares,
-            'coordinate_surface': coordinate_surface,
+            'coordinate_surface': drawing_settings["coordinate_surface"],
             'drawn_arrows': drawn_arrows,
+            'starting_player': client_game._starting_player,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -710,17 +1126,17 @@ async def main():
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        if web_game_metadata_dict['end_state'] != game.alg_moves[-1]:
-            web_game_metadata_dict['end_state'] = game.alg_moves[-1]
-            web_game_metadata_dict['forced_end'] = game.forced_end
-            web_game_metadata_dict['alg_moves'] = game.alg_moves
+        if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
+            web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
+            web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
+            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                game.end_position = False
+                client_game.end_position = False
         await asyncio.sleep(0)
 
     # Quit Pygame

@@ -754,12 +754,12 @@ def draw_board(params):
     if theme.INVERSE_PLAYER_VIEW:
         params = reverse_coordinates(params)
     board = params['board']
-    chessboard = params['chessboard']
+    chessboard = params['chessboard'].copy()
     selected_piece = params['selected_piece']
     current_position = params['current_position']
     previous_position = params['previous_position']
     right_clicked_squares = params['right_clicked_squares']
-    coordinate_surface = params['coordinate_surface']
+    coordinate_surface = params['coordinate_surface'].copy()
     drawn_arrows = params['drawn_arrows']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
