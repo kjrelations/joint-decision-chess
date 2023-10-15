@@ -163,7 +163,6 @@ class Game:
         alg_move = ''
         is_white = piece.isupper()
         
-        # Castling
         if castle:
             if (new_row, new_col) == (7, 2) or (new_row, new_col) == (0, 2):
                 return '0-0-0'
@@ -203,7 +202,6 @@ class Game:
         elif added_file != '' and added_rank != '':
             alg_move += added_file + added_rank
         
-        # Captures
         if potential_capture != ' ':
             if piece.upper() == 'P' and added_file == '':
                 alg_move += str(file_conversion[selected_piece[1]])
@@ -240,7 +238,6 @@ class Game:
                 print('ALG_MOVES: ', self.alg_moves)
 
     def promote_to_piece(self, current_row, current_col, piece):
-        # Update board
         self.board[current_row][current_col] = piece
         
         is_white = piece.isupper()
@@ -387,7 +384,6 @@ class Game:
 class GameEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Game):
-            # Define how to serialize a Game object to JSON
             return {
                 "current_turn": obj.current_turn,
                 "board": obj.board,

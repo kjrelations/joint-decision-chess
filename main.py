@@ -349,9 +349,6 @@ async def main():
     running, waiting, initializing, initialized = True, True, False, False
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
-    # The following are client-side status variables, the first is whether an action should be performed,
-    # the second on whether an action has been performed, the optional reset variable is unimplemented but indicates whether an action has been aborted
-    # based on other multiplayer actions. It will be necessary.
     client_state_actions = {
         "undo": False,
         "undo_executed": False,
@@ -385,7 +382,7 @@ async def main():
         "flip": False,
         "flip_executed": False,
     }
-    # This holds the command name for the web and the associated keys in the dictionary
+    # This holds the command name for the web localstorage object and the associated keys in the above dictionary
     command_status_names = [
         ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("undo_move_accept", "undo_accept", "undo_accept_executed", "undo_accept_reset"),
@@ -393,12 +390,9 @@ async def main():
         ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("draw_offer", "draw_offer", "draw_offer_executed", "draw_offer_reset"),
         ("draw_offer_accept", "draw_accept", "draw_accept_executed", "draw_accept_reset"),
-        ("draw_offer_deny", "draw_deny", "draw_deny_executed", "draw_deny_reset"),
-        ("resign", "resign", "resign_executed"),
-        ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
-        ("flip_board", "flip", "flip_executed")
+        ("draw_offer_deny", "draw_deny", "draw_deny_executed", "draw_deny_reset")
     ]
-    offers = command_status_names[:4]
+    offers = command_status_names.copy()
 
     request_mapping = [
         ["undo_move_accept","undo_request"], 
@@ -411,6 +405,15 @@ async def main():
         for associated in request_mapping:
             if offers[i][0] == associated[0]:
                 offers[i] += (associated[1],)
+
+    command_status_names.extend(
+        [
+            ("resign", "resign", "resign_executed"),
+            ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
+            ("flip_board", "flip", "flip_executed")
+        ]
+    )
+
     console_log_messages = []
 
     selected_piece = None
@@ -515,9 +518,11 @@ async def main():
                         client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
-                            if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
-                                if len(offer_states) == 5:
-                                    window.sessionStorage.setItem(offer_states[-1], "false")
+                            reset_status = client_state_actions[offer_states[1]]
+                            if len(offer_states) == 5:
+                                request_state = window.sessionStorage.getItem(offer_states[-1])
+                                reset_status = reset_status or (request_state == "true")
+                            if reset_status:
                                 client_state_actions[offer_states[1]] = False 
                                 client_state_actions[offer_states[3]] = True 
                                 if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -594,9 +599,11 @@ async def main():
                         client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
-                            if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
-                                if len(offer_states) == 5:
-                                    window.sessionStorage.setItem(offer_states[-1], "false")
+                            reset_status = client_state_actions[offer_states[1]]
+                            if len(offer_states) == 5:
+                                request_state = window.sessionStorage.getItem(offer_states[-1])
+                                reset_status = reset_status or (request_state == "true")
+                            if reset_status:
                                 client_state_actions[offer_states[1]] = False 
                                 client_state_actions[offer_states[3]] = True 
                                 if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -810,13 +817,11 @@ async def main():
             continue
 
         # Web browser actions/commands are received in previous loop iterations
-        # Need to make it dry
         if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
             offer_data = {node.CMD: "undo_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["undo_sent"] = True
         if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
-            # This initial section should be a bespoke function
             # The sender will sync no need to apply again
             offer_data = {node.CMD: "undo_accept"}
             node.tx(offer_data, shm=True)
@@ -833,7 +838,6 @@ async def main():
             valid_moves, valid_captures, valid_specials = [], [], []
             right_clicked_squares = []
             drawn_arrows = []
-            # The below can all be added to a DRY function
             client_state_actions["undo_received"] = False
             client_state_actions["undo_accept"] = False
             client_state_actions["undo_accept_executed"] = True
@@ -863,16 +867,6 @@ async def main():
             offer_data = {node.CMD: "draw_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["draw_offer_sent"] = True
-        if client_state_actions["draw_response_received"]:
-            client_game.forced_end = "Draw by mutual agreement"
-            print(client_game.forced_end)
-            running = False
-            client_game.end_position = True
-            client_game.add_end_game_notation(False)
-            client_state_actions["draw_offer_sent"] = False
-            client_state_actions["draw_response_received"] = False
-            client_state_actions["draw_offer"] = False
-            client_state_actions["draw_offer_executed"] = True
         if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
             offer_data = {node.CMD: "draw_accept"}
             node.tx(offer_data, shm=True)
@@ -884,6 +878,16 @@ async def main():
             client_state_actions["draw_offer_received"] = False
             client_state_actions["draw_accept"] = False
             client_state_actions["draw_accept_executed"] = True
+        if client_state_actions["draw_response_received"]:
+            client_game.forced_end = "Draw by mutual agreement"
+            print(client_game.forced_end)
+            running = False
+            client_game.end_position = True
+            client_game.add_end_game_notation(False)
+            client_state_actions["draw_offer_sent"] = False
+            client_state_actions["draw_response_received"] = False
+            client_state_actions["draw_offer"] = False
+            client_state_actions["draw_offer_executed"] = True
         if client_state_actions["draw_deny"]:
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data, shm=True)
@@ -1225,7 +1229,7 @@ async def main():
         # DEV logs to console
         # web_game_metadata_dict[game_tab_id]['console_messages'] = console_log_messages
         
-        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing with true values
+        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
@@ -1261,7 +1265,6 @@ async def main():
                 if not sent and draw_request_value:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
-                    window.sessionStorage.setItem("draw_request", "false")
                     client_state_actions["draw_accept_reset"] = True
                     client_state_actions["draw_deny_reset"] = True
                     client_state_actions["draw_offer_received"] = False
@@ -1277,7 +1280,6 @@ async def main():
                 if not sent and undo_request_value:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
-                    window.sessionStorage.setItem("undo_request", "false")
                     client_state_actions["undo_accept_reset"] = True
                     client_state_actions["undo_deny_reset"] = True
                     client_state_actions["undo_received"] = False

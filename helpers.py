@@ -255,7 +255,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
 
     is_white = piece.isupper()
 
-    if piece.lower() == 'p':  # Pawn
+    if piece.lower() == 'p':
         if not only_specials:
             p_moves, p_captures = pawn_moves(board, row, col, is_white)
             moves.extend(p_moves)
@@ -278,31 +278,31 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     and abs(col - int(end[2])) == 1:
                     special_moves.append((destination_row, int(end[2])))
 
-    elif piece.lower() == 'r':  # Rook
+    elif piece.lower() == 'r':
         if not only_specials:
             r_moves, r_captures = rook_moves(board, row, col, is_white)
             moves.extend(r_moves)
             captures.extend(r_captures)
 
-    elif piece.lower() == 'n':  # Knight (L-shaped moves)
+    elif piece.lower() == 'n':
         if not only_specials:
             n_moves, n_captures = knight_moves(board, row, col, is_white)
             moves.extend(n_moves)
             captures.extend(n_captures)
 
-    elif piece.lower() == 'b':  # Bishop
+    elif piece.lower() == 'b':
         if not only_specials:
             b_moves, b_captures = bishop_moves(board, row, col, is_white)
             moves.extend(b_moves)
             captures.extend(b_captures)
 
-    elif piece.lower() == 'q':  # Queen (Bishop-like + Rook-like moves)
+    elif piece.lower() == 'q':
         if not only_specials:
             q_moves, q_captures = queen_moves(board, row, col, is_white)
             moves.extend(q_moves)
             captures.extend(q_captures)
 
-    elif piece.lower() == 'k':  # King
+    elif piece.lower() == 'k':
         if not only_specials:
             k_moves, k_captures = king_moves(board, row, col, is_white)
             moves.extend(k_moves)
@@ -311,7 +311,6 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
         # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
         # and instead use a temp board
         if castle_attributes is not None:
-            # Castling
             queen_castle = True
             king_castle = True
             if is_white:
@@ -470,7 +469,6 @@ def get_board_coordinates(x, y, GRID_SIZE):
 
 # Helper function to generate a chessboard surface loaded as a reference image (drawn only once)
 def generate_chessboard(theme):
-    # Simplify variable names
     GRID_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT = \
     theme.GRID_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT
 
@@ -483,7 +481,6 @@ def generate_chessboard(theme):
 
 # Helper function to generate coordinate fonts and their surface depending on view
 def generate_coordinate_surface(theme):
-    # Simplify variable names
     GRID_SIZE, FONT_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT, INVERSE_PLAYER_VIEW, TEXT_OFFSET = \
     theme.GRID_SIZE, theme.FONT_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT, \
     theme.INVERSE_PLAYER_VIEW, theme.TEXT_OFFSET
@@ -528,7 +525,6 @@ def generate_coordinate_surface(theme):
 
 # Helper function to draw a temporary rectangle with only an outline on a square
 def draw_hover_outline(window, theme, row, col):
-    # Simplify variable names
     GRID_SIZE, HOVER_OUTLINE_COLOR_WHITE, HOVER_OUTLINE_COLOR_BLACK = \
     theme.GRID_SIZE, theme.HOVER_OUTLINE_COLOR_WHITE, theme.HOVER_OUTLINE_COLOR_BLACK
 
@@ -547,7 +543,6 @@ def draw_pieces(window, theme, board, pieces):
 
 # Helper function to draw transparent circles on half of the tiles
 def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials):
-    # Simplify variable names
     GRID_SIZE, WIDTH, HEIGHT, TRANSPARENT_CIRCLES, TRANSPARENT_SPECIAL_CIRCLES = \
     theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT, theme.TRANSPARENT_CIRCLES, theme.TRANSPARENT_SPECIAL_CIRCLES
 
@@ -577,11 +572,9 @@ def get_coordinates(row, col, GRID_SIZE):
 
 # Helper function to draw an arrow
 def draw_arrow(theme, arrow):
-    # Simplify variable names
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    # Arrow color depends on view
     arrow_color = ARROW_WHITE if theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
@@ -694,7 +687,6 @@ def draw_arrow(theme, arrow):
 
 # Helper function to highlight selected squares on left or right click
 def draw_highlight(window, theme, row, col, left):
-    # Simplify variable names
     GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
     theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
 
@@ -768,7 +760,6 @@ def draw_board(params):
     hovered_square = params['hovered_square']
     selected_piece_image = params['selected_piece_image']
     
-    # Draw the reference chessboard
     window.blit(chessboard, (0, 0))
 
     # Highlight left clicked selected squares
@@ -785,24 +776,21 @@ def draw_board(params):
     for square in right_clicked_squares:
         draw_highlight(window, theme, square[0], square[1], left)
 
-    # Draw reference coordinates after highlights
+    # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))
 
     # Highlight valid move squares
     transparent_circles = draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     window.blit(transparent_circles, (0, 0))
 
-    # Draw the chess pieces on top of the reference board
     draw_pieces(window, theme, board, pieces)
 
-    # Draw the hover outline if a square is hovered
     if hovered_square is not None:
         draw_hover_outline(window, theme, hovered_square[0], hovered_square[1])
 
-    # Draw arrows
     for arrow in drawn_arrows:
         transparent_arrow = draw_arrow(theme, arrow)
-        # Blit each arrow to not blend them with each other
+        # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
     # On mousedown and a piece is selected draw a transparent copy of the piece
@@ -835,7 +823,6 @@ class Pawn_Button:
 
 # Helper function for creating promotion buttons at the right locations 
 def display_promotion_options(theme,row, col):
-    # Simplify variable names
     GRID_SIZE = theme.GRID_SIZE
 
     if row == 0:

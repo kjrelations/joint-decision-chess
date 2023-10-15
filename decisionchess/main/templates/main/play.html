@@ -18,15 +18,15 @@ Play
 
     #iframe-container {
         position: relative;
-        width: 100%; /* Set the initial width as a percentage */
+        width: 100%;
     }
     #embedded-iframe {
-        width: 100%; /* Make the iframe fill the container horizontally */
+        width: 100%;
     }
 
     .scrollable-moves-list {
         overflow-y: scroll;
-        max-height: 40%; /* 10% above for the username */
+        max-height: 40%; /* 10% above for the username later */
     }
     
     .action-button {
@@ -34,6 +34,7 @@ Play
         outline: none;
         background-color: transparent;
         transition: background-color 0.3s ease;
+        color: white;
     }
 
     .action-button:focus {
@@ -108,28 +109,27 @@ Play
                 <div id="end-message" class="text-white"></div>
                 <div class="d-flex justify-content-center">
                     <!-- Need a button class here -->
-                    <button id="undoOfferButton" actions="true" class="text-white action-button confirm mr-2">Undo</button>
-                    <button id="undoOfferConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
-                    <button id="undoOfferCancelButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
-                    <button id="undoAcceptButton" followup="true" class="text-white action-button confirm check hidden mr-2">Accept Undo?</button>
-                    <button id="undoDenyButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
+                    <button id="undoOfferButton" actions="true" class="action-button confirm mr-2">Undo</button>
+                    <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="undoOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+                    <button id="undoAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Undo?</button>
+                    <button id="undoDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="resignButton" actions="true" class="text-white action-button confirm mr-2">Resign</button>
-                    <button id="resignConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
-                    <button id="resignCancelButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
+                    <button id="resignButton" actions="true" class="action-button confirm mr-2">Resign</button>
+                    <button id="resignConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="resignCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="drawOfferButton" actions="true" class="text-white action-button confirm mr-2">Draw</button>
-                    <button id="drawOfferConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
-                    <button id="drawOfferCancelButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
-                    <button id="drawAcceptButton" followup="true" class="text-white action-button confirm check hidden mr-2">Accept Draw?</button>
-                    <button id="drawDenyButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
+                    <button id="drawOfferButton" actions="true" class="action-button confirm mr-2">Draw</button>
+                    <button id="drawOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="drawOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+                    <button id="drawAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Draw?</button>
+                    <button id="drawDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="cycleThemeButton" class="text-white action-button confirm mr-2">Cycle Theme</button>
-                    <button id="flipButton" class="text-white action-button confirm">Flip</button>
+                    <button id="cycleThemeButton" class="action-button confirm mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm">Flip</button>
                 </div>
             </div>
             <script>
-                // Initial height calculation for game window and command center
                 window.addEventListener('load', function() {
                     var iframeContainer = document.getElementById('iframe-container');
                     var width = iframeContainer.offsetWidth;
@@ -137,8 +137,6 @@ Play
                     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
                 });
     
-                // Calculate and set the height to match the width for game window
-                // Set height of command center to be the same
                 window.addEventListener('resize', function() {
                     var iframeContainer = document.getElementById('iframe-container');
                     var width = iframeContainer.offsetWidth;
@@ -146,7 +144,6 @@ Play
                     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
                 });
 
-                // Function to check local storage value and update command center content
                 function updateCommandCenter() {
                     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -159,7 +156,6 @@ Play
     
                         movesListContainer.innerHTML = '';
     
-                        // Loop through the moves and add them to the list
                         for (var i = 0; i < moves.length; i += 2) {
                             var move1 = moves[i];
                             var move2 = (
@@ -180,18 +176,15 @@ Play
                             rightHalf.style.width = '50%';
                             rightHalf.textContent = move2;
     
-                            // Append the halves to the row if it's not a final score
                             if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
                                 moveRow.appendChild(leftHalf);
                                 moveRow.appendChild(rightHalf);
     
-                                // Append the row to the moves list container
                                 movesListContainer.appendChild(moveRow);
                             }
     
                         }
     
-                        // Update end message
                         if (endState === "\u00bd\u2013\u00bd") {
                             endState = '½–½'
                         }
@@ -232,7 +225,6 @@ Play
                     sessionStorage.setItem('draw_request', 'false');
                     sessionStorage.setItem('undo_request', 'false');
 
-                    // Remove all children from the movelist element
                     var movesListContainer = document.getElementById('moves-list');
                     while (movesListContainer.firstChild) {
                         movesListContainer.removeChild(movesListContainer.firstChild);
@@ -241,17 +233,14 @@ Play
                     var endMessagebox = document.getElementById('end-message');
                     var finalScorebox = document.getElementById('final-score');
 
-                    // Reset all elements to their initial state
                     movesListContainer.innerHTML = "";
                     endMessagebox.innerHTML = ""
                     finalScorebox.innerHTML = ""
                 }
 
-                // Call the functions on page load
                 window.addEventListener('load', updateCommandCenter);
                 window.addEventListener('load', resetCommandCenter);
             
-                // Set up an interval to check the local storage value periodically
                 setInterval(updateCommandCenter, 100);
 
                 var eventExecutionStatus = {};
@@ -265,71 +254,61 @@ Play
                         webGameMetadata[localStorageObjectName].execute = true
                         existingWebGameMetadata[currentGameID] = webGameMetadata
                         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-    
-                        // Perform the update action
-                        // loop and keep grabbing the game object
-                        function checkActionandEnable(Options) {
-                            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
-                            var webGameMetadata = existingWebGameMetadata[currentGameID];
-                            var actionCommandStatus = webGameMetadata[localStorageObjectName];
-                            
-                            console.log(localStorageObjectName, actionCommandStatus) // Good dev log, good boy
-                            var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
-                            var optionalReset = false
-                            if (actionCommandStatus.hasOwnProperty("reset")) {
-                                initialDefaults = initialDefaults && !actionCommandStatus.reset
-                                optionalReset = actionCommandStatus.reset
-                            }
-                            if (!actionCommandStatus.update_executed && optionalReset !== true && !initialDefaults) {
-                                eventExecutionStatus[localStorageObjectName].timeoutId = setTimeout(function () {
-                                    checkActionandEnable(Options);
-                                }, 10); // This can be too fast and execute again right after reset is set to false
-                            } else {
-                                webGameMetadata[localStorageObjectName].execute = false
-                                webGameMetadata[localStorageObjectName].update_executed = false
-                                
-                                if (optionalReset === true) {
-                                    console.log(localStorageObjectName, Options)
-                                    resetButtons(buttonId, localStorageObjectName, Options)
-                                    webGameMetadata[localStorageObjectName].reset = false
-                                }
-
-                                // eventExecutionStatus[localStorageObjectName].timeoutId = null
-                                
-                                existingWebGameMetadata[currentGameID] = webGameMetadata
-                                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-                                
-                                document.getElementById(buttonId).disabled = false;
-                                // eventExecutionStatus[localStorageObjectName].isExecuting = false
-                                // clearTimeout(eventExecutionStatus[localStorageObjectName].timeoutId);
-                            }
-                        }
 
                         if (!eventExecutionStatus[localStorageObjectName]) {
                             eventExecutionStatus[localStorageObjectName] = { isExecuting: false, timeoutId: null };
                         }
 
-                        // Start the checking loop
-                        // if (!eventExecutionStatus[localStorageObjectName].isExecuting) {
-                        //     eventExecutionStatus[localStorageObjectName].isExecuting = true;
-                        checkActionandEnable(Options);
-                        // }
+                        handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+
                     } else {
                         console.warn("Failed to execute action")
                     }
                 }
 
-                // Define an array of inputs with button IDs and localStorage object names
+                function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options) {
+                    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                    var webGameMetadata = existingWebGameMetadata[currentGameID];
+                    var actionCommandStatus = webGameMetadata[localStorageObjectName];
+                    
+                    // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
+                    var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
+                    var optionalReset = false
+                    if (actionCommandStatus.hasOwnProperty("reset")) {
+                        initialDefaults = initialDefaults && !actionCommandStatus.reset
+                        optionalReset = actionCommandStatus.reset
+                    }
+                    if (!actionCommandStatus.update_executed && optionalReset !== true && !initialDefaults) {
+                        eventExecutionStatus[localStorageObjectName].timeoutId = setTimeout(function () {
+                            // This can be too fast and execute again right before reset is set to false, 
+                            // hence the default condition check
+                            handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+                        }, 10);
+                    } else {
+                        webGameMetadata[localStorageObjectName].execute = false
+                        webGameMetadata[localStorageObjectName].update_executed = false
+                        
+                        if (optionalReset === true) {
+                            resetButtons(buttonId, localStorageObjectName, Options)
+                            webGameMetadata[localStorageObjectName].reset = false
+                        }
+                        
+                        existingWebGameMetadata[currentGameID] = webGameMetadata
+                        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                        
+                        document.getElementById(buttonId).disabled = false;
+                    }
+                }
+
                 var inputList = [
                     { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
-                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
                     { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
+                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
                     { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
                     { buttonId: "flipButton", localStorageObjectName: "flip_board"},
                 ];
 
-                function resetButtons(mainbuttonId, localStorageObjectName, Options) {
-                    // Should just turn this intro into a helper function for DRYness
+                function optionStringsHelper(mainbuttonId, Options) {
                     var approveString = "Confirm";
                     var abandonString = "Cancel";
                     var replaceString = "Button";
@@ -340,19 +319,26 @@ Play
                     }
                     const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
                     const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
-                    document.getElementById(mainbuttonId).classList.remove("hidden");
-                    document.getElementById(buttonApproveId).classList.add("hidden");
-                    document.getElementById(buttonAbandonId).classList.add("hidden");
-                    var matchingInput = inputList.find(item => item.buttonId === mainbuttonId);
-                    sessionStorage.setItem(matchingInput["action"], 'false');
-                    // remove listeners
+                    return {ApproveId: buttonApproveId, AbandonID: buttonAbandonId, AbandonStr: abandonString}
                 }
 
+                function hideOptions(buttonId, buttonApproveId, buttonAbandonId) {
+                    document.getElementById(buttonId).classList.remove("hidden");
+                    document.getElementById(buttonApproveId).classList.add("hidden");
+                    document.getElementById(buttonAbandonId).classList.add("hidden");
+                }
 
-                // Iterate through the inputList and attach event handlers
+                function resetButtons(mainbuttonId, localStorageObjectName, Options) {
+                    result = optionStringsHelper(mainbuttonId, Options)
+                    const buttonApproveId = result.ApproveId
+                    const buttonAbandonId = result.AbandonID
+                    hideOptions(mainbuttonId, buttonApproveId, buttonAbandonId)
+                    var matchingInput = inputList.find(item => item.buttonId === mainbuttonId);
+                    sessionStorage.setItem(matchingInput["action"], 'false');
+                }
+
                 inputList.forEach(function(input) {
                     const optionsValue = (input.hasOwnProperty("Options") ? input.Options: null);
-                    console.log(optionsValue, input.buttonId)
                     document.getElementById(input.buttonId).addEventListener("click", function() {
                         handleButton(input.buttonId, input.localStorageObjectName, optionsValue);
                     });
@@ -375,7 +361,6 @@ Play
                         var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
                         resetDisplay = acceptReset || denyReset;
                     }
-                    // Can we break this into functions?
                     if (currentValue === null || currentValue === requestChangeTrackers[action]) {
                         if (resetDisplay === null || resetDisplay === false) {
                             return;
@@ -385,7 +370,7 @@ Play
                     }
                     
                     if (currentValue === true || resetDisplay === true) {
-                        handleButton(ButtonID, baseStorageName, newOptions, resetDisplay)
+                        handleButton(ButtonID, baseStorageName, newOptions, resetDisplay, action)
                     }
                 }
 
@@ -397,20 +382,13 @@ Play
                     });
                 }, 100);
 
-                function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null) {
-                    // Disable the button to prevent multiple clicks
+                function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
                     document.getElementById(buttonId).disabled = true;
                     if (Options !== null) {
-                        var approveString = "Confirm";
-                        var abandonString = "Cancel";
-                        var replaceString = "Button";
-                        if (Options === "responses") {
-                            approveString = "Accept";
-                            abandonString = "Deny";
-                            replaceString = "OfferButton"
-                        }
-                        const buttonApproveId = buttonId.replace(replaceString, approveString + "Button");
-                        const buttonAbandonId = buttonId.replace(replaceString, abandonString + "Button");
+                        result = optionStringsHelper(buttonId, Options)
+                        const buttonApproveId = result.ApproveId
+                        const buttonAbandonId = result.AbandonID
+                        const abandonString = result.AbandonStr
                         const acceptObjectName = localStorageObjectName + "_accept";
                         const denyObjectName = localStorageObjectName + "_deny";
                         if (resetDisplay !== true) {
@@ -424,9 +402,9 @@ Play
                                 }
                             });
                             var actionbuttons = document.querySelectorAll('[actions="true"]');
-                            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
-                            var currentGameID = sessionStorage.getItem('current_game_id');
-                            var webGameMetadata = existingWebGameMetadata[currentGameID];
+                            // var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                            // var currentGameID = sessionStorage.getItem('current_game_id');
+                            // var webGameMetadata = existingWebGameMetadata[currentGameID];
                             
                             // this list could be useful though but it's just similar to that is executing one
                             var eventList = [
@@ -435,14 +413,14 @@ Play
                                 {mainButtonName: "undoButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
                             ]
 
-                            function eventIsExecuting(obj, eventNames) {
-                                for (var event in eventNames) {
-                                    if (obj.hasOwnProperty(event) && obj[event]["execute"] === true) {
-                                        return true;
-                                    }
-                                }
-                                return false;
-                            }
+                            // function eventIsExecuting(obj, eventNames) {
+                            //     for (var event in eventNames) {
+                            //         if (obj.hasOwnProperty(event) && obj[event]["execute"] === true) {
+                            //             return true;
+                            //         }
+                            //     }
+                            //     return false;
+                            // }
 
                             actionbuttons.forEach(function(element) {
                                 if (element.id !== buttonId) {
@@ -454,28 +432,24 @@ Play
                                     // }
                                 }
                             });
-    
                             document.getElementById(buttonApproveId).addEventListener("click", function() { 
-                                document.getElementById(buttonId).classList.remove("hidden");
-                                document.getElementById(buttonApproveId).classList.add("hidden");
-                                document.getElementById(buttonAbandonId).classList.add("hidden");
+                                hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                                
                                 var responseName = (Options === "followups" ? localStorageObjectName : acceptObjectName)
+                                
                                 handleWebtoGameAction(buttonId, responseName, Options);
-                            });
+                            }, { once: true });
                             document.getElementById(buttonAbandonId).addEventListener("click", function() {
-                                document.getElementById(buttonId).classList.remove("hidden");
-                                document.getElementById(buttonApproveId).classList.add("hidden");
-                                document.getElementById(buttonAbandonId).classList.add("hidden");
+                                hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                                
                                 if (abandonString !== "Cancel") {
                                     handleWebtoGameAction(buttonId, denyObjectName, Options);
                                 }
+                                
                                 document.getElementById(buttonId).disabled = false;
-                            });
+                            }, { once: true });
                         } else {
-                            document.getElementById(buttonId).classList.remove("hidden");
-                            document.getElementById(buttonApproveId).classList.add("hidden");
-                            document.getElementById(buttonAbandonId).classList.add("hidden");
-                            // remove listeners or just call reset button function that does the above
+                            hideOptions(buttonId, buttonApproveId, buttonAbandonId)
 
                             var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                             var currentGameID = sessionStorage.getItem('current_game_id');
@@ -484,6 +458,8 @@ Play
                             webGameMetadata[acceptObjectName].reset = false;
                             webGameMetadata[denyObjectName].reset = false;
                             existingWebGameMetadata[currentGameID] = webGameMetadata;
+                            
+                            sessionStorage.setItem(currentAction, 'false');
                             localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                             document.getElementById(buttonId).disabled = false;
                         }
