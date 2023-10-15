@@ -228,12 +228,12 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                         client_game.promote_to_piece(row, col, button.piece)
                         promotion_required = False  # Exit promotion state condition
                         promoted = True
-        if client_state_actions["undo"]:
-            # Update current and previous position highlighting
-            client_game.undo_move()
-            promotion_required = False
-            client_state_actions["undo"] = False
-            client_state_actions["undo_executed"] = True
+        # if client_state_actions["undo"]:
+        #     # Update current and previous position highlighting
+        #     client_game.undo_move() # TODO Should undo three times in promotion only
+        #     promotion_required = False
+        #     client_state_actions["undo"] = False
+        #     client_state_actions["undo_executed"] = True
         
         if client_state_actions["resign"]:
             client_game.undo_move()
@@ -355,7 +355,15 @@ async def main():
     client_state_actions = {
         "undo": False,
         "undo_executed": False,
+        "undo_sent": False,
+        "undo_received": False,
         "undo_reset": False,
+        "undo_accept": False,
+        "undo_accept_executed": False,
+        "undo_accept_reset": False,
+        "undo_deny": False,
+        "undo_deny_executed": False,
+        "undo_deny_reset": False,
         "cycle_theme": False,
         "cycle_theme_executed": False,
         "resign": False,
@@ -377,7 +385,10 @@ async def main():
     }
     # This holds the command name for the web and the associated keys in the dictionary
     command_status_names = [
-        ("undo_move", "undo", "undo_executed"),
+        ("undo_move", "undo", "undo_executed", "undo_reset"),
+        ("undo_move_accept", "undo_accept", "undo_accept_executed", "undo_accept_reset"),
+        ("undo_move_deny", "undo_deny", "undo_deny_executed", "undo_deny_reset"),
+        ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("draw_offer", "draw_offer", "draw_offer_executed", "draw_offer_reset"),
         ("draw_offer_accept", "draw_accept", "draw_accept_executed", "draw_accept_reset"),
         ("draw_offer_deny", "draw_deny", "draw_deny_executed", "draw_deny_reset"),
@@ -387,7 +398,12 @@ async def main():
     ]
     offers = command_status_names[:4]
 
-    request_mapping = [["draw_offer_accept","draw_request"], ["draw_offer_deny","draw_request"]]
+    request_mapping = [
+        ["undo_move_accept","undo_request"], 
+        ["undo_move_deny","undo_request"],
+        ["draw_offer_accept","draw_request"], 
+        ["draw_offer_deny","draw_request"]
+    ]
 
     for i in range(len(offers)):
         for associated in request_mapping:
@@ -472,22 +488,29 @@ async def main():
                                 print(f"Syncing {player.capitalize()}...")
                                 client_game._sync = True
                                 client_game._move_undone = False
-                                sent = 0
+                                your_turn = client_game.current_turn == client_game._starting_player
+                                sent = 0 if your_turn else 1
                             # elif both games are unsynced, synchronize and send something to halt infinite sync signals?
                             elif "req_sync" in cmd:
                                 txdata = {node.CMD: f"_sync"}
                                 send_game = client_game.to_json()
                                 print(client_game._sync)
-                                if client_game._sync:
-                                    txdata.update({"game": send_game})
-                                    node.tx(txdata, shm=True)
-                                    sent = 0
+                                txdata.update({"game": send_game})
+                                node.tx(txdata, shm=True)
+                                your_turn = client_game.current_turn == client_game._starting_player
+                                sent = 0 if your_turn else 1
                     elif cmd == "draw_offer":
                         if not client_state_actions["draw_offer_sent"]:
                             window.sessionStorage.setItem("draw_request", "true")
                             client_state_actions["draw_offer_received"] = True
                     elif cmd == "draw_accept":
                         client_state_actions["draw_accept"] = True
+                    elif cmd == "undo_offer":
+                        if not client_state_actions["undo_sent"]:
+                            window.sessionStorage.setItem("undo_request", "true")
+                            client_state_actions["undo_received"] = True
+                    elif cmd == "undo_accept":
+                        client_state_actions["undo_accept"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
                             if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
@@ -545,21 +568,28 @@ async def main():
                                 print(f"Syncing {player.capitalize()}...")
                                 client_game._sync = True
                                 client_game._move_undone = False
-                                sent = 1
+                                your_turn = client_game.current_turn == client_game._starting_player
+                                sent = 0 if your_turn else 1
                             # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
                             elif "req_sync" in cmd:
                                 txdata = {node.CMD: f"_sync"}
                                 send_game = client_game.to_json()
-                                if client_game._sync:
-                                    txdata.update({"game": send_game})
-                                    node.tx(txdata, shm=True)
-                                    sent = 0
+                                txdata.update({"game": send_game})
+                                node.tx(txdata, shm=True)
+                                your_turn = client_game.current_turn == client_game._starting_player
+                                sent = 0 if your_turn else 1
                     elif cmd == "draw_offer":
                         if not client_state_actions["draw_offer_sent"]:
                             window.sessionStorage.setItem("draw_request", "true")
                             client_state_actions["draw_offer_received"] = True
                     elif cmd == "draw_accept":
                         client_state_actions["draw_accept"] = True
+                    elif cmd == "undo_offer":
+                        if not client_state_actions["undo_sent"]:
+                            window.sessionStorage.setItem("undo_request", "true")
+                            client_state_actions["undo_received"] = True
+                    elif cmd == "undo_accept":
+                        client_state_actions["undo_accept"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
                             if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
@@ -663,7 +693,7 @@ async def main():
             game_tab_id = str(node.gid) + "-" + str(node.pid)
             window.sessionStorage.setItem("current_game_id", game_tab_id)
             window.sessionStorage.setItem("draw_request", "false")
-            # window.sessionStorage.setItem("undo_request", "False")
+            window.sessionStorage.setItem("undo_request", "false")
             web_game_metadata = window.localStorage.getItem("web_game_metadata")
             if web_game_metadata is not None:
                 web_game_metadata_dict = json.loads(web_game_metadata)
@@ -678,7 +708,18 @@ async def main():
                     "alg_moves": [],
                     "undo_move": {
                         "execute": False,
-                        "update_executed": False
+                        "update_executed": False,
+                        "reset": False
+                    },
+                    "undo_move_accept": {
+                        "execute": False,
+                        "update_executed": False,
+                        "reset": False
+                    },
+                    "undo_move_deny": {
+                        "execute": False,
+                        "update_executed": False,
+                        "reset": False
                     },
                     "resign": {
                         "execute": False,
@@ -767,10 +808,25 @@ async def main():
             continue
 
         # Web browser actions/commands are received in previous loop iterations
-        if client_state_actions["undo"]:
-            if client_game.current_turn == client_game._starting_player:
-                # Update current and previous position highlighting
-                client_game.undo_move()
+        # Need to make it dry
+        if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
+            offer_data = {node.CMD: "undo_offer"}
+            node.tx(offer_data, shm=True)
+            client_state_actions["undo_sent"] = True
+        if client_state_actions["undo_accept"]:
+            if client_state_actions["undo_received"]:
+                offer_data = {node.CMD: "undo_accept"}
+                node.tx(offer_data, shm=True)
+            if client_state_actions["undo_sent"] or client_state_actions["undo_received"]:
+                # This initial section should be a bespoke function
+                # The sender will sync no need to apply again
+                your_turn = client_game.current_turn == client_game._starting_player
+                if client_state_actions["undo_received"]:
+                    client_game.undo_move()
+                    if not your_turn:
+                        client_game.undo_move()
+                    sent = 0 if sent else 0
+                    window.sessionStorage.setItem("undo_request", "false")
                 hovered_square = None
                 selected_piece_image = None
                 selected_piece = None
@@ -778,12 +834,24 @@ async def main():
                 valid_moves, valid_captures, valid_specials = [], [], []
                 right_clicked_squares = []
                 drawn_arrows = []
-                client_state_actions["undo"] = False
-                client_state_actions["undo_executed"] = True
-            else:
-                client_state_actions["undo"] = False
-                client_state_actions["undo_executed"] = True
-        
+                if client_state_actions["undo_received"]:
+                    action, executed = "undo_accept", "undo_accept_executed"
+                    client_state_actions["undo_received"] = False
+                elif client_state_actions["undo_sent"]:
+                    action, executed = "undo", "undo_executed"
+                    client_state_actions["undo_sent"] = False
+                    client_state_actions["undo_accept"] = False
+                # This keeps being set on loop potentially also sent is never set to false
+                client_state_actions[action] = False
+                client_state_actions[executed] = True
+        if client_state_actions["undo_deny"]:
+            reset_data = {node.CMD: "reset"}
+            node.tx(reset_data, shm=True)
+            client_state_actions["undo_deny"] = False
+            client_state_actions["undo_deny_executed"] = True
+            client_state_actions["undo_received"] = False
+            window.sessionStorage.setItem("undo_request", "false")
+
         if client_state_actions["resign"]:
             client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
             print(client_game.forced_end)
@@ -798,7 +866,7 @@ async def main():
             node.tx(offer_data, shm=True)
             client_state_actions["draw_offer_sent"] = True
         if client_state_actions["draw_accept"]:
-            if not client_state_actions["draw_offer_sent"]:
+            if client_state_actions["draw_offer_received"]:
                 offer_data = {node.CMD: "draw_accept"}
                 node.tx(offer_data, shm=True)
             if client_state_actions["draw_offer_sent"] or client_state_actions["draw_offer_received"]:
@@ -1191,7 +1259,6 @@ async def main():
                 txdata.update({"game": send_game})
                 draw_request_value = window.sessionStorage.getItem("draw_request")
                 draw_request_value = json.loads(draw_request_value) # TODO Handle invalid case due to altering wherever, not just here also just have a loop here over offers or something
-                # If draw offer followup and you move reset? Nahh
                 if not sent and draw_request_value:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
@@ -1205,6 +1272,22 @@ async def main():
                     client_state_actions["draw_offer"] = False
                     client_state_actions["draw_offer_reset"] = True
                     client_state_actions["draw_offer_sent"] = False
+                # TODO To make DRY with above
+                undo_request_value = window.sessionStorage.getItem("undo_request")
+                undo_request_value = json.loads(undo_request_value)
+                if not sent and undo_request_value:
+                    reset_data = {node.CMD: "reset"}
+                    node.tx(reset_data, shm=True)
+                    window.sessionStorage.setItem("undo_request", "false")
+                    client_state_actions["undo_accept_reset"] = True
+                    client_state_actions["undo_deny_reset"] = True
+                    client_state_actions["undo_received"] = False
+                if not sent and client_state_actions["undo_sent"]:
+                    reset_data = {node.CMD: "reset"}
+                    node.tx(reset_data, shm=True)
+                    client_state_actions["undo"] = False
+                    client_state_actions["undo_reset"] = True
+                    client_state_actions["undo_sent"] = False
                 if not sent:
                     node.tx(txdata, shm=True)
                     sent = 1
@@ -1223,6 +1306,7 @@ async def main():
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data, shm=True)
             window.sessionStorage.setItem("draw_request", "false")
+            window.sessionStorage.setItem("undo_request", "false")
             txdata = {node.CMD: f"{player}_update"}
             send_game = client_game.to_json()
             txdata.update({"game": send_game})

@@ -108,9 +108,11 @@ Play
                 <div id="end-message" class="text-white"></div>
                 <div class="d-flex justify-content-center">
                     <!-- Need a button class here -->
-                    <button id="undoButton" actions="true" class="text-white action-button confirm mr-2">Undo</button>
-                    <button id="undoConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
-                    <button id="undoCancelButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
+                    <button id="undoOfferButton" actions="true" class="text-white action-button confirm mr-2">Undo</button>
+                    <button id="undoOfferConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="undoOfferCancelButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
+                    <button id="undoAcceptButton" followup="true" class="text-white action-button confirm check hidden mr-2">Accept Undo?</button>
+                    <button id="undoDenyButton" followup="true" class="text-white action-button cancel check hidden mr-2">✘</button>
 
                     <button id="resignButton" actions="true" class="text-white action-button confirm mr-2">Resign</button>
                     <button id="resignConfirmButton" followup="true" class="text-white action-button confirm check hidden mr-2">Confirm ✓</button>
@@ -228,6 +230,7 @@ Play
                 function resetCommandCenter() {
                     sessionStorage.setItem('current_game_id', null);
                     sessionStorage.setItem('draw_request', 'false');
+                    sessionStorage.setItem('undo_request', 'false');
 
                     // Remove all children from the movelist element
                     var movesListContainer = document.getElementById('moves-list');
@@ -270,9 +273,9 @@ Play
                             var webGameMetadata = existingWebGameMetadata[currentGameID];
                             var actionCommandStatus = webGameMetadata[localStorageObjectName];
                             
-                            console.log(localStorageObjectName, actionCommandStatus)
+                            console.log(localStorageObjectName, actionCommandStatus) // Good dev log, good boy
                             var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
-                            var optionalResetValue = false
+                            var optionalReset = false
                             if (actionCommandStatus.hasOwnProperty("reset")) {
                                 initialDefaults = initialDefaults && !actionCommandStatus.reset
                                 optionalReset = actionCommandStatus.reset
@@ -316,7 +319,16 @@ Play
                     }
                 }
 
-                function resetButtons(buttonId, localStorageObjectName, Options) {
+                // Define an array of inputs with button IDs and localStorage object names
+                var inputList = [
+                    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
+                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
+                    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
+                    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
+                    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+                ];
+
+                function resetButtons(mainbuttonId, localStorageObjectName, Options) {
                     // Should just turn this intro into a helper function for DRYness
                     var approveString = "Confirm";
                     var abandonString = "Cancel";
@@ -326,22 +338,16 @@ Play
                         abandonString = "Deny";
                         replaceString = "OfferButton"
                     }
-                    const buttonApproveId = buttonId.replace(replaceString, approveString + "Button");
-                    const buttonAbandonId = buttonId.replace(replaceString, abandonString + "Button");
-                    document.getElementById(buttonId).classList.remove("hidden");
+                    const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
+                    const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
+                    document.getElementById(mainbuttonId).classList.remove("hidden");
                     document.getElementById(buttonApproveId).classList.add("hidden");
                     document.getElementById(buttonAbandonId).classList.add("hidden");
+                    var matchingInput = inputList.find(item => item.buttonId === mainbuttonId);
+                    sessionStorage.setItem(matchingInput["action"], 'false');
                     // remove listeners
                 }
 
-                // Define an array of inputs with button IDs and localStorage object names
-                var inputList = [
-                    { buttonId: "undoButton", localStorageObjectName: "undo_move", Options: "followups"},//, action: "undo_request" },
-                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
-                    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
-                    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-                    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
-                ];
 
                 // Iterate through the inputList and attach event handlers
                 inputList.forEach(function(input) {
@@ -426,7 +432,7 @@ Play
                             var eventList = [
                                 {mainButtonName: "drawOfferButton", eventNames: ["draw_offer", "draw_offer_accept", "draw_offer_deny"]},
                                 {mainButtonName: "resignButton", eventNames: ["resign"]},
-                                {mainButtonName: "undoButton", eventNames: ["undo_move", ]},
+                                {mainButtonName: "undoButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
                             ]
 
                             function eventIsExecuting(obj, eventNames) {
