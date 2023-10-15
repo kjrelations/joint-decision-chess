@@ -32,7 +32,6 @@ for color in ['w', 'b']:
         piece_key, image_name_key = name_keys(color, piece_lower)
         pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key, current_theme.GRID_SIZE)
 
-# Main loop piece selection logic that updates state
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
@@ -84,7 +83,6 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-# Main loop piece move selection logic that updates state
 def handle_piece_move(game, selected_piece, row, col, valid_captures):
     # Initialize Variables
     promotion_square = None
@@ -137,7 +135,6 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
 
     return promotion_square, promotion_required
 
-# Main loop piece special move selection logic that updates state
 def handle_piece_special_move(game, selected_piece, row, col):
     # Need to be considering the selected piece for this section not an old piece
     piece = game.board[selected_piece[0]][selected_piece[1]]
@@ -171,7 +168,6 @@ def handle_piece_special_move(game, selected_piece, row, col):
 
     return piece, is_white
 
-# Command-Action synchronization function
 def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name, game_tab_id):
     command_name, client_action_name, client_executed_name, *remaining = status_names
     if len(status_names) == 3:
@@ -183,7 +179,6 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
     
     status_metadata_dict = web_metadata_dict[game_tab_id]
     if status_metadata_dict.get(command_name) is not None:
-        # Command to execute is received and no update is sent
         if status_metadata_dict[command_name]['execute'] and not status_metadata_dict[command_name]['update_executed'] and not client_reset_status:
             if client_state_actions[client_action_name] != True:
                 client_state_actions[client_action_name] = True
@@ -196,7 +191,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
                 client_state_actions[client_action_name] = False
 
         # Handling race conditions assuming speed differences and sychronizing states with this.
-        # That is only once we stop receiving the command, after an execution, do we allow it to be executed again
+        # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
         if client_executed_status and not status_metadata_dict[command_name]['execute']:
             client_state_actions[client_executed_name] = False    
 
@@ -281,12 +276,10 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         #     client_state_actions["draw_offer_received"] = False
         #     window.sessionStorage.setItem("draw_request", "false")
 
-        # Theme cycle
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
             current_theme.apply_theme(themes[drawing_settings["theme_index"]])
-            # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["cycle_theme"] = False
@@ -294,26 +287,21 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
-            # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
 
-        # Clear the screen
         game_window.fill((0, 0, 0))
         
         # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
         draw_board(draw_board_params.copy())
         
-        # Darken the screen
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
 
-        # Blit the overlay surface onto the main window
         game_window.blit(overlay, (0, 0))
 
-        # Draw buttons and update the display
         for button in promotion_buttons:
             img = pieces[button.piece]
             img_x, img_y = button.rect.x, button.rect.y
@@ -782,10 +770,8 @@ async def main():
                     running = False
                     waiting = False
 
-            # Clear the screen
             game_window.fill((0, 0, 0))
 
-            # Draw the board
             draw_board({
                 'window': game_window,
                 'theme': current_theme,
@@ -806,11 +792,9 @@ async def main():
                 'selected_piece_image': selected_piece_image
             })
 
-            # Darken the screen
             overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 128))
 
-            # Blit the overlay surface onto the main window
             game_window.blit(overlay, (0, 0))
             pygame.display.flip()
             await asyncio.sleep(0)
@@ -821,8 +805,8 @@ async def main():
             offer_data = {node.CMD: "undo_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["undo_sent"] = True
+        # The sender will sync, only need to apply for receiver
         if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
-            # The sender will sync no need to apply again
             offer_data = {node.CMD: "undo_accept"}
             node.tx(offer_data, shm=True)
             your_turn = client_game.current_turn == client_game._starting_player
@@ -896,7 +880,6 @@ async def main():
             client_state_actions["draw_offer_received"] = False
             window.sessionStorage.setItem("draw_request", "false")
 
-        # Theme cycle
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
@@ -1097,10 +1080,8 @@ async def main():
                             else:
                                 drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
 
-        # Clear the screen
         game_window.fill((0, 0, 0))
 
-        # Draw the board
         draw_board({
             'window': game_window,
             'theme': current_theme,
@@ -1121,7 +1102,6 @@ async def main():
             'selected_piece_image': selected_piece_image
         })
 
-        # Pawn Promotion
         if promotion_required:
             # Lock the game state (disable other input)
             
@@ -1240,7 +1220,7 @@ async def main():
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
         
-        # Maybe I just set this initially in a better/DRY way, this looks clunky
+        # Maybe I just set this in a better/DRY way?
         # The following just sets web information so that we know the playing player side, it might be useless? Can't remember why I implemented this
         if client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'white':
             web_game_metadata_dict[game_tab_id]['player_color'] = 'white'
@@ -1298,7 +1278,6 @@ async def main():
             print("Could not send/get games... ", err)
             break
 
-        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         pygame.display.flip()
         await asyncio.sleep(0)
 
@@ -1320,10 +1299,8 @@ async def main():
         right_clicked_squares = []
         drawn_arrows = []
         
-        # Clear the screen
         game_window.fill((0, 0, 0))
 
-        # Draw the board
         draw_board({
             'window': game_window,
             'theme': current_theme,
@@ -1344,11 +1321,9 @@ async def main():
             'selected_piece_image': selected_piece_image
         })
 
-        # Darken the screen
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
 
-        # Blit the overlay surface onto the main window
         game_window.blit(overlay, (0, 0))
         pygame.display.flip()
 
@@ -1369,7 +1344,6 @@ async def main():
                 client_game.end_position = False
         await asyncio.sleep(0)
 
-    # Quit Pygame
     pygame.quit()
     sys.exit()
 
