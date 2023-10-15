@@ -246,40 +246,40 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["resign"] = False
             client_state_actions["resign_executed"] = True
 
-        if client_state_actions["draw_offer"] and not client_state_actions["draw_offer_sent"]:
-            offer_data = {node.CMD: "draw_offer"}
-            node.tx(offer_data, shm=True)
-            client_state_actions["draw_offer_sent"] = True
-        if client_state_actions["draw_accept"]:
-            if not client_state_actions["draw_offer_sent"]:
-                offer_data = {node.CMD: "draw_accept"}
-                node.tx(offer_data, shm=True)
-            if client_state_actions["draw_offer_sent"] or client_state_actions["draw_offer_received"]:
-                client_game.undo_move()
-                promotion_required = False
-                end_state = True
-                client_game.forced_end = "Draw by mutual agreement"
-                print(client_game.forced_end)
-                running = False
-                client_game.end_position = True
-                client_game.add_end_game_notation(False)
-                if client_state_actions["draw_offer_received"]:
-                    action, executed = "draw_accept", "draw_accept_executed"
-                    client_state_actions["draw_offer_received"] = False
-                elif client_state_actions["draw_offer_sent"]:
-                    action, executed = "draw_offer", "draw_offer_executed"
-                    client_state_actions["draw_offer_sent"] = False
-                    client_state_actions["draw_accept"] = False
-                # This keeps being set on loop potentially also sent is never set to false
-                client_state_actions[action] = False
-                client_state_actions[executed] = True
-        if client_state_actions["draw_deny"]:
-            reset_data = {node.CMD: "reset"}
-            node.tx(reset_data, shm=True)
-            client_state_actions["draw_deny"] = False
-            client_state_actions["draw_deny_executed"] = True
-            client_state_actions["draw_offer_received"] = False
-            window.sessionStorage.setItem("draw_request", "false")
+        # if client_state_actions["draw_offer"] and not client_state_actions["draw_offer_sent"]:
+        #     offer_data = {node.CMD: "draw_offer"}
+        #     node.tx(offer_data, shm=True)
+        #     client_state_actions["draw_offer_sent"] = True
+        # if client_state_actions["draw_accept"]:
+        #     if not client_state_actions["draw_offer_sent"]:
+        #         offer_data = {node.CMD: "draw_accept"}
+        #         node.tx(offer_data, shm=True)
+        #     if client_state_actions["draw_offer_sent"] or client_state_actions["draw_offer_received"]:
+        #         client_game.undo_move()
+        #         promotion_required = False
+        #         end_state = True
+        #         client_game.forced_end = "Draw by mutual agreement"
+        #         print(client_game.forced_end)
+        #         running = False
+        #         client_game.end_position = True
+        #         client_game.add_end_game_notation(False)
+        #         if client_state_actions["draw_offer_received"]:
+        #             action, executed = "draw_accept", "draw_accept_executed"
+        #             client_state_actions["draw_offer_received"] = False
+        #         elif client_state_actions["draw_offer_sent"]:
+        #             action, executed = "draw_offer", "draw_offer_executed"
+        #             client_state_actions["draw_offer_sent"] = False
+        #             client_state_actions["draw_accept"] = False
+        #         # This keeps being set on loop potentially also sent is never set to false
+        #         client_state_actions[action] = False
+        #         client_state_actions[executed] = True
+        # if client_state_actions["draw_deny"]:
+        #     reset_data = {node.CMD: "reset"}
+        #     node.tx(reset_data, shm=True)
+        #     client_state_actions["draw_deny"] = False
+        #     client_state_actions["draw_deny_executed"] = True
+        #     client_state_actions["draw_offer_received"] = False
+        #     window.sessionStorage.setItem("draw_request", "false")
 
         # Theme cycle
         if client_state_actions["cycle_theme"]:
@@ -357,6 +357,7 @@ async def main():
         "undo_executed": False,
         "undo_sent": False,
         "undo_received": False,
+        "undo_response_received": False,
         "undo_reset": False,
         "undo_accept": False,
         "undo_accept_executed": False,
@@ -373,6 +374,7 @@ async def main():
         "draw_offer_executed": False,
         "draw_offer_sent": False,
         "draw_offer_received": False,
+        "draw_response_received": False,
         "draw_offer_reset": False,
         "draw_accept": False,
         "draw_accept_executed": False,
@@ -504,13 +506,13 @@ async def main():
                             window.sessionStorage.setItem("draw_request", "true")
                             client_state_actions["draw_offer_received"] = True
                     elif cmd == "draw_accept":
-                        client_state_actions["draw_accept"] = True
+                        client_state_actions["draw_response_received"] = True
                     elif cmd == "undo_offer":
                         if not client_state_actions["undo_sent"]:
                             window.sessionStorage.setItem("undo_request", "true")
                             client_state_actions["undo_received"] = True
                     elif cmd == "undo_accept":
-                        client_state_actions["undo_accept"] = True
+                        client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
                             if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
@@ -583,13 +585,13 @@ async def main():
                             window.sessionStorage.setItem("draw_request", "true")
                             client_state_actions["draw_offer_received"] = True
                     elif cmd == "draw_accept":
-                        client_state_actions["draw_accept"] = True
+                        client_state_actions["draw_response_received"] = True
                     elif cmd == "undo_offer":
                         if not client_state_actions["undo_sent"]:
                             window.sessionStorage.setItem("undo_request", "true")
                             client_state_actions["undo_received"] = True
                     elif cmd == "undo_accept":
-                        client_state_actions["undo_accept"] = True
+                        client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
                             if client_state_actions[offer_states[1]] == True or len(offer_states) == 5:
@@ -813,37 +815,33 @@ async def main():
             offer_data = {node.CMD: "undo_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["undo_sent"] = True
-        if client_state_actions["undo_accept"]:
-            if client_state_actions["undo_received"]:
-                offer_data = {node.CMD: "undo_accept"}
-                node.tx(offer_data, shm=True)
-            if client_state_actions["undo_sent"] or client_state_actions["undo_received"]:
-                # This initial section should be a bespoke function
-                # The sender will sync no need to apply again
-                your_turn = client_game.current_turn == client_game._starting_player
-                if client_state_actions["undo_received"]:
-                    client_game.undo_move()
-                    if not your_turn:
-                        client_game.undo_move()
-                    sent = 0 if sent else 0
-                    window.sessionStorage.setItem("undo_request", "false")
-                hovered_square = None
-                selected_piece_image = None
-                selected_piece = None
-                first_intent = False
-                valid_moves, valid_captures, valid_specials = [], [], []
-                right_clicked_squares = []
-                drawn_arrows = []
-                if client_state_actions["undo_received"]:
-                    action, executed = "undo_accept", "undo_accept_executed"
-                    client_state_actions["undo_received"] = False
-                elif client_state_actions["undo_sent"]:
-                    action, executed = "undo", "undo_executed"
-                    client_state_actions["undo_sent"] = False
-                    client_state_actions["undo_accept"] = False
-                # This keeps being set on loop potentially also sent is never set to false
-                client_state_actions[action] = False
-                client_state_actions[executed] = True
+        if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
+            # This initial section should be a bespoke function
+            # The sender will sync no need to apply again
+            offer_data = {node.CMD: "undo_accept"}
+            node.tx(offer_data, shm=True)
+            your_turn = client_game.current_turn == client_game._starting_player
+            client_game.undo_move()
+            if not your_turn:
+                client_game.undo_move()
+            sent = 0
+            window.sessionStorage.setItem("undo_request", "false")
+            hovered_square = None
+            selected_piece_image = None
+            selected_piece = None
+            first_intent = False
+            valid_moves, valid_captures, valid_specials = [], [], []
+            right_clicked_squares = []
+            drawn_arrows = []
+            # The below can all be added to a DRY function
+            client_state_actions["undo_received"] = False
+            client_state_actions["undo_accept"] = False
+            client_state_actions["undo_accept_executed"] = True
+        if client_state_actions["undo_response_received"]:
+            client_state_actions["undo_sent"] = False
+            client_state_actions["undo_response_received"] = False
+            client_state_actions["undo"] = False
+            client_state_actions["undo_executed"] = True
         if client_state_actions["undo_deny"]:
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data, shm=True)
@@ -865,26 +863,27 @@ async def main():
             offer_data = {node.CMD: "draw_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["draw_offer_sent"] = True
-        if client_state_actions["draw_accept"]:
-            if client_state_actions["draw_offer_received"]:
-                offer_data = {node.CMD: "draw_accept"}
-                node.tx(offer_data, shm=True)
-            if client_state_actions["draw_offer_sent"] or client_state_actions["draw_offer_received"]:
-                client_game.forced_end = "Draw by mutual agreement"
-                print(client_game.forced_end)
-                running = False
-                client_game.end_position = True
-                client_game.add_end_game_notation(False)
-                if client_state_actions["draw_offer_received"]:
-                    action, executed = "draw_accept", "draw_accept_executed"
-                    client_state_actions["draw_offer_received"] = False
-                elif client_state_actions["draw_offer_sent"]:
-                    action, executed = "draw_offer", "draw_offer_executed"
-                    client_state_actions["draw_offer_sent"] = False
-                    client_state_actions["draw_accept"] = False
-                # This keeps being set on loop potentially also sent is never set to false
-                client_state_actions[action] = False
-                client_state_actions[executed] = True
+        if client_state_actions["draw_response_received"]:
+            client_game.forced_end = "Draw by mutual agreement"
+            print(client_game.forced_end)
+            running = False
+            client_game.end_position = True
+            client_game.add_end_game_notation(False)
+            client_state_actions["draw_offer_sent"] = False
+            client_state_actions["draw_response_received"] = False
+            client_state_actions["draw_offer"] = False
+            client_state_actions["draw_offer_executed"] = True
+        if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
+            offer_data = {node.CMD: "draw_accept"}
+            node.tx(offer_data, shm=True)
+            client_game.forced_end = "Draw by mutual agreement"
+            print(client_game.forced_end)
+            running = False
+            client_game.end_position = True
+            client_game.add_end_game_notation(False)
+            client_state_actions["draw_offer_received"] = False
+            client_state_actions["draw_accept"] = False
+            client_state_actions["draw_accept_executed"] = True
         if client_state_actions["draw_deny"]:
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data, shm=True)
