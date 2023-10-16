@@ -375,7 +375,6 @@ async def main():
         ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("undo_move_accept", "undo_accept", "undo_accept_executed", "undo_accept_reset"),
         ("undo_move_deny", "undo_deny", "undo_deny_executed", "undo_deny_reset"),
-        ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("draw_offer", "draw_offer", "draw_offer_executed", "draw_offer_reset"),
         ("draw_offer_accept", "draw_accept", "draw_accept_executed", "draw_accept_reset"),
         ("draw_offer_deny", "draw_deny", "draw_deny_executed", "draw_deny_reset")
@@ -506,11 +505,12 @@ async def main():
                         client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
-                            reset_status = client_state_actions[offer_states[1]]
+                            reset_required = client_state_actions[offer_states[1]]
                             if len(offer_states) == 5:
                                 request_state = window.sessionStorage.getItem(offer_states[-1])
-                                reset_status = reset_status or (request_state == "true")
-                            if reset_status:
+                                reset_required = reset_required or (request_state == "true")
+                            if reset_required:
+                                window.sessionStorage.setItem("total_reset", "true")
                                 client_state_actions[offer_states[1]] = False 
                                 client_state_actions[offer_states[3]] = True 
                                 if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -518,6 +518,15 @@ async def main():
                                     received_status = offer_states[1] + "_received"
                                     client_state_actions[sent_status] = False
                                     client_state_actions[received_status] = False
+                    elif "reset" in cmd:
+                        for offer_states in offers:
+                            reset_required = client_state_actions[offer_states[1]]
+                            if offer_states[-1] != cmd or not reset_required:
+                                continue
+                            client_state_actions[offer_states[1]] = False 
+                            client_state_actions[offer_states[3]] = True
+                            sent_status = offer_states[1] + "_sent"
+                            client_state_actions[sent_status] = False
 
                 elif ev == node.GAME:
                     print("GAME:", node.proto, node.data[node.CMD])
@@ -587,11 +596,12 @@ async def main():
                         client_state_actions["undo_response_received"] = True
                     elif cmd == "reset":
                         for offer_states in offers:
-                            reset_status = client_state_actions[offer_states[1]]
+                            reset_required = client_state_actions[offer_states[1]]
                             if len(offer_states) == 5:
                                 request_state = window.sessionStorage.getItem(offer_states[-1])
-                                reset_status = reset_status or (request_state == "true")
-                            if reset_status:
+                                reset_required = reset_required or (request_state == "true")
+                            if reset_required:
+                                window.sessionStorage.setItem("total_reset", "true")
                                 client_state_actions[offer_states[1]] = False 
                                 client_state_actions[offer_states[3]] = True 
                                 if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -599,6 +609,15 @@ async def main():
                                     received_status = offer_states[1] + "_received"
                                     client_state_actions[sent_status] = False
                                     client_state_actions[received_status] = False
+                    elif "reset" in cmd:
+                        for offer_states in offers:
+                            reset_required = client_state_actions[offer_states[1]]
+                            if offer_states[-1] != cmd or not reset_required:
+                                continue
+                            client_state_actions[offer_states[1]] = False 
+                            client_state_actions[offer_states[3]] = True
+                            sent_status = offer_states[1] + "_sent"
+                            client_state_actions[sent_status] = False
                     elif cmd == "clone":
                         # send all history to child
                         node.checkout_for(node.data)
@@ -691,6 +710,7 @@ async def main():
             window.sessionStorage.setItem("current_game_id", game_tab_id)
             window.sessionStorage.setItem("draw_request", "false")
             window.sessionStorage.setItem("undo_request", "false")
+            window.sessionStorage.setItem("total_reset", "false")
             web_game_metadata = window.localStorage.getItem("web_game_metadata")
             if web_game_metadata is not None:
                 web_game_metadata_dict = json.loads(web_game_metadata)
@@ -831,7 +851,7 @@ async def main():
             client_state_actions["undo"] = False
             client_state_actions["undo_executed"] = True
         if client_state_actions["undo_deny"]:
-            reset_data = {node.CMD: "reset"}
+            reset_data = {node.CMD: "undo_reset"}
             node.tx(reset_data, shm=True)
             client_state_actions["undo_deny"] = False
             client_state_actions["undo_deny_executed"] = True
@@ -839,6 +859,8 @@ async def main():
             window.sessionStorage.setItem("undo_request", "false")
 
         if client_state_actions["resign"]:
+            reset_data = {node.CMD: "reset"}
+            node.tx(reset_data, shm=True)
             client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
             print(client_game.forced_end)
             running = False
@@ -873,7 +895,7 @@ async def main():
             client_state_actions["draw_offer"] = False
             client_state_actions["draw_offer_executed"] = True
         if client_state_actions["draw_deny"]:
-            reset_data = {node.CMD: "reset"}
+            reset_data = {node.CMD: "draw_offer_reset"}
             node.tx(reset_data, shm=True)
             client_state_actions["draw_deny"] = False
             client_state_actions["draw_deny_executed"] = True
@@ -1245,12 +1267,14 @@ async def main():
                 if not sent and draw_request_value:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
+                    window.sessionStorage.setItem("total_reset", "true")
                     client_state_actions["draw_accept_reset"] = True
                     client_state_actions["draw_deny_reset"] = True
                     client_state_actions["draw_offer_received"] = False
                 if not sent and client_state_actions["draw_offer_sent"]:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
+                    window.sessionStorage.setItem("total_reset", "true")
                     client_state_actions["draw_offer"] = False
                     client_state_actions["draw_offer_reset"] = True
                     client_state_actions["draw_offer_sent"] = False
@@ -1260,12 +1284,14 @@ async def main():
                 if not sent and undo_request_value:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
+                    window.sessionStorage.setItem("total_reset", "true")
                     client_state_actions["undo_accept_reset"] = True
                     client_state_actions["undo_deny_reset"] = True
                     client_state_actions["undo_received"] = False
                 if not sent and client_state_actions["undo_sent"]:
                     reset_data = {node.CMD: "reset"}
                     node.tx(reset_data, shm=True)
+                    window.sessionStorage.setItem("total_reset", "true")
                     client_state_actions["undo"] = False
                     client_state_actions["undo_reset"] = True
                     client_state_actions["undo_sent"] = False
@@ -1287,6 +1313,7 @@ async def main():
             node.tx(reset_data, shm=True)
             window.sessionStorage.setItem("draw_request", "false")
             window.sessionStorage.setItem("undo_request", "false")
+            window.sessionStorage.setItem("total_reset", "true")
             txdata = {node.CMD: f"{player}_update"}
             send_game = client_game.to_json()
             txdata.update({"game": send_game})

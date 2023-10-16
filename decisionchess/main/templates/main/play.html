@@ -53,6 +53,11 @@ Play
         background-color: #da8525;
     }
 
+    .action-button.confirm.waiting:disabled:hover {
+        background-color: #c7c7c7;
+        color: #4d4d4d;
+    }
+
     .action-button.cancel.check {
         background-color: rgb(161, 160, 85);
     }
@@ -224,6 +229,7 @@ Play
                     sessionStorage.setItem('current_game_id', null);
                     sessionStorage.setItem('draw_request', 'false');
                     sessionStorage.setItem('undo_request', 'false');
+                    sessionStorage.setItem('total_reset', 'false');
 
                     var movesListContainer = document.getElementById('moves-list');
                     while (movesListContainer.firstChild) {
@@ -266,6 +272,31 @@ Play
                     }
                 }
 
+                // This is filled in the handleButton function later
+                var offerQueue = [];
+                function dequeButton(mainButtonId) {
+                    offerQueue = offerQueue.filter(item => item.id !== mainButtonId);
+                }
+
+                var offerEventList = [
+                    {mainButtonName: "drawOfferButton", eventNames: ["draw_offer", "draw_offer_accept", "draw_offer_deny"]},
+                    {mainButtonName: "undoOfferButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
+                ]
+
+                var actionEventList = [
+                    {mainButtonName: "drawOfferButton", eventNames: ["draw_offer", "draw_offer_accept", "draw_offer_deny"]},
+                    {mainButtonName: "undoOfferButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
+                    {mainButtonName: "resignButton", eventNames: ["resign"]}
+                ]
+
+                var inputList = [
+                    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
+                    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
+                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
+                    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
+                    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+                ];
+
                 function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options) {
                     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                     var webGameMetadata = existingWebGameMetadata[currentGameID];
@@ -285,6 +316,7 @@ Play
                             handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
                         }, 10);
                     } else {
+                        var accept_response_sent = localStorageObjectName.includes("accept") && webGameMetadata[localStorageObjectName].update_executed
                         webGameMetadata[localStorageObjectName].execute = false
                         webGameMetadata[localStorageObjectName].update_executed = false
                         
@@ -292,21 +324,40 @@ Play
                             resetButtons(buttonId, localStorageObjectName, Options)
                             webGameMetadata[localStorageObjectName].reset = false
                         }
-                        
+                        var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
+                        if (totalReset) {
+                            // Need to reset all active offer buttons
+                            offerEventList.forEach(function(event) {
+                                for (var i = 0; i < event.eventNames.length; i++) {
+                                    var subevent = event.eventNames[i];
+                                    var subOptions = i === 0 ? "followups" : "responses";
+                                    console.log("Resetting", subevent, subOptions)
+                                    resetButtons(event.mainButtonName, subevent, subOptions)
+                                }
+                            });
+                            sessionStorage.setItem("total_reset", 'false')
+                        }
+                        // We don't want to clear the offer queue on follow-ups or simple client actions or deny (individual resets)
+                        // only on accepts, main actions accepts, and total resets
+                        var offer_accepted_received = offerEventList.some(item => item.mainButtonName === buttonId)
+                        if (accept_response_sent || offer_accepted_received || totalReset) {
+                            offerQueue = [];
+                        }
+
                         existingWebGameMetadata[currentGameID] = webGameMetadata
                         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                         
                         document.getElementById(buttonId).disabled = false;
+
+                        // ideally don't clear waiting on single resets but the simple approach is to clear everything
+                        inputList.forEach(function(input) {
+                            const optionsValue = (input.hasOwnProperty("Options") ? input.Options: null);
+                            if (optionsValue !== null) {
+                                document.getElementById(input.buttonId).classList.remove("waiting")
+                            }
+                        });
                     }
                 }
-
-                var inputList = [
-                    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
-                    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
-                    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
-                    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-                    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
-                ];
 
                 function optionStringsHelper(mainbuttonId, Options) {
                     var approveString = "Confirm";
@@ -319,7 +370,7 @@ Play
                     }
                     const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
                     const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
-                    return {ApproveId: buttonApproveId, AbandonID: buttonAbandonId, AbandonStr: abandonString}
+                    return {ApproveId: buttonApproveId, AbandonId: buttonAbandonId, AbandonStr: abandonString}
                 }
 
                 function hideOptions(buttonId, buttonApproveId, buttonAbandonId) {
@@ -328,10 +379,16 @@ Play
                     document.getElementById(buttonAbandonId).classList.add("hidden");
                 }
 
+                function showOptions(buttonId, buttonApproveId, buttonAbandonId) {
+                    document.getElementById(buttonId).classList.add("hidden");
+                    document.getElementById(buttonApproveId).classList.remove("hidden");
+                    document.getElementById(buttonAbandonId).classList.remove("hidden");
+                }
+
                 function resetButtons(mainbuttonId, localStorageObjectName, Options) {
                     result = optionStringsHelper(mainbuttonId, Options)
                     const buttonApproveId = result.ApproveId
-                    const buttonAbandonId = result.AbandonID
+                    const buttonAbandonId = result.AbandonId
                     hideOptions(mainbuttonId, buttonApproveId, buttonAbandonId)
                     var matchingInput = inputList.find(item => item.buttonId === mainbuttonId);
                     sessionStorage.setItem(matchingInput["action"], 'false');
@@ -359,7 +416,8 @@ Play
                         var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                         var acceptReset = existingWebGameMetadata[currentGameID][acceptObjectName].reset;
                         var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
-                        resetDisplay = acceptReset || denyReset;
+                        var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
+                        resetDisplay = acceptReset || denyReset || totalReset;
                     }
                     if (currentValue === null || currentValue === requestChangeTrackers[action]) {
                         if (resetDisplay === null || resetDisplay === false) {
@@ -382,12 +440,21 @@ Play
                     });
                 }, 100);
 
+                function eventIsExecuting(obj, eventNames) {
+                    for (var event of eventNames) {
+                        if (obj.hasOwnProperty(event) && obj[event]["execute"] === true) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
                 function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
                     document.getElementById(buttonId).disabled = true;
                     if (Options !== null) {
                         result = optionStringsHelper(buttonId, Options)
                         const buttonApproveId = result.ApproveId
-                        const buttonAbandonId = result.AbandonID
+                        const buttonAbandonId = result.AbandonId
                         const abandonString = result.AbandonStr
                         const acceptObjectName = localStorageObjectName + "_accept";
                         const denyObjectName = localStorageObjectName + "_deny";
@@ -396,44 +463,46 @@ Play
                             document.getElementById(buttonApproveId).classList.remove("hidden");
                             document.getElementById(buttonAbandonId).classList.remove("hidden");
                             var otherFollowups = document.querySelectorAll('[followup="true"]');
+                            if (Options === "responses") {
+                                document.getElementById(buttonId).classList.add("waiting")
+                                offerQueue.push({mainId: buttonId, ApproveId: buttonApproveId, AbandonId: buttonAbandonId})
+                            }
                             otherFollowups.forEach(function(element) {
                                 if (element.id !== buttonApproveId && element.id !== buttonAbandonId) {
                                     element.classList.add("hidden");
                                 }
                             });
                             var actionbuttons = document.querySelectorAll('[actions="true"]');
-                            // var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
-                            // var currentGameID = sessionStorage.getItem('current_game_id');
-                            // var webGameMetadata = existingWebGameMetadata[currentGameID];
+                            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                            var currentGameID = sessionStorage.getItem('current_game_id');
+                            var webGameMetadata = existingWebGameMetadata[currentGameID];
                             
-                            // this list could be useful though but it's just similar to that is executing one
-                            var eventList = [
-                                {mainButtonName: "drawOfferButton", eventNames: ["draw_offer", "draw_offer_accept", "draw_offer_deny"]},
-                                {mainButtonName: "resignButton", eventNames: ["resign"]},
-                                {mainButtonName: "undoButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
-                            ]
-
-                            // function eventIsExecuting(obj, eventNames) {
-                            //     for (var event in eventNames) {
-                            //         if (obj.hasOwnProperty(event) && obj[event]["execute"] === true) {
-                            //             return true;
-                            //         }
-                            //     }
-                            //     return false;
-                            // }
-
                             actionbuttons.forEach(function(element) {
                                 if (element.id !== buttonId) {
                                     element.classList.remove("hidden");
-                                    // This just seems unnecessary after testing
-                                    // var actionEvents = eventList.find(event => event.mainButtonName === element.id)
-                                    // if (!eventIsExecuting(webGameMetadata, actionEvents.eventNames)) {
-                                    //     element.disabled = false;
-                                    // }
+                                    var actionEvents = actionEventList.find(event => event.mainButtonName === element.id)
+                                    var notQueued = offerQueue.every(item => item.mainId !== element.id)
+                                    var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames)
+                                    if (notExecuting && notQueued) {
+                                        element.disabled = false;
+                                    }
                                 }
                             });
                             document.getElementById(buttonApproveId).addEventListener("click", function() { 
                                 hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                                console.log(Options, buttonId)
+                                if (Options === "responses") {
+                                    document.getElementById(buttonId).classList.remove("waiting")
+                                    dequeButton(buttonId)
+                                }
+                                if (offerQueue.length !== 0) {
+                                    var newDisplay = offerQueue[0];
+                                    if (newDisplay.mainId === buttonId) {
+                                        dequeButton(buttonId) // TODO investigate why this is needed
+                                    } else {
+                                        showOptions(newDisplay.mainId, newDisplay.ApproveId, newDisplay.AbandonId)
+                                    }
+                                }
                                 
                                 var responseName = (Options === "followups" ? localStorageObjectName : acceptObjectName)
                                 
@@ -441,15 +510,53 @@ Play
                             }, { once: true });
                             document.getElementById(buttonAbandonId).addEventListener("click", function() {
                                 hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                                if (Options === "responses") {
+                                    document.getElementById(buttonId).classList.remove("waiting")
+                                    dequeButton(buttonId)
+                                }
+                                if (offerQueue.length !== 0) {
+                                    var newDisplay = offerQueue[0];
+                                    if (newDisplay.mainId === buttonId) {
+                                        dequeButton(buttonId)
+                                    } else {
+                                        showOptions(newDisplay.mainId, newDisplay.ApproveId, newDisplay.AbandonId)
+                                    }
+                                }
                                 
                                 if (abandonString !== "Cancel") {
                                     handleWebtoGameAction(buttonId, denyObjectName, Options);
                                 }
-                                
                                 document.getElementById(buttonId).disabled = false;
                             }, { once: true });
                         } else {
                             hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                            if (Options === "responses") {
+                                document.getElementById(buttonId).classList.remove("waiting")
+                                dequeButton(buttonId)
+                            }
+                            if (offerQueue.length !== 0) {
+                                var newDisplay = offerQueue[0];
+                                if (newDisplay.mainId === buttonId) {
+                                    dequeButton(buttonId)
+                                } else {
+                                    showOptions(newDisplay.mainId, newDisplay.ApproveId, newDisplay.AbandonId)
+                                }
+                            }
+
+                            var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
+                            if (totalReset) {
+                                offerQueue = [];
+                                // Need to reset all displayed offer buttons
+                                offerEventList.forEach(function(event) {
+                                    for (var i = 0; i < event.eventNames.length; i++) {
+                                        document.getElementById(event.mainButtonName).classList.remove("waiting")
+                                        var subevent = event.eventNames[i];
+                                        var subOptions = i === 0 ? "followups" : "responses";
+                                        resetButtons(event.mainButtonName, subevent, subOptions)
+                                    }
+                                });
+                                sessionStorage.setItem("total_reset", 'false')
+                            }
 
                             var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                             var currentGameID = sessionStorage.getItem('current_game_id');
