@@ -270,7 +270,7 @@ class Node:
     # default for text is speak into lobby (gameid == 0)
 
     def out(self, *blocks, gid=-1):
-        if gid < 0:
+        if isinstance(gid, int) and gid < 0:
             gid = 0
         if gid:
             self.wire(f"PRIVMSG {self.lobby}-{gid} :{self.fork}:{self.pid}:{' '.join(map(str, blocks))}")

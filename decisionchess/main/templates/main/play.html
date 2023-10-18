@@ -226,11 +226,6 @@ Play
                 }
             
                 function resetCommandCenter() {
-                    sessionStorage.setItem('current_game_id', null);
-                    sessionStorage.setItem('draw_request', 'false');
-                    sessionStorage.setItem('undo_request', 'false');
-                    sessionStorage.setItem('total_reset', 'false');
-
                     var movesListContainer = document.getElementById('moves-list');
                     while (movesListContainer.firstChild) {
                         movesListContainer.removeChild(movesListContainer.firstChild);
@@ -246,6 +241,14 @@ Play
 
                 window.addEventListener('load', updateCommandCenter);
                 window.addEventListener('load', resetCommandCenter);
+                window.onbeforeunload = function () {
+                    var game_uuid = "{{ game_uuid }}";
+                    sessionStorage.setItem('current_game_id', game_uuid);
+                    sessionStorage.setItem('initialized', 'null');
+                    sessionStorage.setItem('draw_request', 'false');
+                    sessionStorage.setItem('undo_request', 'false');
+                    sessionStorage.setItem('total_reset', 'false');
+                }
             
                 setInterval(updateCommandCenter, 100);
 
@@ -343,7 +346,7 @@ Play
                         }
                         // We don't want to clear the offer queue on follow-ups or simple client actions or deny (individual resets)
                         // Only on accepts, main actions accepts, and total resets
-                        var offer_accepted_received = offerEventList.some(item => item.mainButtonName === buttonId)
+                        var offer_accepted_received = offerEventList.some(item => item.eventNames[0] === localStorageObjectName)
                         if (accept_response_sent || offer_accepted_received || totalReset) {
                             offerQueue = [];
                         }
@@ -402,11 +405,15 @@ Play
                 function requestDisplay(action, ButtonID, baseStorageName) {
                     var currentValue = JSON.parse(sessionStorage.getItem(action));
                     var currentGameID = sessionStorage.getItem('current_game_id');
+                    var initialized = sessionStorage.getItem('initialized');
                     currentGameID = (currentGameID === 'null' ? null : currentGameID);
+                    initialized = (initialized === 'true' ? true : null);
                     var resetDisplay = null
                     
                     var newOptions = (currentValue === true ? "responses": "followups")
-                    if (currentGameID !== null) {
+                    // Sometimes it gets to this block even though web_game_metadata isn't set somehow, old values or failure to set in script?
+                    // It must be old session values so the reset function isn't running...
+                    if (currentGameID !== null && initialized === true) {
                         const acceptObjectName = baseStorageName + "_accept"
                         const denyObjectName = baseStorageName + "_deny"
                         var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -528,17 +535,8 @@ Play
                             }, { once: true });
                         } else {
                             hideOptions(buttonId, buttonApproveId, buttonAbandonId)
-                            if (Options === "responses") {
-                                document.getElementById(buttonId).classList.remove("waiting")
-                                dequeButton(buttonId)
-                                    .then(updatedQueue => {
-                                    offerQueue = updatedQueue;
-                                    showNewOptions(offerQueue);
-                                    });
-                            } else {
-                                showNewOptions(offerQueue)
-                            }
-
+                            // We should not call the second block given a total reset, previously it was first in order but the response was delayed.
+                            // Hence, it showed the next queued item after the totalReset already hid it
                             var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
                             if (totalReset) {
                                 offerQueue = [];
@@ -553,6 +551,15 @@ Play
                                     }
                                 });
                                 sessionStorage.setItem("total_reset", 'false')
+                            } else if (Options === "responses") {
+                                document.getElementById(buttonId).classList.remove("waiting")
+                                dequeButton(buttonId)
+                                    .then(updatedQueue => {
+                                    offerQueue = updatedQueue;
+                                    showNewOptions(offerQueue);
+                                    });
+                            } else {
+                                showNewOptions(offerQueue)
                             }
 
                             var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));

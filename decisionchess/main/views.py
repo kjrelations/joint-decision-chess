@@ -11,12 +11,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.forms import PasswordChangeForm
+from django.http import JsonResponse
 from base64 import binascii
-from .models import BlogPosts, User
+from .models import BlogPosts, User, ChessLobby
 from .forms import ChangeEmailForm, EditProfile
-
-# Create your views here.
-# views.py file
+import uuid
 
 def index(request):
     return render(request, "main/home.html", {})
@@ -24,8 +23,35 @@ def index(request):
 def home(request):
     return render(request, "main/home.html", {})
 
-def play(request):
-    return render(request, "main/play.html", {})
+def get_lobby_games(request):
+    lobby_games = ChessLobby.objects.all()
+    serialized_data = [
+        {
+            "initiator_name": game.initiator_name,
+            "game_uuid": game.game_uuid
+        }
+        for game in lobby_games
+    ]
+    return JsonResponse(serialized_data, safe=False)
+
+def create_new_game(request):
+    while True:
+        game_uuid = uuid.uuid4()
+        if not ChessLobby.objects.filter(game_uuid=game_uuid).exists():
+            new_open_game = ChessLobby(
+                game_uuid=game_uuid,
+                is_open=True,
+                initiator_connected=False
+            )
+            # Later get username and add to initiator name if authenticated
+            # Retrieve and add user uuid to appropriate position, generate a unique one if needed
+            new_open_game.white_uuid = uuid.uuid4()
+            new_open_game.save()
+            return redirect('join_new_game', game_uuid=game_uuid)
+
+def play(request, game_uuid):
+    # Validate uuid (ensure not expired), direct to play, spectator, or historic html, check authentication on former
+    return render(request, "main/play.html", {"game_uuid": game_uuid})
 
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')

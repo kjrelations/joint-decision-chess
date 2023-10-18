@@ -332,7 +332,11 @@ class Node(pygbag_net.Node):
 
 # Main loop
 async def main():
-    builtins.node = Node(gid=222, groupname="Simple Chess Board", offline="offline" in sys.argv)
+    game_id = window.sessionStorage.getItem("current_game_id")
+    if game_id is None:
+        raise Exception("No game id set")
+    # TODO have dev channel/mode
+    builtins.node = Node(gid=game_id, groupname="Classical Chess", offline="offline" in sys.argv)
     node = builtins.node
     running, waiting, initializing, initialized = True, True, False, False
     # Web Browser actions affect these only. Even if players try to alter it, 
@@ -706,8 +710,6 @@ async def main():
             client_game = Game(new_board.copy(), starting_player)
             player = "white" if starting_player else "black"
             opponent = "black" if starting_player else "white"
-            game_tab_id = str(node.gid) + "-" + str(node.pid)
-            window.sessionStorage.setItem("current_game_id", game_tab_id)
             window.sessionStorage.setItem("draw_request", "false")
             window.sessionStorage.setItem("undo_request", "false")
             window.sessionStorage.setItem("total_reset", "false")
@@ -716,6 +718,8 @@ async def main():
                 web_game_metadata_dict = json.loads(web_game_metadata)
             else:
                 web_game_metadata_dict = {}
+            game_tab_id = player + "-" + game_id
+            window.sessionStorage.setItem("current_game_id", game_tab_id)
             # TODO extend this to load defaults for historic games in script or through browser
             if isinstance(web_game_metadata_dict, dict) or web_game_metadata is None:
                 web_game_metadata_dict[game_tab_id] = {
@@ -771,9 +775,18 @@ async def main():
                 raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            web_ready = False
+            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+            if web_game_metadata is not None:
+                web_game_metadata_dict = json.loads(web_game_metadata)
+                if web_game_metadata_dict.get(game_tab_id) is not None:
+                    web_ready = True
+                    initializing, initialized = False, True
+                    node.tx({node.CMD: f"{player} initialized"})
+                    window.sessionStorage.setItem("initialized", "true")
+            if not web_ready:
+                raise Exception("Failed to set web value")
 
-            initializing, initialized = False, True
-            node.tx({node.CMD: f"{player} initialized"})
         elif not initialized:
             starting_player = True
             current_theme.INVERSE_PLAYER_VIEW = not starting_player
@@ -1148,7 +1161,6 @@ async def main():
                 'selected_piece_image': selected_piece_image
             }
 
-            game_tab_id = str(node.gid) + "-" + str(node.pid)
             promoted, end_state = await promotion_state(
                 promotion_square, 
                 client_game, 
@@ -1226,7 +1238,6 @@ async def main():
         web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
-        game_tab_id = str(node.gid) + "-" + str(node.pid)
 
         # DEV logs to console
         # web_game_metadata_dict[game_tab_id]['console_messages'] = console_log_messages

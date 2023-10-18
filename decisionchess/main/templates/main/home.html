@@ -15,7 +15,71 @@
 
     html {
         scroll-behavior: smooth;
-      }
+    }
+
+    .new-game {
+        color: white;
+        border: none;
+        outline: none;
+        background-color: #6c757d;
+        transition: background-color 0.3s ease;
+        transition: color 0.3s ease;
+    }
+
+    .new-game:focus {
+        outline: none;
+    }
+
+    .new-game:hover {
+        background-color: rgb(161, 161, 161);
+        color: #7685d8
+    }
+
+    .lobby {
+        background-color: #d9e3f3;
+        color: black;
+        outline-style: solid;
+        outline-width: thin;
+        outline-color: rgb(146, 146, 146);
+        max-width: 100%;
+        position: relative;
+        padding-bottom: 63%;
+    }
+
+    .lobby-header {
+        text-align: center; 
+        padding-bottom: 0.5em; 
+        position: sticky; 
+        top: 0; 
+        background-color: #d9e3f3;
+    }
+
+    .scrollable-lobby-list {
+        position: absolute;
+        max-height: 100%;
+        overflow-y: auto;
+        z-index: 1;
+    }
+
+    .lobby-row {
+        border: none;
+        border-bottom: solid 0.05em #778498;
+        outline: none;
+        min-width: 100%;
+        background-color: transparent;
+        transition: background-color 0.3s ease;
+        transition: color 0.1s ease;
+    }
+
+    .lobby-row:focus {
+        outline: none;
+    }
+
+    .lobby-row:hover {
+        color: white;
+        background-color: #beb07e;
+    }
+
 </style>
 {% endblock %}
 
@@ -35,10 +99,17 @@ Decision Chess
         </div>
         <!-- Join column: Quick Pair, Lobby, games in play section -->
         <div class="col-5">
-            <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;">
+            <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
+            <div class="lobby" class="" style="max-width: 100%;">
+                <div id="lobby-list" class="scrollable-lobby-list" style="min-width: 100%;">
+                    <div class="lobby-header">User (Anonymous)</div>
+                    <div id="lobby-content"></div>
+                </div>
+            </div>
         </div>
         <!-- Game creation, live stats -->
-        <div class="col-3">
+        <div class="col-3 d-flex align-items-center">
+            <button class="new-game" style="min-width: 100%;">Create New Game</button>
         </div>
         <!-- Top live game, Recent News, donation section to be added here -->
         <!-- Introduction Section across 11 columns -->
@@ -98,5 +169,60 @@ Decision Chess
         <div class="col-3">
         </div>
     </div>
+    <script>
+        function generateGameURL() {
+			fetch('/create_new_game/')
+				.then(response => {
+					if (response.redirected) {
+						window.location.href = response.url;
+					}
+				})
+				.catch(error => {
+					console.error('Error:', error);
+				});
+		}
+        const newGameButtons = document.querySelectorAll('.new-game');
+        newGameButtons.forEach(button => {
+            button.addEventListener('click', generateGameURL);
+        });
+
+        function updateLobby() {
+            var lobbyListContainer = document.getElementById('lobby-content');
+
+            fetch('/get_lobby_games/')
+                .then(response => response.json())
+                .then(data => {
+                    lobbyListContainer.innerHTML = ''
+                    if (data.length === 0) {
+                        var noGamesMessage = document.createElement('button');
+                        noGamesMessage.className = "lobby-row";
+                        noGamesMessage.textContent = 'No games available...';
+                        noGamesMessage.style.borderBottom = "none";
+                        lobbyListContainer.appendChild(noGamesMessage);
+                    }
+                    // Later limit it to a set number
+                    data.forEach((game, index) => {
+                        var lobbyRow = document.createElement('button');
+                        lobbyRow.className = "lobby-row";
+                        lobbyRow.textContent = game.initiator_name;
+
+                        var gameLink = document.createElement('a');
+                        gameLink.href = '/play/' + game.game_uuid;
+                        gameLink.appendChild(lobbyRow);
+
+                        if (index === data.length - 1) {
+                            lobbyRow.style.borderBottom = "none";
+                        }
+                        lobbyListContainer.appendChild(gameLink);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        window.addEventListener('load', updateLobby);
+        setInterval(updateLobby, 10000);
+    </script>
 </div>
 {% endblock %}
