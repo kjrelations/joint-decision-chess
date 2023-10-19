@@ -95,6 +95,31 @@
         background-color: rgba(166, 174, 186, 0.7);
     }
 
+    .quick-pair {
+        border: none;
+        outline-style: solid;
+        outline-width: thin;
+        outline-color: rgb(146, 146, 146);
+        min-width: 50%;
+        max-width: 50%;
+        background-color: #d9e3f3;
+        color: black;
+        transition: background-color 0.3s ease;
+        font-size: large;
+        padding: 5em none;
+    }
+
+    .quick-pair:focus {
+        outline-style: solid;
+        outline-width: thin;
+        outline-color: rgb(146, 146, 146);
+    }
+
+    .quick-pair:hover {
+        color: #805d14;
+        background-color: #ecac22;
+    }
+
 </style>
 {% endblock %}
 
@@ -114,8 +139,9 @@ Decision Chess
         </div>
         <!-- Join column: Quick Pair, Lobby, games in play section -->
         <div class="col-5">
-            <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
-            <div class="lobby" class="" style="max-width: 100%;">
+            <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;">
+            <button id="quick-pair" class="quick-pair">Quick Pair</button>
+            <div class="lobby" style="max-width: 100%;">
                 <div id="lobby-list" class="scrollable-lobby-list" style="min-width: 100%;">
                     <div class="lobby-header">User (Anonymous)</div>
                     <div id="lobby-content"></div>
@@ -185,21 +211,53 @@ Decision Chess
         </div>
     </div>
     <script>
+        // Generic fetch GET redirect function maybe
         function generateGameURL() {
-			fetch('/create_new_game/')
-				.then(response => {
-					if (response.redirected) {
-						window.location.href = response.url;
-					}
-				})
-				.catch(error => {
-					console.error('Error:', error);
-				});
+            fetch('/create_new_game/')
+			.then(response => {
+				if (response.status === 200) {
+                    return response.json();
+                } else {
+                    console.error('Error creating game:', response.statusText);
+                    return Promise.reject('Error creating game');
+                }
+			})
+			.then(data => {
+                if (data.redirect) {
+                    window.location.href = data.url;
+                }
+            })
+			.catch(error => {
+				console.error('Error:', error);
+			});
 		}
         const newGameButtons = document.querySelectorAll('.new-game');
         newGameButtons.forEach(button => {
             button.addEventListener('click', generateGameURL);
         });
+
+        function quickPair() {
+            fetch('/quick_pair')
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    console.error('Error joining game:', response.statusText);
+                    return Promise.reject('Error joining game');
+                }
+            })
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.url;
+                }
+            })
+            .catch(error => {
+                console.error('Error joining game:', error);
+            });
+        }
+
+        const quickPairButton = document.getElementById("quick-pair")
+        quickPairButton.addEventListener('click', quickPair)
 
         function updateLobby() {
             var lobbyListContainer = document.getElementById('lobby-content');
@@ -265,7 +323,7 @@ Decision Chess
         }
 
         window.addEventListener('load', updateLobby);
-        setInterval(updateLobby, 50000);
+        setInterval(updateLobby, 20000);
     </script>
 </div>
 {% endblock %}

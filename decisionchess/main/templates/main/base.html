@@ -159,14 +159,22 @@
 	<script>
 		function generateGameURL() {
 			fetch('/create_new_game/')
-				.then(response => {
-					if (response.redirected) {
-						window.location.href = response.url;
-					}
-				})
-				.catch(error => {
-					console.error('Error:', error);
-				});
+			.then(response => {
+				if (response.status === 200) {
+                    return response.json();
+                } else {
+                    console.error('Error creating game:', response.statusText);
+                    return Promise.reject('Error creating game');
+                }
+			})
+			.then(data => {
+                if (data.redirect) {
+                    window.location.href = data.url;
+                }
+            })
+			.catch(error => {
+				console.error('Error:', error);
+			});
 		}
 		const newGameQuickStart = document.querySelectorAll('.nav-new-game');
         newGameQuickStart.forEach(button => {
