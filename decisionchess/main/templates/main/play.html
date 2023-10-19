@@ -239,18 +239,80 @@ Play
                     finalScorebox.innerHTML = ""
                 }
 
-                window.addEventListener('load', updateCommandCenter);
+                var game_uuid = "{{ game_uuid }}";
+                sessionStorage.setItem('connected', "{{ connected }}");
+                sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
+                sessionStorage.setItem('initialized', "{{ initialized }}");
+                sessionStorage.setItem('draw_request', "{{ draw_request }}");
+                sessionStorage.setItem('undo_request', "{{ undo_request }}");
+                sessionStorage.setItem('total_reset', "{{ total_reset }}");
+
+                var previousConnected = false
+
                 window.addEventListener('load', resetCommandCenter);
-                window.onbeforeunload = function () {
-                    var game_uuid = "{{ game_uuid }}";
+                window.addEventListener('load', updateCommandCenter);
+            
+                setInterval(updateCommandCenter, 100);
+
+                var csrftoken = Cookies.get('csrftoken');
+
+                function updateConnectedStatus(status) {
+                    fetch('/update_connected/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrftoken,
+                            },
+                            body: JSON.stringify({ 
+                                game_uuid: game_uuid, 
+                                web_connect: status
+                            }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === "error" && data.message === "Lobby row DNE") {
+                                return;
+                            }
+                            // Handle the response as needed
+                            // Put in a "waiting message" if it hasn't been played yet
+                            // Put a disconnect status if in play
+                        })
+                        .catch(error => {
+                            console.error('Error updating connection status:', error);
+                        });
+                }
+
+                function checkNewConnect() {
+                    var currentConnected = sessionStorage.getItem('connected');
+                    currentConnected = (currentConnected === 'true' ? true : false);
+                    if (currentConnected === true && previousConnected === false) {
+                        updateConnectedStatus(true)
+                    }
+                    
+                    previousConnected = currentConnected;
+                }
+                
+                setInterval(checkNewConnect, 1000);
+
+                window.onbeforeunload = function (e) {
+                    var confirmationMessage = 'You have unsaved changes. Are you sure you want to leave this page?';
+                    e.returnValue = confirmationMessage; // For legacy browsers
+                    return confirmationMessage;
+
+                    var userConfirmed = confirm(confirmationMessage);
+                    if (userConfirmed) {
+                        updateConnectedStatus(false); // This simply won't work so we'll just need web-sockets
+                    }
+                };
+                
+                window.addEventListener('beforeunload', function () {
+                    sessionStorage.setItem('connected', 'false');
                     sessionStorage.setItem('current_game_id', game_uuid);
                     sessionStorage.setItem('initialized', 'null');
                     sessionStorage.setItem('draw_request', 'false');
                     sessionStorage.setItem('undo_request', 'false');
                     sessionStorage.setItem('total_reset', 'false');
-                }
-            
-                setInterval(updateCommandCenter, 100);
+                });
 
                 var eventExecutionStatus = {};
 

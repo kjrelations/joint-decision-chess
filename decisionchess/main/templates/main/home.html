@@ -71,13 +71,28 @@
         transition: color 0.1s ease;
     }
 
+    .lobby-row:disabled {
+        color: rgb(172, 172, 172);
+        background-color: rgba(125, 131, 140, 0.7);
+    }
+
+    .lobby-row:disabled:hover {
+        color: rgb(172, 172, 172);
+        background-color: rgba(194, 152, 133, 0.7);
+    }
+
     .lobby-row:focus {
         outline: none;
     }
-
+    
     .lobby-row:hover {
         color: white;
-        background-color: #beb07e;
+        background-color: rgba(190, 176, 126, 0.7);
+    }
+
+    .lobby-row.empty:hover {
+        color: black;
+        background-color: rgba(166, 174, 186, 0.7);
     }
 
 </style>
@@ -195,7 +210,7 @@ Decision Chess
                     lobbyListContainer.innerHTML = ''
                     if (data.length === 0) {
                         var noGamesMessage = document.createElement('button');
-                        noGamesMessage.className = "lobby-row";
+                        noGamesMessage.className = "lobby-row empty";
                         noGamesMessage.textContent = 'No games available...';
                         noGamesMessage.style.borderBottom = "none";
                         lobbyListContainer.appendChild(noGamesMessage);
@@ -208,6 +223,10 @@ Decision Chess
 
                         var gameLink = document.createElement('a');
                         gameLink.href = '/play/' + game.game_uuid;
+                        gameLink.onclick = function (event) {
+                            event.preventDefault();
+                            checkGameAvailability(game.game_uuid, gameLink, lobbyRow);
+                        };
                         gameLink.appendChild(lobbyRow);
 
                         if (index === data.length - 1) {
@@ -221,8 +240,32 @@ Decision Chess
                 });
         }
 
+        var csrftoken = Cookies.get('csrftoken');
+
+        function checkGameAvailability(gameId, gameLink, lobbyRow) {
+            fetch('/check_game_availability/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify({ gameId: gameId }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.open) {
+                        window.location.href = '/play/' + gameId;
+                    } else {
+                        lobbyRow.disabled = true
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking game availability:', error);
+                });
+        }
+
         window.addEventListener('load', updateLobby);
-        setInterval(updateLobby, 10000);
+        setInterval(updateLobby, 50000);
     </script>
 </div>
 {% endblock %}

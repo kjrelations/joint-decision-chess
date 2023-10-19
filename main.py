@@ -339,6 +339,7 @@ async def main():
     builtins.node = Node(gid=game_id, groupname="Classical Chess", offline="offline" in sys.argv)
     node = builtins.node
     running, waiting, initializing, initialized = True, True, False, False
+    wait_screen_drawn = False
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
     client_state_actions = {
@@ -707,6 +708,7 @@ async def main():
                 pygame.display.set_caption("Chess - White")
             else:
                 pygame.display.set_caption("Chess - Black")
+            # This should copy the game from the node if reconnected later
             client_game = Game(new_board.copy(), starting_player)
             player = "white" if starting_player else "black"
             opponent = "black" if starting_player else "white"
@@ -784,6 +786,8 @@ async def main():
                     initializing, initialized = False, True
                     node.tx({node.CMD: f"{player} initialized"})
                     window.sessionStorage.setItem("initialized", "true")
+                    # Maybe we move this to connected, joined, or hello events
+                    window.sessionStorage.setItem("connected", "true")
             if not web_ready:
                 raise Exception("Failed to set web value")
 
@@ -794,6 +798,8 @@ async def main():
             client_game = Game(new_board.copy(), starting_player)
             player = "white"
             opponent = "black"
+            # Maybe we move this to connected, joined, or hello events
+            window.sessionStorage.setItem("connected", "true")
 
         # TODO move into it's own function
         if waiting:
@@ -802,34 +808,35 @@ async def main():
                 if event.type == pygame.QUIT:
                     running = False
                     waiting = False
+            if not wait_screen_drawn:
+                game_window.fill((0, 0, 0))
 
-            game_window.fill((0, 0, 0))
+                draw_board({
+                    'window': game_window,
+                    'theme': current_theme,
+                    'board': client_game.board,
+                    'chessboard': drawing_settings["chessboard"],
+                    'selected_piece': selected_piece,
+                    'current_position': client_game.current_position,
+                    'previous_position': client_game.previous_position,
+                    'right_clicked_squares': right_clicked_squares,
+                    'coordinate_surface': drawing_settings["coordinate_surface"],
+                    'drawn_arrows': drawn_arrows,
+                    'starting_player': client_game._starting_player,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': hovered_square,
+                    'selected_piece_image': selected_piece_image
+                })
 
-            draw_board({
-                'window': game_window,
-                'theme': current_theme,
-                'board': client_game.board,
-                'chessboard': drawing_settings["chessboard"],
-                'selected_piece': selected_piece,
-                'current_position': client_game.current_position,
-                'previous_position': client_game.previous_position,
-                'right_clicked_squares': right_clicked_squares,
-                'coordinate_surface': drawing_settings["coordinate_surface"],
-                'drawn_arrows': drawn_arrows,
-                'starting_player': client_game._starting_player,
-                'valid_moves': valid_moves,
-                'valid_captures': valid_captures,
-                'valid_specials': valid_specials,
-                'pieces': pieces,
-                'hovered_square': hovered_square,
-                'selected_piece_image': selected_piece_image
-            })
+                overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+                overlay.fill((0, 0, 0, 128))
 
-            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 128))
-
-            game_window.blit(overlay, (0, 0))
-            pygame.display.flip()
+                game_window.blit(overlay, (0, 0))
+                pygame.display.flip()
+                wait_screen_drawn = True
             await asyncio.sleep(0)
             continue
 
