@@ -47,6 +47,7 @@
     }
 
     .lobby-header {
+        display: flex;
         text-align: center; 
         padding-bottom: 0.5em; 
         position: sticky; 
@@ -62,6 +63,7 @@
     }
 
     .lobby-row {
+        display: flex;
         border: none;
         border-bottom: solid 0.05em #778498;
         outline: none;
@@ -69,6 +71,10 @@
         background-color: transparent;
         transition: background-color 0.3s ease;
         transition: color 0.1s ease;
+    }
+
+    .lobby-a:hover {
+        text-decoration: none;
     }
 
     .lobby-row:disabled {
@@ -88,6 +94,7 @@
     .lobby-row:hover {
         color: white;
         background-color: rgba(190, 176, 126, 0.7);
+        text-decoration: none;
     }
 
     .lobby-row.empty:hover {
@@ -139,11 +146,14 @@ Decision Chess
         </div>
         <!-- Join column: Quick Pair, Lobby, games in play section -->
         <div class="col-5">
-            <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;">
+            <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
             <button id="quick-pair" class="quick-pair">Quick Pair</button>
             <div class="lobby" style="max-width: 100%;">
                 <div id="lobby-list" class="scrollable-lobby-list" style="min-width: 100%;">
-                    <div class="lobby-header">User (Anonymous)</div>
+                    <div class="lobby-header">
+                        <div style="text-align: center; width: 50%;">User (Anonymous)</div>
+                        <div style="text-align: right; width: 50%;">Created Time</div>
+                    </div>
                     <div id="lobby-content"></div>
                 </div>
             </div>
@@ -277,9 +287,21 @@ Decision Chess
                     data.forEach((game, index) => {
                         var lobbyRow = document.createElement('button');
                         lobbyRow.className = "lobby-row";
-                        lobbyRow.textContent = game.initiator_name;
+                        
+                        var leftHalf = document.createElement('div');
+                        leftHalf.textContent = game.initiator_name;
+                        leftHalf.style.width = '50%'
+                        leftHalf.style.textAlign = 'center';
+                        var rightHalf = document.createElement('div');
+                        rightHalf.textContent = game.timestamp;
+                        rightHalf.style.width = '50%'
+                        rightHalf.style.textAlign = 'right';
+                        
+                        lobbyRow.appendChild(leftHalf);
+                        lobbyRow.appendChild(rightHalf);
 
                         var gameLink = document.createElement('a');
+                        gameLink.className = "lobby-a"
                         gameLink.href = '/play/' + game.game_uuid;
                         gameLink.onclick = function (event) {
                             event.preventDefault();

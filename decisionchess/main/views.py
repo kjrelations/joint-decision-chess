@@ -56,7 +56,8 @@ def get_lobby_games(request):
     serialized_data = [
         {
             "initiator_name": game.initiator_name,
-            "game_uuid": game.game_uuid
+            "game_uuid": game.game_uuid,
+            "timestamp": game.timestamp.strftime("%H:%M:%S")
         }
         for game in lobby_games
     ]
