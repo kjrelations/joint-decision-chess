@@ -71,6 +71,7 @@
         background-color: transparent;
         transition: background-color 0.3s ease;
         transition: color 0.1s ease;
+        padding: 0;
     }
 
     .lobby-a:hover {
@@ -94,7 +95,6 @@
     .lobby-row:hover {
         color: white;
         background-color: rgba(190, 176, 126, 0.7);
-        text-decoration: none;
     }
 
     .lobby-row.empty:hover {
@@ -152,7 +152,7 @@ Decision Chess
                 <div id="lobby-list" class="scrollable-lobby-list" style="min-width: 100%;">
                     <div class="lobby-header">
                         <div style="text-align: center; width: 50%;">User (Anonymous)</div>
-                        <div style="text-align: right; width: 50%;">Created Time</div>
+                        <div style="text-align: right; width: 50%; padding-right: 1em;">Created Time</div>
                     </div>
                     <div id="lobby-content"></div>
                 </div>
@@ -290,12 +290,13 @@ Decision Chess
                         
                         var leftHalf = document.createElement('div');
                         leftHalf.textContent = game.initiator_name;
-                        leftHalf.style.width = '50%'
+                        leftHalf.style.minWidth = '50%'
                         leftHalf.style.textAlign = 'center';
                         var rightHalf = document.createElement('div');
                         rightHalf.textContent = game.timestamp;
-                        rightHalf.style.width = '50%'
+                        rightHalf.style.minWidth = '50%'
                         rightHalf.style.textAlign = 'right';
+                        rightHalf.style.paddingRight = '1em'
                         
                         lobbyRow.appendChild(leftHalf);
                         lobbyRow.appendChild(rightHalf);
