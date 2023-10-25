@@ -1,0 +1,14 @@
+{
+    "builds": [
+      {
+        "src": "decisionchess/wsgi.py",
+        "use": "@vercel/python"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "decisionchess/wsgi.py"
+      }
+    ]
+}
