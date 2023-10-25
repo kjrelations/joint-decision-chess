@@ -89,8 +89,8 @@ DATABASES = {
         'NAME': config('POSTGRES_DB_NAME'),
         'USER': config('POSTGRES_DB_USER'),
         'PASSWORD': config('POSTGRES_DB_PASSWORD'),
-        'HOST': 'localhost',  # or the hostname of your PostgreSQL server
-        'PORT': '',  # Leave empty to use the default PostgreSQL port (5432
+        'HOST': config('POSTGRES_DB_HOST'),  # localhost or the hostname of your PostgreSQL server
+        'PORT': config('POSTGRES_DB_PORT'),  # Leave empty to use the default PostgreSQL port (5432)
     },
     'sqlite3': {
         'ENGINE': 'django.db.backends.sqlite3',
