@@ -5,12 +5,42 @@
 {% block style %} 
 <!-- Allow table of contents featuring introduction -->
 <style>
-    .homeblock {
-        height: 10%;
+    @media (min-width: 768px) {
+        .homeblock {
+            height: 10%;
+        }
+        .sidenav {
+            height: 90%;
+        }
     }
 
-    .sidenav {
-        height: 90%;
+    @media (max-width: 767px) {
+        .homeblock {
+            width: 245px;
+        }
+        .sidenav {
+            width: calc(100% - 245px);
+        }
+        .main {
+            padding-top: 1vh;
+        }
+    }
+
+    @media (max-width: 510px) {
+        .homeblock {
+            width: 130px;
+        }
+        .sidenav {
+            width: calc(100% - 130px);
+            overflow-x: scroll;
+        }
+        .sidenav a:last-child {
+            position: relative;
+            right: initial;
+        }
+        #IntroLink {
+            display: none;
+        }
     }
 
     html {
@@ -135,24 +165,25 @@ Decision Chess
 {% endblock %}
 
 {% block side_head_content %}
-    <a href="#Introduction" style="font-size: 15px;">Introduction</a>
+    <a id="IntroLink" href="#Introduction" style="font-size: 0.95rem;">Introduction</a>
 {% endblock %}
 
 {% block content %}
-<div id="content", name="content", class="main">
+<div id="content" name="content" class="main">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <!-- Landing Section across 11 columns -->
-        <div class="col-3">
+        <!-- Initial empty column -->
+        <div class="col-1 col-md-3">
         </div>
         <!-- Join column: Quick Pair, Lobby, games in play section -->
-        <div class="col-5">
+        <div class="col-7 col-md-5">
             <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
             <button id="quick-pair" class="quick-pair">Quick Pair</button>
             <div class="lobby" style="max-width: 100%;">
-                <div id="lobby-list" class="scrollable-lobby-list" style="min-width: 100%;">
+                <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
                     <div class="lobby-header">
-                        <div style="text-align: center; width: 50%;">User (Anonymous)</div>
-                        <div style="text-align: right; width: 50%; padding-right: 1em;">Created Time</div>
+                        <div style="text-align: center; width: 50%; overflow: hidden;">User (Anonymous)</div>
+                        <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
                     </div>
                     <div id="lobby-content"></div>
                 </div>
@@ -164,11 +195,11 @@ Decision Chess
         </div>
         <!-- Top live game, Recent News, donation section to be added here -->
         <!-- Introduction Section across 11 columns -->
-        <!-- Empty -->
-        <div class="col-3">
+        <!-- Initial empty column -->
+        <div class="col-1 col-md-3">
         </div>
         <!-- Introduction -->
-        <div class="col-5">
+        <div class="col-10 col-md-5">
             <section id="Introduction">
                 <h2>Introduction</h2>
                 <p>
@@ -216,8 +247,8 @@ Decision Chess
                 </p>
             </section>
         </div>
-        <!-- Empty -->
-        <div class="col-3">
+        <!-- Initial empty column -->
+        <div class="col-1 col-md-3">
         </div>
     </div>
     <script>
@@ -282,6 +313,7 @@ Decision Chess
                         noGamesMessage.textContent = 'No games available...';
                         noGamesMessage.style.borderBottom = "none";
                         noGamesMessage.style.justifyContent = 'center';
+                        noGamesMessage.style.overflow = 'hidden'
                         lobbyListContainer.appendChild(noGamesMessage);
                     }
                     // Later limit it to a set number

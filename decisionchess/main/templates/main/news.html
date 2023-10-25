@@ -4,12 +4,35 @@
 
 {% block style %} 
 <style>
-    .homeblock {
-        height: 5%;
+    @media (min-width: 768px) {
+        .homeblock {
+            height: 5%;
+        }
+        .sidenav {
+            height: 95%;
+        }
     }
 
-    .sidenav {
-        height: 95%;
+    @media (max-width: 767px) {
+        .homeblock {
+            width: 130px;
+        }
+        .sidenav {
+            width: calc(100% - 130px);
+        }
+        .content {
+            padding-top: 1vh;
+        }
+    }
+
+    @media (max-width: 510px) {
+        .sidenav {
+            overflow-x: scroll;
+        }
+        .sidenav a:last-child {
+            position: relative;
+            right: initial;
+        }
     }
 
     html {
@@ -28,13 +51,13 @@ News
 {% block content %}
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <div class="col-5">
+        <div class="col-10 col-md-5">
             <h1>News</h1>
         </div>
     </div>
     {% for post in blogs.all %}
         <div class="row justify-content-center" style="max-width: 100%;">
-            <div class="col-5">
+            <div class="col-10 col-md-5">
                 <h2>{{post.timestamp|date:"F d, Y"}}:</h2>
                 <h3>{{post.title}}</h3>
                 {{post.author}} <!--small-->

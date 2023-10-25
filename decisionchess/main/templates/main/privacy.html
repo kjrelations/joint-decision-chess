@@ -2,12 +2,35 @@
 
 {% block style %} 
 <style>
-    .homeblock {
-        height: 5%;
+    @media (min-width: 768px) {
+        .homeblock {
+            height: 5%;
+        }
+        .sidenav {
+            height: 95%;
+        }
     }
 
-    .sidenav {
-        height: 95%;
+    @media (max-width: 767px) {
+        .homeblock {
+            width: 130px;
+        }
+        .sidenav {
+            width: calc(100% - 130px);
+        }
+        .content {
+            padding-top: 1vh;
+        }
+    }
+
+    @media (max-width: 510px) {
+        .sidenav {
+            overflow-x: scroll;
+        }
+        .sidenav a:last-child {
+            position: relative;
+            right: initial;
+        }
     }
 </style>
 {% endblock %}
@@ -22,7 +45,7 @@ Privacy Policy
 {% block content %}
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <div class="col-5">
+        <div class="col-9 col-md-5">
             <p><strong>Privacy Policy</strong></p>
             <p>Our Privacy Policy was last updated on October 4, 2023.</p>
             <p>This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.</p>

@@ -2,22 +2,45 @@
 
 {% block style %} 
 <style>
-    .homeblock {
-        height: 5%;
+    @media (min-width: 768px) {
+        .homeblock {
+            height: 5%;
+        }
+        .sidenav {
+            height: 95%;
+        }
     }
 
-    .sidenav {
-        height: 95%;
+    @media (max-width: 767px) {
+        .homeblock {
+            width: 130px;
+        }
+        .sidenav {
+            width: calc(100% - 130px);
+        }
+        .main {
+            padding-top: 1vh;
+        }
+    }
+
+    @media (max-width: 510px) {
+        .sidenav {
+            overflow-x: scroll;
+        }
+        .sidenav a:last-child {
+            position: relative;
+            right: initial;
+        }
     }
 
     .settingssidenav {
-        overflow-x: hidden;
+        overflow-x: visible;
     }
 
     .settingssidenav a {
         padding: 6px 8px 6px 16px;
         text-decoration: none;
-        font-size: 20px;
+        font-size: 1.1rem;
         color: #5c67a3;
         display: block;
     }
@@ -30,13 +53,14 @@
 {% endblock %}
 
 {% block content %}
-<div id="content", name="content", class="main"> <!-- maybe custom class here -->
+<div id="content" name="content" class="main"> <!-- maybe custom class here -->
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <div class="col-8 bg-secondary">
+        <div class="col-2"></div>
+        <div class="col-7 bg-secondary">
         {% block setting_window %}
         {% endblock %}
         </div>
-        <div class="col-1">
+        <div class="col-2">
             <div class="settingssidenav">
                 <a href="/account/profile">Edit Profile</a>
                 <a href="/account/passwd">Change Password</a>

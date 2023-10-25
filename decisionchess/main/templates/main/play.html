@@ -8,12 +8,35 @@ Play
 
 {% block style%}
 <style>
-    .homeblock {
-        height: 5%;
+    @media (min-width: 768px) {
+        .homeblock {
+            height: 5%;
+        }
+        .sidenav {
+            height: 95%;
+        }
     }
 
-    .sidenav {
-        height: 95%;
+    @media (max-width: 767px) {
+        .homeblock {
+            width: 130px;
+        }
+        .sidenav {
+            width: calc(100% - 130px);
+        }
+        .content {
+            padding-top: 1vh;
+        }
+    }
+
+    @media (max-width: 510px) {
+        .sidenav {
+            overflow-x: scroll;
+        }
+        .sidenav a:last-child {
+            position: relative;
+            right: initial;
+        }
     }
 
     #iframe-container {
@@ -92,19 +115,23 @@ Play
 {% endblock %}
 
 {% block content %}
-<div id="content", name="content", class="content">
+<div id="content" name="content" class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
-        <!-- 3 columns for chat and notes -->
+        <!-- 2 columns for chat and notes -->
+        <div class="col-2" style="max-width: 100%;">
+        </div>
         <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
-        <div class="col-5">
+        <div class="col 8 col-md-5">
             <div id="iframe-container">
                 <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0 scrolling="no"></iframe>
             </div>
         </div>
-        <!-- 3 columns for command center-->
-        <div class="col-3 d-flex align-items-center">
+        <!-- Optional blank column for command center alignment on smaller screens -->
+        <div class="col-2 d-md-none" style="max-width: 100%;"></div>
+        <!-- 4 columns for command center-->
+        <div class="col-10 col-md-4 d-flex align-items-center">
             <div id="command-center" class="bg-secondary d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
                 <!-- Content will be dynamically added here -->
                 <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
@@ -135,6 +162,20 @@ Play
                 </div>
             </div>
             <script>
+                function adjustFont() {
+                    const elements = document.querySelectorAll('.action-button')
+                    const parent = document.getElementById('command-center')
+                    elements.forEach(element => {
+                        if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
+                            element.style.fontSize = '0.7rem';
+                        } else if (parent.offsetWidth < 210) {
+                            element.style.fontSize = '0.65rem';
+                        } else if (parent.offsetWidth >= 320) {
+                            element.style.fontSize = '1rem';
+                        }
+                    });
+                }
+
                 window.addEventListener('load', function() {
                     var iframeContainer = document.getElementById('iframe-container');
                     var width = iframeContainer.offsetWidth;
@@ -147,6 +188,7 @@ Play
                     var width = iframeContainer.offsetWidth;
                     document.getElementById('embedded-iframe').style.height = width + 'px';
                     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+                    adjustFont();
                 });
 
                 function updateCommandCenter() {

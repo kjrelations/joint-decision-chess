@@ -4,8 +4,6 @@
 <head>
 	<style type="text/css">
 		.homeblock {
-			/* TODO Will need media control for width*/
-			width: 160px; 
 			position: fixed;
 			z-index: 1;
 			top: 0;
@@ -27,16 +25,15 @@
 		}	
 
 		.sidenav {
-			width: 160px;
 			position: fixed;
-			z-index: 1;
+			z-index: 2;
 			bottom: 0;
 			left: 0;
 			background-color: #111;
 			/* Overflow shouldn't be an issue */
 			overflow-x: hidden;
 		}
- 
+
 		.sidenav a {
 			padding: 6px 8px 6px 16px;
 			text-decoration: none;
@@ -69,6 +66,47 @@
 			bottom: 0;
 		}
 
+		@media (min-width: 768px) {
+			.homeblock {
+				width: 160px;
+			}
+			.sidenav {
+				width: 160px;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.homeblock {
+				display: flex;
+				height: 40px;
+				align-items: baseline;
+			}
+			.homeblock a {
+				font-size: 1.0rem;
+			}
+			.sidenav {
+				display: flex;
+				height: 40px;
+				top: 0;
+				right: 0;
+				bottom: initial;
+				left: initial;
+			}
+			#header-column {
+				height: 40px;
+			}
+			.sidenav .nav-new-game{
+				font-size: 1.0rem;
+			}
+			.sidenav a {
+				font-size: 1.0rem;
+			}
+			.sidenav a:last-child {
+				bottom: initial;
+				right: 0;
+			}
+		}
+
 		.footer {
             text-align: center;
             padding: 10px;
@@ -90,13 +128,13 @@
 			min-height: calc(100vh - var(--footer-height));
 		}
 
-		.main{
+		.main {
 			padding-top: 10vh;
 			padding-bottom: 20px;
 		}
 
-		.content{
-			padding-top: 1vh;
+		.content {
+			padding-top: 5vh;
 			padding-bottom: 20px;
 		}
 		
@@ -119,22 +157,28 @@
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
-	<div class="sidenav">
-		<div class="nav-new-game">Play</div>
-		<a href="/news">News</a>
-		{% if user %}
-			{% if user.is_authenticated %}
-			<a href="/account/email">Settings</a>
-			<a href="/profile/{{ user.username }}">Profile</a>
-			{% endif %}
-		{% else %}
-			<a href="/login">Sign in</a>
-		{% endif %}
-	</div>
-	
-	<div class="main-wrapper">
-		{% block content %}
-		{% endblock %}
+	<div class="row" style="max-width: 100%;">
+		<div id="header-column" class="col-12 col-md-1">
+			<div class="sidenav">
+				<div class="nav-new-game">Play</div>
+				<a href="/news">News</a>
+				{% if user %}
+					{% if user.is_authenticated %}
+					<a href="/account/email">Settings</a>
+					<a href="/profile/{{ user.username }}">Profile</a>
+					{% endif %}
+				{% else %}
+					<a href="/login">Sign in</a>
+				{% endif %}
+			</div>
+		</div>
+		
+		<div class="col-12 col-md-11">
+			<div class="main-wrapper">
+				{% block content %}
+				{% endblock %}
+			</div>
+		</div>
 	</div>
 	
 	{% block footer %}
