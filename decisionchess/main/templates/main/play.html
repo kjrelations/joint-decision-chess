@@ -47,6 +47,10 @@ Play
         width: 100%;
     }
 
+    .command-center {
+        background-color: #253d41;
+    }
+
     .scrollable-moves-list {
         overflow-y: scroll;
         max-height: 40%; /* 10% above for the username later */
@@ -132,7 +136,7 @@ Play
         <div class="col-2 d-md-none" style="max-width: 100%;"></div>
         <!-- 4 columns for command center-->
         <div class="col-10 col-md-4 d-flex align-items-center">
-            <div id="command-center" class="bg-secondary d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
+            <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
                 <!-- Content will be dynamically added here -->
                 <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
                     <!-- Content will be dynamically added here -->
@@ -181,6 +185,7 @@ Play
                     var width = iframeContainer.offsetWidth;
                     document.getElementById('embedded-iframe').style.height = width + 'px';
                     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+                    adjustFont();
                 });
     
                 window.addEventListener('resize', function() {

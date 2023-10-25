@@ -53,7 +53,7 @@
         outline: none;
         background-color: #6c757d;
         transition: background-color 0.3s ease;
-        transition: color 0.3s ease;
+        transition: color 0.1s ease;
     }
 
     .new-game:focus {
@@ -61,7 +61,7 @@
     }
 
     .new-game:hover {
-        background-color: rgb(161, 161, 161);
+        background-color: #34383c;
         color: #7685d8
     }
 
@@ -157,6 +157,24 @@
         background-color: #ecac22;
     }
 
+    body {
+        background: linear-gradient(-45deg, #ffffff, #FAFAEB, #D5EBDA, #d3cfad);
+        background-size: 400% 400%;
+        animation: gradient 25s ease infinite;
+        height: 100vh;
+    }
+
+    @keyframes gradient {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
 </style>
 {% endblock %}
 
