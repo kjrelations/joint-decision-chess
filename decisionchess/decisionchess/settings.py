@@ -61,7 +61,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CSRF_TRUSTED_ORIGINS = ['decisionchess.com']
+CSRF_TRUSTED_ORIGINS = ['https://decisionchess.com']
 
 ROOT_URLCONF = 'decisionchess.urls'
 
