@@ -2,9 +2,7 @@ import pygame
 import sys
 import json
 import asyncio
-print("Importing now?")
 import pygbag
-print("pygbag version", pygbag.__version__)
 import pygbag.aio as asyncio
 import pygbag_net
 import builtins

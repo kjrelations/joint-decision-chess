@@ -12,6 +12,8 @@ markdown = "*"
 psycopg = {extras = ["binary"], version = "*"}
 python-decouple = "*"
 django-countries = "*"
+whitenoise = "*"
+gunicorn = "*"
 
 [dev-packages]
 pytest = "*"
