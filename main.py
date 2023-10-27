@@ -212,7 +212,48 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
     promoted, promotion_required, end_state = False, True, None
     
     while promotion_required:
+        if client_state_actions["cycle_theme"]:
+            drawing_settings["theme_index"] += 1
+            drawing_settings["theme_index"] %= len(themes)
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            draw_board_params["chessboard"] = drawing_settings["chessboard"]
+            draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+            client_state_actions["cycle_theme"] = False
+            client_state_actions["cycle_theme_executed"] = True
+
+        if client_state_actions["flip"]:
+            current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            draw_board_params["chessboard"] = drawing_settings["chessboard"]
+            draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+            promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
+            client_state_actions["flip"] = False
+            client_state_actions["flip_executed"] = True
+        
         for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_t:
+                    drawing_settings["theme_index"] += 1
+                    drawing_settings["theme_index"] %= len(themes)
+                    current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                    # Redraw board and coordinates
+                    drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                    drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    draw_board_params["chessboard"] = drawing_settings["chessboard"]
+                    draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+
+                elif event.key == pygame.K_f:
+                    current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+                    # Redraw board and coordinates
+                    drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                    drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    draw_board_params["chessboard"] = drawing_settings["chessboard"]
+                    draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+                    promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
+
             for button in promotion_buttons:
                 button.handle_event(event)
                 if event.type == pygame.QUIT:
@@ -277,25 +318,10 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         #     client_state_actions["draw_offer_received"] = False
         #     window.sessionStorage.setItem("draw_request", "false")
 
-        if client_state_actions["cycle_theme"]:
-            drawing_settings["theme_index"] += 1
-            drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
-            drawing_settings["chessboard"] = generate_chessboard(current_theme)
-            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
-            client_state_actions["cycle_theme"] = False
-            client_state_actions["cycle_theme_executed"] = True
-
-        if client_state_actions["flip"]:
-            current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
-            drawing_settings["chessboard"] = generate_chessboard(current_theme)
-            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
-            client_state_actions["flip"] = False
-            client_state_actions["flip_executed"] = True
-
         game_window.fill((0, 0, 0))
         
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
+        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
+        # the reverse_coordinates helper
         draw_board(draw_board_params.copy())
         
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
@@ -711,6 +737,8 @@ async def main():
                 pygame.display.set_caption("Chess - Black")
             # This should copy the game from the node if reconnected later
             client_game = Game(new_board.copy(), starting_player)
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             player = "white" if starting_player else "black"
             opponent = "black" if starting_player else "white"
             window.sessionStorage.setItem("draw_request", "false")
@@ -1122,6 +1150,21 @@ async def main():
                                     drawn_arrows.append([current_right_clicked_square, end_right_released_square])
                             else:
                                 drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
+                
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_t:
+                        drawing_settings["theme_index"] += 1
+                        drawing_settings["theme_index"] %= len(themes)
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                        # Redraw board and coordinates
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+
+                    elif event.key == pygame.K_f:
+                        current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+                        # Redraw board and coordinates
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
         game_window.fill((0, 0, 0))
 
