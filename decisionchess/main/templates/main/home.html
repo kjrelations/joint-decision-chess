@@ -372,7 +372,7 @@ Decision Chess
                 });
         }
 
-        var csrftoken = Cookies.get('csrftoken');
+        var csrftoken = "{{ csrf_token|escapejs }}";
 
         function checkGameAvailability(gameId, gameLink, lobbyRow) {
             fetch('/check_game_availability/', {
