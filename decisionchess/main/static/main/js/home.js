@@ -86,7 +86,7 @@ function updateLobby() {
                 gameLink.href = '/play/' + game.game_uuid;
                 gameLink.onclick = function (event) {
                     event.preventDefault();
-                    checkGameAvailability(game.game_uuid, gameLink, lobbyRow);
+                    checkGameAvailability(game.game_uuid, lobbyRow);
                 };
                 gameLink.appendChild(lobbyRow);
 
@@ -101,9 +101,7 @@ function updateLobby() {
         });
 }
 
-var csrftoken = "{{ csrf_token|escapejs }}";
-
-function checkGameAvailability(gameId, gameLink, lobbyRow) {
+function checkGameAvailability(gameId, lobbyRow) {
     fetch('/check_game_availability/', {
         method: 'POST',
         headers: {
