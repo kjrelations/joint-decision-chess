@@ -407,7 +407,7 @@ class Node(pygbag_net.Node):
     ...
 
 # Not making this an async function for now
-def handle_node_events(node, init, client_game, client_state_actions, offers):
+def handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings):
     # Network events
     for ev in node.get_events():
         try:
@@ -427,6 +427,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers):
                             if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
                                 game.end_position:
                                     client_game.synchronize(game)
+                                    drawing_settings["clear_selections"] = True
                                     init["sent"] = 0
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
@@ -518,6 +519,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers):
                             if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
                                 game.end_position:
                                     client_game.synchronize(game)
+                                    drawing_settings["clear_selections"] = True
                                     init["sent"] = 0
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
@@ -942,12 +944,13 @@ async def main():
         "chessboard": generate_chessboard(current_theme),
         "coordinate_surface": generate_coordinate_surface(current_theme),
         "theme_index": 0,
-        "wait_screen_drawn": False
+        "wait_screen_drawn": False,
+        "clear_selections": False
     }
 
     # Main game loop
     while init["running"]:
-        handle_node_events(node, init, client_game, client_state_actions, offers)
+        handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings)
 
         if init["initializing"]:
             client_game, game_tab_id = initialize_game(init, game_id, node, drawing_settings)
@@ -965,6 +968,17 @@ async def main():
         if init["waiting"]:
             await waiting_screen(init, game_window, client_game, drawing_settings)
             continue
+
+        if drawing_settings["clear_selections"]:
+            if selected_piece:
+                row, col = selected_piece
+                piece = client_game.board[row][col]
+                is_white = piece.isupper()
+                first_intent, selected_piece, selected_piece_image, \
+                valid_moves, valid_captures, valid_specials, hovered_square = \
+                    handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                selected_piece_image = None
+            drawing_settings["clear_selections"] = False
 
         # Web browser actions/commands are received in previous loop iterations
         if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
