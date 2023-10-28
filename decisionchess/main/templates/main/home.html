@@ -7,10 +7,10 @@
 <style>
     @media (min-width: 768px) {
         .homeblock {
-            height: 10%;
-        }
+			height: 100px;
+		}
         .sidenav {
-            height: 90%;
+            height: calc(100% - 100px);
         }
     }
 
@@ -32,11 +32,6 @@
         }
         .sidenav {
             width: calc(100% - 130px);
-            overflow-x: scroll;
-        }
-        .sidenav a:last-child {
-            position: relative;
-            right: initial;
         }
         #IntroLink {
             display: none;
@@ -332,6 +327,7 @@ Decision Chess
                         noGamesMessage.style.borderBottom = "none";
                         noGamesMessage.style.justifyContent = 'center';
                         noGamesMessage.style.overflow = 'hidden'
+                        noGamesMessage.style.cursor = 'auto'
                         lobbyListContainer.appendChild(noGamesMessage);
                     }
                     // Later limit it to a set number

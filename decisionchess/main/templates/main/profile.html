@@ -3,38 +3,6 @@
 {% load static %}
 
 {% block style %}
-<style>
-    @media (min-width: 768px) {
-        .homeblock {
-            height: 5%;
-        }
-        .sidenav {
-            height: 95%;
-        }
-    }
-
-    @media (max-width: 767px) {
-        .homeblock {
-            width: 130px;
-        }
-        .sidenav {
-            width: calc(100% - 130px);
-        }
-        .content {
-            padding-top: 1vh;
-        }
-    }
-
-    @media (max-width: 510px) {
-        .sidenav {
-            overflow-x: scroll;
-        }
-        .sidenav a:last-child {
-            position: relative;
-            right: initial;
-        }
-    }
-</style>
 {% endblock %}
 
 {% block title %}

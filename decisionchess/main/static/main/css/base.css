@@ -1,0 +1,168 @@
+.homeblock {
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: transparent;
+}
+
+.homeblock a {
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    color: #1720a1;
+    font-size: 20px;
+    display: block;
+}
+
+.homeblock a:hover{
+    color: #ecac22;
+    text-decoration: none;
+}	
+
+.sidenav {
+    position: fixed;
+    z-index: 2;
+    bottom: 0;
+    left: 0;
+    background-color: #001d23;
+    /* Overflow shouldn't be an issue */
+    overflow-x: hidden;
+}
+
+.sidenav a {
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
+    display: block;
+}
+
+.sidenav a:hover{
+    color: #f1f1f1;
+    text-decoration: none;
+}	
+
+.sidenav .nav-new-game{
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    font-size: 25px;
+    color: #818181;
+    display: block;
+    cursor: pointer;
+}
+
+.sidenav .nav-new-game:hover{
+    transition: color 0.3s ease;
+    color: #465cda
+}
+
+.sidenav a:last-child {
+    position: absolute;
+    bottom: 0;
+}
+
+.main-wrapper {
+    min-height: calc(100vh - var(--footer-height));
+}
+
+.main {
+    padding-top: 100px;
+    padding-bottom: 20px;
+}
+
+.content {
+    padding-top: 5vh;
+    padding-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+    .homeblock {
+        width: 160px;
+        height: 50px;
+    }
+    .sidenav {
+        width: 160px;
+        height: calc(100% - 50px);
+    }
+}
+
+@media (min-width: 768px) and (max-height: 295px) {
+    .sidenav {
+        overflow-y: scroll;
+    }
+    .sidenav a:last-child {
+        position: relative;
+        bottom: initial;
+    }
+}
+
+@media (max-width: 767px) {
+    .homeblock {
+        display: flex;
+        height: 40px;
+        width: 130px;
+        align-items: baseline;
+    }
+    .homeblock a {
+        font-size: 1.0rem;
+    }
+    .sidenav {
+        display: flex;
+        height: 40px;
+        width: calc(100% - 130px);
+        top: 0;
+        right: 0;
+        bottom: initial;
+        left: initial;
+    }
+    #header-column {
+        height: 40px;
+    }
+    .sidenav .nav-new-game{
+        font-size: 1.0rem;
+    }
+    .sidenav a {
+        font-size: 1.0rem;
+    }
+    .sidenav a:last-child {
+        bottom: initial;
+        right: 0;
+    }
+    .content {
+        padding-top: 1vh;
+    }
+    .main {
+        padding-top: 1vh;
+    }
+}
+
+@media (max-width: 510px) {
+    .homeblock {
+        width: 130px;
+    }
+    .sidenav {
+        width: calc(100% - 130px);
+        overflow-x: scroll;
+    }
+    .sidenav a:last-child {
+        position: relative;
+        right: initial;
+    }
+}
+
+.footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #5b7f8b;
+    color: white;
+    width: 100%;
+}
+
+.footer a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}

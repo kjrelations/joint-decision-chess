@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib.sites.shortcuts import get_current_site
 from django.db.utils import IntegrityError
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
-from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.contrib.auth.decorators import login_required
@@ -52,6 +52,9 @@ def create_new_game(request):
             return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])})
 
 def get_lobby_games(request):
+    expired_games = ChessLobby.objects.filter(expire__lt=timezone.now())
+    expired_games.delete()
+
     lobby_games = ChessLobby.objects.filter(is_open=True)
     serialized_data = [
         {
@@ -102,14 +105,14 @@ def play(request, game_uuid):
     try:
         game = ChessLobby.objects.get(game_uuid=game_uuid)
         if not game.is_open and str(guest_uuid) not in [str(game.white_uuid), str(game.black_uuid)]:
-            return render(request, "main/home.html", {})
+            return redirect('home')
         elif str(guest_uuid) in [str(game.white_uuid), str(game.black_uuid)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
             if game.black_uuid is None and game.initiator_connected:
                 game.black_uuid = guest_uuid
                 game.save()
             elif str(guest_uuid) == str(game.white_uuid) == str(game.black_uuid):
-                return render(request, "main/home.html", {})
+                return redirect('home')
             return render(request, "main/play.html", sessionVariables)
         else:
             game.black_uuid = guest_uuid

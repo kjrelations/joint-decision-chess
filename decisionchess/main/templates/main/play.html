@@ -8,37 +8,6 @@ Play
 
 {% block style%}
 <style>
-    @media (min-width: 768px) {
-        .homeblock {
-            height: 5%;
-        }
-        .sidenav {
-            height: 95%;
-        }
-    }
-
-    @media (max-width: 767px) {
-        .homeblock {
-            width: 130px;
-        }
-        .sidenav {
-            width: calc(100% - 130px);
-        }
-        .content {
-            padding-top: 1vh;
-        }
-    }
-
-    @media (max-width: 510px) {
-        .sidenav {
-            overflow-x: scroll;
-        }
-        .sidenav a:last-child {
-            position: relative;
-            right: initial;
-        }
-    }
-
     #iframe-container {
         position: relative;
         width: 100%;
@@ -124,17 +93,17 @@ Play
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
-        <div class="col-2" style="max-width: 100%;">
+        <div class="col-2" style="width: 100%;">
         </div>
         <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
-        <div class="col 8 col-md-5">
+        <div class="col-10 col-md-5">
             <div id="iframe-container">
                 <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
             </div>
         </div>
         <!-- Optional blank column for command center alignment on smaller screens -->
-        <div class="col-2 d-md-none" style="max-width: 100%;"></div>
+        <div class="col-2 d-md-none" style="width: 100%;"></div>
         <!-- 4 columns for command center-->
         <div class="col-10 col-md-4 d-flex align-items-center">
             <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
@@ -146,24 +115,24 @@ Play
                 <div id="end-message" class="text-white"></div>
                 <div class="d-flex justify-content-center">
                     <!-- Need a button class here -->
-                    <button id="undoOfferButton" actions="true" class="action-button confirm mr-2">Undo</button>
+                    <button id="undoOfferButton" actions="true" class="action-button confirm hidden mr-2">Undo</button>
                     <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
                     <button id="undoOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
                     <button id="undoAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Undo?</button>
                     <button id="undoDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="resignButton" actions="true" class="action-button confirm mr-2">Resign</button>
+                    <button id="resignButton" actions="true" class="action-button confirm hidden mr-2">Resign</button>
                     <button id="resignConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
                     <button id="resignCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="drawOfferButton" actions="true" class="action-button confirm mr-2">Draw</button>
+                    <button id="drawOfferButton" actions="true" class="action-button confirm hidden mr-2">Draw</button>
                     <button id="drawOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
                     <button id="drawOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
                     <button id="drawAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Draw?</button>
                     <button id="drawDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
 
-                    <button id="cycleThemeButton" class="action-button confirm mr-2">Cycle Theme</button>
-                    <button id="flipButton" class="action-button confirm">Flip</button>
+                    <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm hidden">Flip</button>
                 </div>
             </div>
             <script>
@@ -206,6 +175,12 @@ Play
                         var moves = webGameMetadata.alg_moves;
                         var movesListContainer = document.getElementById('moves-list');
                         var endState = webGameMetadata.end_state;
+                        if (endState !== '') {
+                            const buttons = document.querySelectorAll(".action-button");
+                            buttons.forEach(button => {
+                                button.remove();
+                            });
+                        }
     
                         movesListContainer.innerHTML = '';
     
@@ -296,6 +271,7 @@ Play
                 sessionStorage.setItem('total_reset', "{{ total_reset }}");
 
                 var previousConnected = false
+                var initCheck = false
 
                 window.addEventListener('load', resetCommandCenter);
                 window.addEventListener('load', updateCommandCenter);
@@ -337,6 +313,16 @@ Play
                         updateConnectedStatus(true)
                     }
                     
+                    var initialized = sessionStorage.getItem('initialized');
+                    initialized = (initialized === 'true' ? true : false);
+                    if (initialized === true && initCheck === false) {
+                        const idStrings = ["undoOfferButton", "resignButton", "drawOfferButton", "cycleThemeButton", "flipButton"];
+                        idStrings.forEach(idString => {
+                            document.getElementById(idString).classList.remove("hidden")
+                        })
+                        initCheck = initialized
+                    }
+
                     previousConnected = currentConnected;
                 }
                 
@@ -521,8 +507,6 @@ Play
                     var resetDisplay = null
                     
                     var newOptions = (currentValue === true ? "responses": "followups")
-                    // Sometimes it gets to this block even though web_game_metadata isn't set somehow, old values or failure to set in script?
-                    // It must be old session values so the reset function isn't running...
                     if (currentGameID !== null && initialized === true) {
                         const acceptObjectName = baseStorageName + "_accept"
                         const denyObjectName = baseStorageName + "_deny"
