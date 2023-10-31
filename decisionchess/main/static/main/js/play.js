@@ -39,6 +39,8 @@ function updateCommandCenter() {
         var endState = webGameMetadata.end_state;
         if (endState !== '') {
             const buttons = document.querySelectorAll(".action-button");
+            clearInterval(requestIntervalId);
+            clearInterval(connectIntervalId);
             buttons.forEach(button => {
                 button.remove();
             });
@@ -178,7 +180,7 @@ function checkNewConnect() {
     previousConnected = currentConnected;
 }
 
-setInterval(checkNewConnect, 1000);
+var connectIntervalId = setInterval(checkNewConnect, 1000);
 
 window.onbeforeunload = function (e) {
     var confirmationMessage = 'You have unsaved changes. Are you sure you want to leave this page?';
@@ -381,7 +383,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
     }
 }
 
-setInterval(function() {
+var requestIntervalId = setInterval(function() {
     inputList.forEach(function(request) {
         if (request.hasOwnProperty('action')) {
             requestDisplay(request.action, request.buttonId, request.localStorageObjectName);

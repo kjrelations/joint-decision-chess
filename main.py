@@ -209,7 +209,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
 # Game State loop for promotion
 async def promotion_state(promotion_square, client_game, row, col, draw_board_params, client_state_actions, command_status_names, drawing_settings, game_tab_id, node, init, offers):
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
-    promoted, promotion_required, end_state = False, True, None
+    promoted, promotion_required = False, True
     
     while promotion_required:
 
@@ -262,7 +262,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["resign"] = False
             client_state_actions["resign_executed"] = True
             promotion_required = False
-            end_state = True
             continue
 
         if client_state_actions["draw_offer"] and not client_state_actions["draw_offer_sent"]:
@@ -284,7 +283,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["draw_accept"] = False
             client_state_actions["draw_accept_executed"] = True
             promotion_required = False
-            end_state = True
             continue
         if client_state_actions["draw_response_received"]:
             client_game.undo_move()
@@ -300,7 +298,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["draw_offer"] = False
             client_state_actions["draw_offer_executed"] = True
             promotion_required = False
-            end_state = True
             continue
         if client_state_actions["draw_deny"]:
             reset_data = {node.CMD: "draw_offer_reset"}
@@ -331,7 +328,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
         
-        handle_node_events(node, init, client_game, client_state_actions, offers)
+        handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings)
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -401,7 +398,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         await asyncio.sleep(0)
 
     await asyncio.sleep(0)
-    return promoted, end_state
+    return promoted
 
 class Node(pygbag_net.Node):
     ...
@@ -1303,12 +1300,31 @@ async def main():
             # Lock the game state (disable other input)
             
             # Display an overlay or popup with promotion options
-            promoted, end_state = await promotion_state(
+            # We cannot simply reuse the above declaration as it can be mutated by draw_board
+            draw_board_params = {
+                'window': game_window,
+                'theme': current_theme,
+                'board': client_game.board,
+                'drawing_settings': drawing_settings,
+                'selected_piece': selected_piece,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
+                'right_clicked_squares': right_clicked_squares,
+                'drawn_arrows': drawn_arrows,
+                'valid_moves': valid_moves,
+                'valid_captures': valid_captures,
+                'valid_specials': valid_specials,
+                'pieces': pieces,
+                'hovered_square': hovered_square,
+                'selected_piece_image': selected_piece_image
+            }
+            # TODO remove endState
+            promoted = await promotion_state(
                 promotion_square, 
                 client_game, 
                 row, 
                 col, 
-                draw_board_params, 
+                draw_board_params, # These are mutated on first draw then flipped again
                 client_state_actions, 
                 command_status_names, 
                 drawing_settings, 

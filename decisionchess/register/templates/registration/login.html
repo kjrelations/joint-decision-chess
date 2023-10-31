@@ -1,16 +1,6 @@
 {% extends "main/base.html" %}
 
-{% block style %} 
-<!-- Allow table of contents featuring introduction -->
-<style>
-    .homeblock {
-        height: 5%;
-    }
-
-    .sidenav {
-        height: 95%;
-    }
-</style>
+{% block style %}
 {% endblock %}
 
 {% block title %}
@@ -21,16 +11,18 @@ Login Here
 
 {% block content %}
 <div id="content", name="content", class="content">
-    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-    <div class="col-5">
-        <form method="post" class="from-group">
-            {% csrf_token %}
-            {{form|crispy}}
-            <p>Don't have an account? Create one <a href="/register">here</a></p>
-            <button type="submit" class="btn btn-success">Login</button>	
-            <p>Forgot your password? <a href="{% url 'password_reset' %}">Reset it here</a></p>
-        </form>
-    </div>
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+            <div class="col-10 col-md-5">
+                <form method="post" class="from-group">
+                    {% csrf_token %}
+                    {{form|crispy}}
+                    <p>Don't have an account? Create one <a href="/register">here</a></p>
+                    <button type="submit" class="btn btn-success">Login</button>	
+                    <p>Forgot your password? <a href="{% url 'password_reset' %}">Reset it here</a></p>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

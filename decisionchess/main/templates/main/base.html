@@ -6,7 +6,7 @@
 	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
 
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, interactive-widget=overlays-content, viewport-fit=cover">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
 	<title>{% block title %}Decision Chess{% endblock %}</title>
@@ -20,26 +20,28 @@
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
-	<div class="row" style="max-width: 100%;">
-		<div id="header-column" class="col-12 col-md-1">
-			<div class="sidenav">
-				<div class="nav-new-game">Play</div>
-				<a href="/news">News</a>
-				{% if user %}
-					{% if user.is_authenticated %}
-					<a href="/account/email">Settings</a>
-					<a href="/profile/{{ user.username }}">Profile</a>
+	<div class="container-fluid" style="padding: 0;">
+		<div class="row" style="max-width: 100%;">
+			<div id="header-column" class="col-12 col-hb-12 col-md-1">
+				<div class="sidenav">
+					<div class="nav-new-game">Play</div>
+					<a href="/news">News</a>
+					{% if user %}
+						{% if user.is_authenticated %}
+						<a href="/account/email">Settings</a>
+						<a href="/profile/{{ user.username }}">Profile</a>
+						{% endif %}
+					{% else %}
+						<a href="/login">Sign in</a>
 					{% endif %}
-				{% else %}
-					<a href="/login">Sign in</a>
-				{% endif %}
+				</div>
 			</div>
-		</div>
-		
-		<div class="col-12 col-md-11">
-			<div class="main-wrapper">
-				{% block content %}
-				{% endblock %}
+			
+			<div class="col-12 col-hb-12 col-md-11">
+				<div class="main-wrapper">
+					{% block content %}
+					{% endblock %}
+				</div>
 			</div>
 		</div>
 	</div>

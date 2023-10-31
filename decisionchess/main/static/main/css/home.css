@@ -8,24 +8,49 @@
     }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 510px) {
     .homeblock {
+        height: 40px;
         width: 245px;
     }
     .sidenav {
+        height: 40px;
         width: calc(100% - 245px);
     }
     .main {
         padding-top: 1vh;
     }
+    .col-10.offset-2.col-md-3 {
+        padding-top: 30px;
+        padding-bottom: 30px;
+    }
+    /* These will be unecessary in the future with more responsive widths or added content */
+    .col-hb-1.col-md-3, .col-hb-1.col-md-3 {
+        flex: 0 0 8.333333%;
+        max-width: 8.3333333%;
+    }
+    .col-hb-10-offset-1.col-md-5 {
+        margin-left: 8.333333%;
+    }
+    .col-hb-10-offset-2.col-md-3 {
+        margin-left: 16.666667%;
+    }
+    .col-hb-2.col-md-3 {
+        flex: 0 0 16.666667%;
+        max-width: 16.666667%;        
+    }
+    .col-hb-10-offset-1.col-md-5, .col-hb-10-offset-2.col-md-3, .col-hb-10.col-md-5 {
+        flex: 0 0 83.333333%;
+        max-width: 83.333333%;  
+    }
 }
 
-@media (max-width: 510px) {
+@media (max-width: 510px), (max-height: 510px) {
     .homeblock {
-        width: 130px;
+        display: inline-block;
     }
     .sidenav {
-        width: calc(100% - 130px);
+        width: calc(100% - 150px);
     }
     #IntroLink {
         display: none;
@@ -150,7 +175,8 @@ body {
     background: linear-gradient(-45deg, #ffffff, #FAFAEB, #D5EBDA, #d3cfad);
     background-size: 400% 400%;
     animation: gradient 25s ease infinite;
-    height: 100vh;
+    height: 100%;
+    background-attachment: fixed;
 }
 
 @keyframes gradient {

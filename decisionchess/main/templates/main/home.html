@@ -16,85 +16,91 @@ Decision Chess
 
 {% block content %}
 <div id="content" name="content" class="main">
-    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <!-- Landing Section across 11 columns -->
-        <!-- Initial empty column -->
-        <div class="col-1 col-md-3">
-        </div>
-        <!-- Join column: Quick Pair, Lobby, games in play section -->
-        <div class="col-7 col-md-5">
-            <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
-            <button id="quick-pair" class="quick-pair">Quick Pair</button>
-            <div class="lobby" style="max-width: 100%;">
-                <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
-                    <div class="lobby-header">
-                        <div style="text-align: center; width: 50%; overflow: hidden;">User (Anonymous)</div>
-                        <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+            <!-- Landing Section across 11 columns -->
+            <!-- Initial empty column -->
+            <div class="col-1 col-hb-1 col-md-3">
+            </div>
+            <!-- Join column: Quick Pair, Lobby, games in play section -->
+            <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
+                <!-- <img src="{% static 'main/images/coming-soon-landing.png' %}" alt="Join Section" style="max-width: 100%;"> -->
+                <button id="quick-pair" class="quick-pair">Quick Pair</button>
+                <div class="lobby" style="max-width: 100%;">
+                    <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
+                        <div class="lobby-header">
+                            <div style="text-align: center; width: 50%; overflow: hidden;">User (Anonymous)</div>
+                            <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                        </div>
+                        <div id="lobby-content"></div>
                     </div>
-                    <div id="lobby-content"></div>
                 </div>
             </div>
+            <!-- <div class="col-3 d-md-none" style="width: 0%"></div> -->
+            <!-- Game creation, live stats -->
+            <!-- <div class="col-2 d-md-none"></div> -->
+            <div class="col-10 offset-2 col-hb-10-offset-2 col-md-3 offset-md-0 d-flex align-items-center">
+                <button class="new-game" style="min-width: 100%;">Create New Game</button>
+            </div>
         </div>
-        <!-- Game creation, live stats -->
-        <div class="col-3 d-flex align-items-center">
-            <button class="new-game" style="min-width: 100%;">Create New Game</button>
-        </div>
-        <!-- Top live game, Recent News, donation section to be added here -->
-        <!-- Introduction Section across 11 columns -->
-        <!-- Initial empty column -->
-        <div class="col-1 col-md-3">
-        </div>
-        <!-- Introduction -->
-        <div class="col-10 col-md-5">
-            <section id="Introduction">
-                <h2>Introduction</h2>
-                <p>
-                    Decision Chess is a variant of chess that will require the move of each player to be locked in before playing them, 
-                    additionally there are no turns during "active" play. That is, both players can move their pieces on the same turn and both 
-                    moves will be played at the same time once they both agree to proceed. 
-                    <br>
-                    The full official name of the variant is thus called <strong><em>Joint</em>-Decision Chess</strong>, but that's less catchy.
-                    <br>
-                    <br>
-                    Currently, this site only offers the classical standard version of chess while basic functionality is developed and enabled.
-                    It will allow for classical games and decision chess games in the future. The following is a list of some major upcoming features and pages. <br>
-                    Stay tuned...
-                </p>
-                <ul>
-                    <li>A News Page</li>
-                    <li>A Play Page that interacts with the game</li>
-                    <li>A Profile Page</li>
-                    <li>An Account Page</li>
-                    <li>Enabling Multiplayer</li>
-                    <li>Revisiting Old Games</li>
-                    <li>Home Page Lobby and Quick Pair Tabs</li>
-                    <li>Live Chatbox</li>
-                    <li>AI opponents</li>
-                    <li>Theme set selection</li>
-                    <li>Lobby game filter</li>
-                    <li>Potential Visual Overhaul</li>
-                </ul>
-                <p>Once this initial site is complete, I will begin to create and implement my variant. The following is a list of features coming with the beta version:</p>
-                <ul>
-                    <li>Implementing the new variant itself!</li>
-                    <li>Creating AI and iterating on the design through Generative Adversarial Networks</li>
-                    <li>A personal notes tab alongside the live chat</li>
-                    <li>Customizing the variant</li>
-                    <li>Mobile compatibility</li>
-                    <li>Live games viewing</li>
-                    <li>Personal Ranking System (Not ELO)</li>
-                    <li>Players Page with Leaderboards and Search</li>
-                    <li>Tools Page with board editor and game search</li>
-                    <li>Creating, testing, and adding sub-variants!</li>
-                    <li>Many more minor features...</li>
-                </ul>
-                <p>After these major hurdles and non-referenced other tasks are complete I will wait for feedback that will be added to version 1.0. <br> 
-                   I have only optional dependent features after it's initial launch but will await feedback and prioritize.
-                </p>
-            </section>
-        </div>
-        <!-- Initial empty column -->
-        <div class="col-1 col-md-3">
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <!-- Top live game, Recent News, donation section to be added here -->
+            <!-- Introduction Section across 11 columns -->
+            <!-- Initial empty column -->
+            <div class="col-2 col-hb-2 col-md-3" style="width: 100%;">
+            </div>
+            <!-- Introduction -->
+            <div class="col-10 col-hb-10 col-md-5">
+                <section id="Introduction">
+                    <h2>Introduction</h2>
+                    <p>
+                        Decision Chess is a variant of chess that will require the move of each player to be locked in before playing them, 
+                        additionally there are no turns during "active" play. That is, both players can move their pieces on the same turn and both 
+                        moves will be played at the same time once they both agree to proceed. 
+                        <br>
+                        The full official name of the variant is thus called <strong><em>Joint</em>-Decision Chess</strong>, but that's less catchy.
+                        <br>
+                        <br>
+                        Currently, this site only offers the classical standard version of chess while basic functionality is developed and enabled.
+                        It will allow for classical games and decision chess games in the future. The following is a list of some major upcoming features and pages. <br>
+                        Stay tuned...
+                    </p>
+                    <ul>
+                        <li>A News Page</li>
+                        <li>A Play Page that interacts with the game</li>
+                        <li>A Profile Page</li>
+                        <li>An Account Page</li>
+                        <li>Enabling Multiplayer</li>
+                        <li>Revisiting Old Games</li>
+                        <li>Home Page Lobby and Quick Pair Tabs</li>
+                        <li>Live Chatbox</li>
+                        <li>AI opponents</li>
+                        <li>Theme set selection</li>
+                        <li>Lobby game filter</li>
+                        <li>Potential Visual Overhaul</li>
+                    </ul>
+                    <p>Once this initial site is complete, I will begin to create and implement my variant. The following is a list of features coming with the beta version:</p>
+                    <ul>
+                        <li>Implementing the new variant itself!</li>
+                        <li>Creating AI and iterating on the design through Generative Adversarial Networks</li>
+                        <li>A personal notes tab alongside the live chat</li>
+                        <li>Customizing the variant</li>
+                        <li>Mobile compatibility</li>
+                        <li>Live games viewing</li>
+                        <li>Personal Ranking System (Not ELO)</li>
+                        <li>Players Page with Leaderboards and Search</li>
+                        <li>Tools Page with board editor and game search</li>
+                        <li>Creating, testing, and adding sub-variants!</li>
+                        <li>Many more minor features...</li>
+                    </ul>
+                    <p>After these major hurdles and non-referenced other tasks are complete I will wait for feedback that will be added to version 1.0. <br> 
+                       I have only optional dependent features after it's initial launch but will await feedback and prioritize.
+                    </p>
+                </section>
+            </div>
+            <!-- Initial empty column -->
+            <div class="col-1 col-hb-1 col-md-3">
+            </div>
         </div>
     </div>
     <script>

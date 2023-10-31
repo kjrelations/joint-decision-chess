@@ -1,6 +1,6 @@
 .homeblock {
     position: fixed;
-    z-index: 1;
+    z-index: 2;
     top: 0;
     left: 0;
     background-color: transparent;
@@ -96,12 +96,13 @@
     }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 510px) {
     .homeblock {
         display: flex;
         height: 40px;
-        width: 130px;
+        width: 150px;
         align-items: baseline;
+        background-color: white;
     }
     .homeblock a {
         font-size: 1.0rem;
@@ -109,11 +110,19 @@
     .sidenav {
         display: flex;
         height: 40px;
-        width: calc(100% - 130px);
+        width: calc(100% - 150px);
         top: 0;
         right: 0;
         bottom: initial;
         left: initial;
+    }
+    .col-hb-12.col-md-1 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    .col-hb-12.col-md-11 {
+        flex: 0 0 100%;
+        max-width: 100%;
     }
     #header-column {
         height: 40px;
@@ -138,10 +147,9 @@
 
 @media (max-width: 510px) {
     .homeblock {
-        width: 130px;
+        display: inline-block;
     }
     .sidenav {
-        width: calc(100% - 130px);
         overflow-x: scroll;
     }
     .sidenav a:last-child {
