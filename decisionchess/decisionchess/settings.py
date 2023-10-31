@@ -156,6 +156,7 @@ STATICFILES_STORAGE="whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+DEBUG_PROPAGATE_EXCEPTIONS = True
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
