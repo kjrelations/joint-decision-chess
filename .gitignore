@@ -3,3 +3,4 @@ decisionchess/db.sqlite3
 decisionchess/static_collected_files
 *.pyc
 *.env
+pygbag_net.py
