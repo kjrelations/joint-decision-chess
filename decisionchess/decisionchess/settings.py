@@ -148,45 +148,48 @@ USE_TZ = True
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'static_collected_files')
 STATIC_URL = '/static/'
-STATICFILES_STORAGE="whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE="django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 
 # Define the STATICFILES_DIRS to specify the directories where your static files are located.
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
-DEBUG_PROPAGATE_EXCEPTIONS = True
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
-            'datefmt' : "%d/%b/%Y %H:%M:%S"
-        },
-        'simple': {
-            'format': '%(levelname)s %(message)s'
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'mysite.log',
-            'formatter': 'verbose'
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers':['file'],
-            'propagate': True,
-            'level':'DEBUG',
-        },
-        'MYAPP': {
-            'handlers': ['file'],
-            'level': 'DEBUG',
-        },
-    }
-}
+
+## Production DEBUG logs as if DEBUG=True
+# DEBUG_PROPAGATE_EXCEPTIONS = True
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
+#             'datefmt' : "%d/%b/%Y %H:%M:%S"
+#         },
+#         'simple': {
+#             'format': '%(levelname)s %(message)s'
+#         },
+#     },
+#     'handlers': {
+#         'file': {
+#             'level': 'DEBUG',
+#             'class': 'logging.FileHandler',
+#             'filename': 'mysite.log',
+#             'formatter': 'verbose'
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers':['file'],
+#             'propagate': True,
+#             'level':'DEBUG',
+#         },
+#         'MYAPP': {
+#             'handlers': ['file'],
+#             'level': 'DEBUG',
+#         },
+#     }
+# }
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
