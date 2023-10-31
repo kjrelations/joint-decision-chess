@@ -1,1 +1,1 @@
-web: gunicorn decisionchess.wsgi --log-file -
+web: python manage.py collectstatic --noinput && gunicorn decisionchess.wsgi --log-file -
