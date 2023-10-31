@@ -7,7 +7,7 @@ The project is available at https://decisionchess.com
 
 The goal is to have a website running for classical chess first with all the necessary features for this simple version of the game. Then I will implement my personally designed chess variant. Many more features will be added that will be specific to my version such as customizing the specifics of the game and adding personally designed sub-variants. 
 
-The site is being deployed off of the `main-classical` branch but it should be noted that the active default branch has many other features and pages already enabled. 
+The site is being deployed off of the `dev-pre-alpha` branch but it should be noted that the active default branch has many other features and pages already enabled. 
 
 My version will be called "Joint-Decision Chess", and until then will be worked under branches that focus on the classical game.
 
