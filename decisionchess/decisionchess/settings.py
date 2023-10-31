@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-ALLOWED_HOSTS = ['www.decisionchess.com', 'decisionchess.com', 'joint-decision-chess-production.up.railway.app']
+ALLOWED_HOSTS = ['www.decisionchess.com', 'decisionchess.com']
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap4',
     'main.apps.MainConfig',
-    'register.apps.RegisterConfig',
     'middleware',
     'django_countries',
 ]
