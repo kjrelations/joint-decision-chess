@@ -47,6 +47,7 @@ def create_new_game(request):
             guest_uuid = request.session.get('guest_uuid')
             if guest_uuid is None:
                 guest_uuid = uuid.uuid4()
+                request.session["guest_uuid"] = str(guest_uuid)
             new_open_game.white_uuid = guest_uuid
             new_open_game.save()
             return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])})
