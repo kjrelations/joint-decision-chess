@@ -156,7 +156,6 @@ STATICFILES_DIRS = [
 ]
 
 ## Production DEBUG logs as if DEBUG=True
-# DEBUG_PROPAGATE_EXCEPTIONS = True
 # LOGGING = {
 #     'version': 1,
 #     'disable_existing_loggers': False,
