@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-ALLOWED_HOSTS = ['www.decisionchess.com', '.decisionchess.com', 'joint-decision-chess.railway.internal']
+ALLOWED_HOSTS = ['www.decisionchess.com', 'decisionchess.com', 'joint-decision-chess-production.up.railway.app']
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
