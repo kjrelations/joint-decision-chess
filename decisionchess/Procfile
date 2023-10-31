@@ -1,1 +1,1 @@
-web: gunicorn decisionchess.wsgi --log-file gunicorn.log
+web: gunicorn decisionchess.wsgi --log-file -
