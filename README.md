@@ -64,16 +64,15 @@ The site is public for testing but a local environment of just the game can easi
    ```
 
    - The dev flag ensures all dependencies including development packages are installed.
+   - This will create a virtual environment and install the required packages specified in the `Pipfile.lock`.
 
-3. This will create a virtual environment and install the required packages specified in the `Pipfile.lock`.
-
-4. Activate the virtual environment using the following command:
+3. Activate the virtual environment using the following command:
 
    ```bash
    pipenv shell
    ```
 
-5. You can now run the application using Pygbag which should have been installed:
+4. You can now run the application using Pygbag which should have been installed:
 
    ```bash
    python -m pygbag main.py
@@ -81,16 +80,16 @@ The site is public for testing but a local environment of just the game can easi
 
    - This will allow your game to be available at localhost:8000.
 
-6. The game requires a game id to connect to the server in order to load, this is retrieved from the browser sessionStorage. Open a browser dev console and run the following before the ready button is clicked 
+5. The game requires a game id to connect to the server in order to load, this is retrieved from the browser sessionStorage. Open a browser dev console and run the following before the ready button is clicked 
 
    - `sessionStorage.setItem("current_game_id", "<non-0-number>")`.
    - If the game loads with a black screen simply reload the page. If an error box occurs then clear the site cache and re-run the above.
 
-7. Repeat step 6 once the board is loaded on a new tab to open a second client as the opponent.
+6. Repeat step 6 once the board is loaded on a new tab to open a second client as the opponent.
 
-8. Play a game!
+7. Play a game!
 
-9. To deactivate the virtual environment when you're finished, simply use the `exit` command or close the terminal.
+8. To deactivate the virtual environment when you're finished, simply use the `exit` command or close the terminal.
 
 ## Testing
 
