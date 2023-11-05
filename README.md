@@ -57,7 +57,7 @@ The site is public for testing but a local environment of just the game can easi
    pip install pipenv
    ```
 
-2. Now,  install the project's dependencies and create a virtual environment:
+2. Now, create a virtual environment and install the project's dependencies:
 
    ```bash
    pipenv install --dev
