@@ -11,6 +11,7 @@ urlpatterns = [
     path('get_lobby_games/', views.get_lobby_games, name='get_lobby_games'),
     path('play/<uuid:game_uuid>/', views.play, name='join_new_game'),
     path('update_connected/', views.update_connected, name='update_connected'),
+    path('save_game/', views.save_game, name='save_game'),
     path("news/", views.news, name="news"),
     path("profile/<str:username>/", views.profile, name="profile"),
     path("terms-of-service/", views.terms_of_service, name="terms"),

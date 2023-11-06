@@ -14,7 +14,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse
 from django.urls import reverse
 from base64 import binascii
-from .models import BlogPosts, User, ChessLobby
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable
 from .forms import ChangeEmailForm, EditProfile
 import uuid
 import json
@@ -159,22 +159,71 @@ def update_connected(request):
             # multiples of each type
             is_initiator = True if len(request.session[connect_game_uuid]) == 1 and waiting_game else False
 
+            message = {}
+            save_to_active = False
             if game.initiator_connected != web_connect and is_initiator:
-                    game.initiator_connected = web_connect
-                    game.save()
-                    return JsonResponse({"status": "updated"})
+                game.initiator_connected = web_connect
+                game.save()
+                message = {"status": "updated"}
             elif compare is not None and waiting_game: # and str(compare) != guest_uuid: # For ranked only
                 if null_id == "black":
                     game.black_uuid = guest_uuid
                 else:
                     game.white_uuid = guest_uuid
                 game.save()
-                return JsonResponse({"status": "updated"})
-            return JsonResponse({}, status=200)
+                save_to_active = True
+                message = {"status": "updated"}
+            elif not waiting_game:
+                save_to_active = True
+                message = {"status": "updated"}
+            if save_to_active:
+                active_game = ActiveGames(
+                    gameid = connect_game_uuid,
+                    whiteid = game.white_uuid,
+                    blackid = game.black_uuid,
+                    gametype = "classical",
+                    status = "playing"
+                )
+                active_game.save()
+            return JsonResponse(message, status=200)
         except ChessLobby.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Lobby row DNE"}, status=400)
     else:
         return JsonResponse({"status": "error"}, status=400)
+
+def save_game(request):
+    if request.method == 'PUT':
+        data = json.loads(request.body.decode('utf-8'))
+        completed_game_uuid = data.get('game_uuid') # Retrieve from server somehow? Would need websockets to bypass web data. That's best and this shouldn't be a http response then
+        # Actually just ensuring it's in session should be fine
+        if not is_valid_uuid(completed_game_uuid):
+            return JsonResponse({"status": "error"}, status=400)
+        # Needs to be a player with uuid in session to access this endpoint
+        guest_uuid = request.session.get("guest_uuid")
+        try:
+            active_game = ActiveGames.objects.get(gameid=completed_game_uuid)
+            if guest_uuid != str(active_game.whiteid) or guest_uuid != str(active_game.blackid):
+                return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+            lobby_game = ChessLobby.objects.get(game_uuid=completed_game_uuid)
+            completed_game = GameHistoryTable(
+                gameid = active_game.gameid,
+                whiteid = active_game.whiteid,
+                blackid = active_game.blackid,
+                moves = data.get('moves'), # Need to validate or get from session as well
+                starttime = active_game.starttime,
+                gametype = active_game.gametype,
+                outcome = data.get('outcome')
+            )
+            completed_game.save()
+            lobby_game.delete()
+            active_game.delete()
+            return JsonResponse({"status": "updated"})
+        except ActiveGames.DoesNotExist:
+            saved_game = GameHistoryTable.objects.get(gameid=completed_game_uuid)
+            if saved_game:
+                return JsonResponse({}, status=200)
+            else:
+                return JsonResponse({"status": "error", "message": "Game DNE"}, status=400)
 
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')

@@ -698,7 +698,7 @@ def initialize_game(init, game_id, node, drawing_settings):
         web_game_metadata_dict[game_tab_id] = {
             "end_state": '',
             "forced_end": '',
-            "player_color":  init["player"],
+            "player_color": init["player"],
             "alg_moves": [],
             "undo_move": {
                 "execute": False,

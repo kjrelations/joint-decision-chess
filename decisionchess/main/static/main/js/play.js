@@ -28,6 +28,8 @@ window.addEventListener('resize', function() {
     adjustFont();
 });
 
+var gameSaved = false;
+
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -78,12 +80,12 @@ function updateCommandCenter() {
         }
 
         if (endState === "\u00bd\u2013\u00bd") {
-            endState = '½–½'
+            endState = '½–½';
         }
         var forcedEnd = webGameMetadata.forced_end;
         var endMessagebox = document.getElementById('end-message');
         var finalScorebox = document.getElementById('final-score');
-        var endmessage = ''
+        var endmessage = '';
         if (forcedEnd !== '') {
             if (forcedEnd === 'Draw by mutual agreement' || forcedEnd === 'Stalemate by Threefold Repetition') {
                 endmessage += forcedEnd;
@@ -96,20 +98,47 @@ function updateCommandCenter() {
         if (endState === '1-0') {
             endmessage += `White is Triumphant`;
             endMessagebox.innerHTML = `White is Triumphant`;
-            finalScorebox.innerHTML = '1-0'
+            finalScorebox.innerHTML = '1-0';
         } else if (endState === '0-1') {
             endmessage += `Black is Triumphant`;
-            finalScorebox.innerHTML = '0-1'
+            finalScorebox.innerHTML = '0-1';
         } else if (endState === '½–½' && forcedEnd !== 'Draw by mutual agreement' && forcedEnd !== 'Stalemate by Threefold Repetition') {
             endmessage += `Stalemate was Reached`;
-            finalScorebox.innerHTML = '½–½'
+            finalScorebox.innerHTML = '½–½';
         }
 
         if (endmessage !== '') {
-            endMessagebox.innerHTML = endmessage
+            endMessagebox.innerHTML = endmessage;
+            if (!gameSaved) { // Only execute this once
+                gameSaved = true
+                saveHistoricGame(moves.join(','), endState);
+            }
         }
     }
+}
 
+function saveHistoricGame(moves_str, score) {
+    fetch('/save_game/', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ 
+            game_uuid: game_uuid,
+            moves: moves_str,
+            outcome: score
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "error") {
+            return;
+        }
+    })
+    .catch(error => {
+        console.error('Error uploading game:', error);
+    });
 }
 
 function resetCommandCenter() {
@@ -136,28 +165,28 @@ setInterval(updateCommandCenter, 100);
 
 function updateConnectedStatus(status) {
     fetch('/update_connected/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken,
-            },
-            body: JSON.stringify({ 
-                game_uuid: game_uuid, 
-                web_connect: status
-            }),
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "error" && data.message === "Lobby row DNE") {
-                return;
-            }
-            // Handle the response as needed
-            // Put in a "waiting message" if it hasn't been played yet
-            // Put a disconnect status if in play
-        })
-        .catch(error => {
-            console.error('Error updating connection status:', error);
-        });
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ 
+            game_uuid: game_uuid, 
+            web_connect: status
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "error" && data.message === "Lobby row DNE") {
+            return;
+        }
+        // Handle the response as needed
+        // Put in a "waiting message" if it hasn't been played yet
+        // Put a disconnect status if in play
+    })
+    .catch(error => {
+        console.error('Error updating connection status:', error);
+    });
 }
 
 function checkNewConnect() {
