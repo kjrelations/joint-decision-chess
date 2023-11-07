@@ -36,6 +36,7 @@ class Game:
             self._starting_player = starting_player
             self._move_undone = False
             self._sync = True
+            self._move_count = 0
         else:
             self.current_turn = custom_params["current_turn"]
             self.board = custom_params["board"]
@@ -57,6 +58,7 @@ class Game:
             self._starting_player = custom_params["_starting_player"]
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
+            self._move_count = len(self.moves) # This could be custom eventually
 
     def synchronize(self, new_game):
         self.current_turn = new_game.current_turn
@@ -227,6 +229,24 @@ class Game:
 
         return alg_move
 
+    def translate_into_FEN(self):
+        FEN = ''
+        for row in self.board:
+            row_str, empty_count = '', 0
+            for i, position in enumerate(row):
+                if position == ' ':
+                    empty_count += 1
+                    if i == len(row) - 1 and position == ' ':
+                        row_str += str(empty_count)
+                        empty_count = 0
+                else:
+                    if empty_count:
+                        row_str += str(empty_count)
+                        empty_count = 0
+                    row_str += position
+            FEN += row_str + "/"
+        return FEN[:-1]
+
     def add_end_game_notation(self, checkmate):
         if not self._debug:
             if checkmate:
@@ -378,6 +398,72 @@ class Game:
                 self.current_position = None
                 self.previous_position = None
     
+    def step_to_move(self, move_count):
+        increment = -1
+        if move_count > self._move_count:
+            increment = 1
+        elif move_count == self._move_count:
+            return
+        while self._move_count != move_count:
+            move = self.moves[move_count + increment]
+
+            prev_pos = list(move[0])
+            curr_pos = list(move[1])
+            potential_capture = move[2]
+            special = move[3]
+
+            piece, prev_row, prev_col = prev_pos[0], int(prev_pos[1]), int(prev_pos[2])
+            curr_row, curr_col = int(curr_pos[1]), int(curr_pos[2])
+
+            self.board[prev_row][prev_col] = piece
+            if special != 'enpassant':
+                replacement = potential_capture if increment < 0 else piece
+                self.board[curr_row][curr_col] = replacement
+            else:
+                move_replacement = ' ' if increment < 0 else piece
+                capture_replacement = potential_capture if increment < 0 else ' '
+                self.board[curr_row][curr_col] = move_replacement
+                self.board[prev_row][curr_col] = capture_replacement
+
+            if special == 'castle':
+                rook_old_pos = ' '
+                rook_future_pos = 'R' if curr_row == 7 else 'r'
+                if increment < 0:
+                    rook_old_pos = 'R' if curr_row == 7 else 'r'
+                    rook_future_pos = ' '
+                if (curr_row, curr_col) == (7, 2):
+                    self.board[7][0] = rook_old_pos
+                    self.board[7][3] = rook_future_pos
+                elif (curr_row, curr_col) == (7, 6):
+                    self.board[7][7] = rook_old_pos
+                    self.board[7][5] = rook_future_pos
+                elif (curr_row, curr_col) == (0, 2):
+                    self.board[0][0] = rook_old_pos
+                    self.board[0][3] = rook_future_pos
+                elif (curr_row, curr_col) == (0, 6):
+                    self.board[0][7] = rook_old_pos
+                    self.board[0][5] = rook_future_pos
+            
+            self._move_count += increment
+        
+        if self._move_count == len(self.moves):
+            self.end_position = True
+        else:
+            self.end_position = False
+        
+        if self._move_count != 0:
+            new_recent_positions = self.moves[move_count + increment]
+            new_last_pos, new_current_pos = list(new_recent_positions[0]), list(new_recent_positions[1])
+
+            new_curr_row, new_curr_col = int(new_current_pos[1]), int(new_current_pos[2])
+            new_last_row, new_last_col = int(new_last_pos[1]), int(new_last_pos[2])
+
+            self.current_position = (new_curr_row, new_curr_col)
+            self.previous_position = (new_last_row, new_last_col)
+        else:
+            self.current_position = None
+            self.previous_position = None
+
     def to_json(self):
         return json.dumps(self, cls=GameEncoder)
 

@@ -700,6 +700,8 @@ def initialize_game(init, game_id, node, drawing_settings):
             "forced_end": '',
             "player_color": init["player"],
             "alg_moves": [],
+            "comp_moves": [],
+            "FEN_final_pos": "",
             "undo_move": {
                 "execute": False,
                 "update_executed": False,
@@ -1495,6 +1497,8 @@ async def main():
             web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
             web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
+            web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)

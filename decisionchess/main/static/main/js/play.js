@@ -111,13 +111,15 @@ function updateCommandCenter() {
             endMessagebox.innerHTML = endmessage;
             if (!gameSaved) { // Only execute this once
                 gameSaved = true
-                saveHistoricGame(moves.join(','), endState);
+                var comp_moves = webGameMetadata.comp_moves;
+                var FEN_final = webGameMetadata.FEN_final_pos;
+                saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd);
             }
         }
     }
 }
 
-function saveHistoricGame(moves_str, score) {
+function saveHistoricGame(alg_moves_str, comp_moves_str, score, FEN_final, forcedEnd) {
     fetch('/save_game/', {
         method: 'PUT',
         headers: {
@@ -126,8 +128,11 @@ function saveHistoricGame(moves_str, score) {
         },
         body: JSON.stringify({ 
             game_uuid: game_uuid,
-            moves: moves_str,
-            outcome: score
+            alg_moves: alg_moves_str,
+            outcome: score,
+            comp_moves: comp_moves_str,
+            FEN: FEN_final,
+            termination_reason: forcedEnd
         }),
     })
     .then(response => response.json())
@@ -222,6 +227,7 @@ window.onbeforeunload = function (e) {
     }
 };
 
+// to defaults
 window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('connected', 'false');
     sessionStorage.setItem('current_game_id', game_uuid);

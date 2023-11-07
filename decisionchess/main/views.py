@@ -90,15 +90,13 @@ def play(request, game_uuid):
         guest_uuid = uuid.uuid4()
         request.session["guest_uuid"] = str(guest_uuid)
     sessionVariables = {
-        'guest_uuid': str(guest_uuid),
-        'game_uuid': game_uuid,
+        'game_uuid': game_uuid, # str unneeded?
         'connected': 'false',
         'current_game_id': str(game_uuid),
         'initialized': 'null',
         'draw_request': 'false',
         'undo_request': 'false',
-        'total_reset': 'false',
-        'guest_uuid': guest_uuid
+        'total_reset': 'false'
     }
 
     # Validate uuid (ensure not expired), direct to play, spectator, or historic html, check authentication on former
@@ -120,6 +118,17 @@ def play(request, game_uuid):
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
+        historic = GameHistoryTable.objects.get(gameid=game_uuid)
+        if historic:
+            sessionVariables = {
+                'current_game_id': str(game_uuid),
+                'alg_moves': historic.algebraic_moves,
+                'comp_moves': historic.computed_moves,
+                'FEN': historic.FEN_outcome,
+                'outcome': historic.outcome,
+                'forced_end': historic.termination_reason
+            }
+            return render(request, "main/play/historic.html", sessionVariables)
         return render(request, "main/play.html", sessionVariables)
 
 def is_valid_uuid(value):
@@ -209,10 +218,13 @@ def save_game(request):
                 gameid = active_game.gameid,
                 whiteid = active_game.whiteid,
                 blackid = active_game.blackid,
-                moves = data.get('moves'), # Need to validate or get from session as well
+                algebraic_moves = data.get('alg_moves'), # Need to validate or get from session as well
                 starttime = active_game.starttime,
                 gametype = active_game.gametype,
-                outcome = data.get('outcome')
+                outcome = data.get('outcome'),
+                computed_moves = data.get('comp_moves'),
+                FEN_outcome = data.get('FEN'),
+                termination_reason = data.get('termination_reason')
             )
             completed_game.save()
             lobby_game.delete()

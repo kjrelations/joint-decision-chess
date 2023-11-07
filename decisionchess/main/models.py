@@ -51,11 +51,14 @@ class GameHistoryTable(models.Model):
 	gameid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	whiteid = models.UUIDField(null=False)
 	blackid = models.UUIDField(null=False)
-	moves = models.TextField(blank=False, null=False, default="")
+	algebraic_moves = models.TextField(blank=False, null=False, default="")
 	starttime = models.DateTimeField(blank=False, null=False)
 	endtime = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	outcome = models.CharField(max_length=7, blank=False, null=False, default="")
+	computed_moves = models.TextField(blank=False, null=False, default="")
+	FEN_outcome = models.CharField(max_length=85, blank=False, null=False, default="")
+	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
 
 class BlogPosts(models.Model):
 	# Have blogid later

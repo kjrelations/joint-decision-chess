@@ -31,6 +31,61 @@ def load_piece_image(piece, GRID_SIZE):
 def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
     return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]
 
+# Helper function for translating a simple FEN into a board position
+def translate_FEN_into_board(FEN):
+    board = []
+    FEN_rows = FEN.split('/')
+    for row in FEN_rows:
+        new_row = []
+        for position in row:
+            if position.isdigit():
+                new_row.extend([' '] * int(position))
+            else:
+                new_row.append(position)
+        board.append(new_row)
+    return board
+
+# Helper function for loading a historic game parameters from localStorage values
+def load_historic_game(json_game):
+    starting_player = True
+    # Would depend on starting for games that start at a different position
+    current_turn = len(json_game["comp_moves"]) % 2 == 0
+
+    move = json_game["comp_moves"][-1]
+    prev, curr = list(move[0]), list(move[1])
+    prev_row, prev_col = int(prev[1]), int(prev[2])
+    curr_row, curr_col = int(curr[1]), int(curr[2])
+    previous_position = (prev_row, prev_col)
+    current_position = (curr_row, curr_col)
+
+    _castle_attributes = {
+        'white_king_moved' : False,
+        'left_white_rook_moved' : False,
+        'right_white_rook_moved' : False,
+        'black_king_moved' : False,
+        'left_black_rook_moved' : False,
+        'right_black_rook_moved' : False
+    }
+
+    game_param_dict = {
+        "current_turn": current_turn,
+        "board": translate_FEN_into_board(json_game["FEN_final_pos"]),
+        "moves": json_game["comp_moves"],
+        "alg_moves": json_game["alg_moves"],
+        "castle_attributes": _castle_attributes,
+        "current_position": current_position,
+        "previous_position": previous_position,
+        "board_states": {},
+        "max_states": 500,
+        "end_position": True,
+        "forced_end": json_game["forced_end"],
+        "_debug": False,
+        "_starting_player": starting_player,
+        "_move_undone": False,
+        "_sync": True
+    }
+    return game_param_dict
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
