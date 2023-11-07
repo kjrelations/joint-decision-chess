@@ -121,7 +121,7 @@ window.addEventListener('load', updateCommandCenter);
 
 setInterval(updateCommandCenter, 100);
 
-function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null) {
+function handleWebtoGameAction(buttonId, localStorageObjectName) {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
@@ -129,18 +129,69 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
         var webGameMetadata = existingWebGameMetadata[currentGameID];
         webGameMetadata[localStorageObjectName].execute = true
         existingWebGameMetadata[currentGameID] = webGameMetadata
+        // Could move this into it's own function
+        if (localStorageObjectName == "forward") {
+            if (move_index + 1 >= comp_moves.length) {
+                webGameMetadata[localStorageObjectName].execute = false
+                webGameMetadata[localStorageObjectName].index = null
+                existingWebGameMetadata[currentGameID] = webGameMetadata
+                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                
+                document.getElementById(buttonId).disabled = false;
+                return;
+            }
+            index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1)
+            webGameMetadata[localStorageObjectName].index = index_number
+        } else if (localStorageObjectName == "backward") {
+            if (move_index < 0) {
+                webGameMetadata[localStorageObjectName].execute = false
+                webGameMetadata[localStorageObjectName].index = null
+                existingWebGameMetadata[currentGameID] = webGameMetadata
+                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                
+                document.getElementById(buttonId).disabled = false;
+                return;
+            }
+            index_number = (buttonId === "backwardButton" ? move_index : -1)
+            webGameMetadata[localStorageObjectName].index = index_number
+        }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+        handleActionStatus(buttonId, currentGameID, localStorageObjectName);
     } else {
         console.warn("Failed to execute action")
     }
 }
 
 var inputList = [
+    { buttonId: "forwardButton", localStorageObjectName: "forward"},
+    { buttonId: "backwardButton", localStorageObjectName: "backward"},
+    { buttonId: "skipForwardButton", localStorageObjectName: "forward"},
+    { buttonId: "skipBackButton", localStorageObjectName: "backward"},
     { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
     { buttonId: "flipButton", localStorageObjectName: "flip_board"},
 ];
+
+function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
+    if (localStorageObjectName == "forward") {
+        webGameMetadata[localStorageObjectName].index = null
+        if (buttonId === "forwardButton") {
+            move_index++
+        } else if (buttonId === "skipForwardButton") {
+            move_index = comp_moves.length - 1
+        }
+        // update move highlighting 
+    } else if (localStorageObjectName == "backward") {
+        webGameMetadata[localStorageObjectName].index = null
+        if (buttonId === "backwardButton") {
+            move_index--
+        } else if (buttonId === "skipBackButton") {
+            move_index = -1
+        }
+        // update move highlighting 
+    }
+    return webGameMetadata
+}
 
 function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -150,10 +201,14 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
     // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     if (!actionCommandStatus.update_executed && !initialDefaults) {
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName);
+        setTimeout(function () {
+            handleActionStatus(buttonId, currentGameID, localStorageObjectName);
+        }, 0);
     } else {
         webGameMetadata[localStorageObjectName].execute = false
         webGameMetadata[localStorageObjectName].update_executed = false
+
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName)
 
         existingWebGameMetadata[currentGameID] = webGameMetadata
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));

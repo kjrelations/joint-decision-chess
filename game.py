@@ -36,7 +36,7 @@ class Game:
             self._starting_player = starting_player
             self._move_undone = False
             self._sync = True
-            self._move_count = 0
+            self._move_index = -1
         else:
             self.current_turn = custom_params["current_turn"]
             self.board = custom_params["board"]
@@ -58,7 +58,7 @@ class Game:
             self._starting_player = custom_params["_starting_player"]
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
-            self._move_count = len(self.moves) # This could be custom eventually
+            self._move_index = len(self.moves) - 1 # This could be custom eventually
 
     def synchronize(self, new_game):
         self.current_turn = new_game.current_turn
@@ -398,14 +398,18 @@ class Game:
                 self.current_position = None
                 self.previous_position = None
     
-    def step_to_move(self, move_count):
+    def step_to_move(self, move_index):
         increment = -1
-        if move_count > self._move_count:
-            increment = 1
-        elif move_count == self._move_count:
+        move_index_offset = 0 # We always undo the current move
+        target_index = max(move_index - 1, -1)
+        if move_index > len(self.moves) - 1 or move_index < -1: # If it's the same assume it's a backwards step, handle on frontend by disabling button
             return
-        while self._move_count != move_count:
-            move = self.moves[move_count + increment]
+        elif move_index > self._move_index:
+            increment = 1
+            move_index_offset = 1 # We always apply the next move
+            target_index = move_index
+        while self._move_index != target_index:
+            move = self.moves[self._move_index + move_index_offset]
 
             prev_pos = list(move[0])
             curr_pos = list(move[1])
@@ -415,10 +419,11 @@ class Game:
             piece, prev_row, prev_col = prev_pos[0], int(prev_pos[1]), int(prev_pos[2])
             curr_row, curr_col = int(curr_pos[1]), int(curr_pos[2])
 
-            self.board[prev_row][prev_col] = piece
             if special != 'enpassant':
                 replacement = potential_capture if increment < 0 else piece
+                fill = piece if increment < 0 else ' '
                 self.board[curr_row][curr_col] = replacement
+                self.board[prev_row][prev_col] = fill
             else:
                 move_replacement = ' ' if increment < 0 else piece
                 capture_replacement = potential_capture if increment < 0 else ' '
@@ -444,15 +449,15 @@ class Game:
                     self.board[0][7] = rook_old_pos
                     self.board[0][5] = rook_future_pos
             
-            self._move_count += increment
-        
-        if self._move_count == len(self.moves):
+            self._move_index += increment
+
+        if self._move_index == len(self.moves) - 1:
             self.end_position = True
         else:
             self.end_position = False
         
-        if self._move_count != 0:
-            new_recent_positions = self.moves[move_count + increment]
+        if self._move_index != -1:
+            new_recent_positions = self.moves[self._move_index]
             new_last_pos, new_current_pos = list(new_recent_positions[0]), list(new_recent_positions[1])
 
             new_curr_row, new_curr_col = int(new_current_pos[1]), int(new_current_pos[2])

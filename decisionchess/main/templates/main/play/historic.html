@@ -14,7 +14,8 @@ Play
         var current_game_id = "{{ current_game_id }}";
         var comp_str = "{{ comp_moves }}";
         const subgroups = comp_str.split('-');
-        const comp_moves = subgroups.map(subgroup => subgroup.split(','));
+        var comp_moves = subgroups.map(subgroup => subgroup.split(','));
+        var move_index = comp_moves.length - 1;
         var alg_str = "{{ alg_moves }}";
         const alg_moves = alg_str.split(',')
         var existingWebGameMetadata = (existingWebGameMetadata !== null ? JSON.parse(existingWebGameMetadata) : {})
@@ -24,6 +25,16 @@ Play
             "alg_moves": alg_moves,
             "comp_moves": comp_moves,
             "FEN_final_pos": "{{ FEN }}",
+            "forward": {
+                "index": null,
+                "execute": false,
+                "update_executed": false
+            },
+            "backward": {
+                "index": null,
+                "execute": false,
+                "update_executed": false
+            },            
             "cycle_theme": {
                 "execute": false,
                 "update_executed": false
@@ -59,6 +70,20 @@ Play
         <div class="col-10 col-md-4 d-flex align-items-center">
             <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
                 <!-- Content will be dynamically added here -->
+                <div class="d-flex justify-content-center align-items-center">
+                    <button id="skipBackButton" class="action-button confirm mr-2">
+                        <i class="fa-solid fa-backward-step icon-color"></i>
+                    </button>
+                    <button id="backwardButton" class="action-button confirm mr-2">
+                        <i class="fa-solid fa-play fa-rotate-180 icon-color"></i>
+                    </button>
+                    <button id="forwardButton" class="action-button confirm mr-2">
+                        <i class="fa-solid fa-play icon-color"></i>
+                    </button>
+                    <button id="skipForwardButton" class="action-button confirm">
+                        <i class="fa-solid fa-forward-step icon-color"></i>
+                    </button>
+                </div>
                 <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
                     <!-- Content will be dynamically added here -->
                 </div>

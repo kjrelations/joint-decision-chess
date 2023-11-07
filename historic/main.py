@@ -240,6 +240,10 @@ async def main():
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
     client_state_actions = {
+        "forward": False,
+        "forward_executed": False,
+        "backward": False,
+        "backward_executed": False,
         "cycle_theme": False,
         "cycle_theme_executed": False,
         "flip": False,
@@ -247,6 +251,8 @@ async def main():
     }
     # This holds the command name for the web localstorage object and the associated keys in the above dictionary
     command_status_names = [
+        ("forward", "forward", "forward_executed"),
+        ("backward", "backward", "backward_executed"),
         ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
         ("flip_board", "flip", "flip_executed")
     ]
@@ -293,6 +299,22 @@ async def main():
                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                 selected_piece_image = None
             drawing_settings["clear_selections"] = False
+
+        if client_state_actions["forward"]:
+            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+            web_game_metadata_dict = json.loads(web_game_metadata)
+            move_index = web_game_metadata_dict[game_id]["forward"]["index"]
+            client_game.step_to_move(move_index)
+            client_state_actions["forward"] = False
+            client_state_actions["forward_executed"] = True
+
+        if client_state_actions["backward"]:
+            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+            web_game_metadata_dict = json.loads(web_game_metadata)
+            move_index = web_game_metadata_dict[game_id]["backward"]["index"]
+            client_game.step_to_move(move_index)
+            client_state_actions["backward"] = False
+            client_state_actions["backward_executed"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
