@@ -450,6 +450,7 @@ class Game:
                     self.board[0][5] = rook_future_pos
             
             self._move_index += increment
+            self.current_turn = not self.current_turn
 
         if self._move_index == len(self.moves) - 1:
             self.end_position = True
