@@ -122,6 +122,7 @@ def play(request, game_uuid):
         if historic:
             sessionVariables = {
                 'current_game_id': str(game_uuid),
+                'initialized': 'null',
                 'alg_moves': historic.algebraic_moves,
                 'comp_moves': historic.computed_moves,
                 'FEN': historic.FEN_outcome,

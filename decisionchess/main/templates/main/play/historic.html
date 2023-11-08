@@ -25,16 +25,11 @@ Play
             "alg_moves": alg_moves,
             "comp_moves": comp_moves,
             "FEN_final_pos": "{{ FEN }}",
-            "forward": {
+            "step": {
                 "index": null,
                 "execute": false,
                 "update_executed": false
-            },
-            "backward": {
-                "index": null,
-                "execute": false,
-                "update_executed": false
-            },            
+            },      
             "cycle_theme": {
                 "execute": false,
                 "update_executed": false
@@ -71,16 +66,16 @@ Play
             <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
                 <!-- Content will be dynamically added here -->
                 <div class="d-flex justify-content-center align-items-center">
-                    <button id="skipBackButton" class="action-button confirm mr-2">
+                    <button id="skipBackwardButton" class="action-button confirm hidden mr-2">
                         <i class="fa-solid fa-backward-step icon-color"></i>
                     </button>
-                    <button id="backwardButton" class="action-button confirm mr-2">
+                    <button id="backwardButton" class="action-button confirm hidden mr-2">
                         <i class="fa-solid fa-play fa-rotate-180 icon-color"></i>
                     </button>
-                    <button id="forwardButton" class="action-button confirm mr-2">
+                    <button id="forwardButton" class="action-button confirm hidden mr-2">
                         <i class="fa-solid fa-play icon-color"></i>
                     </button>
-                    <button id="skipForwardButton" class="action-button confirm">
+                    <button id="skipForwardButton" class="action-button confirm hidden">
                         <i class="fa-solid fa-forward-step icon-color"></i>
                     </button>
                 </div>
@@ -97,6 +92,7 @@ Play
             </div>
             <script>
                 sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
+                sessionStorage.setItem('initialized', "{{ initialized }}");
                 var csrftoken = "{{ csrf_token|escapejs }}";
             </script>
             <script src="{% static 'main/js/historic.js' %}"></script>
