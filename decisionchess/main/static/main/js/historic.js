@@ -28,6 +28,20 @@ window.addEventListener('resize', function() {
     adjustFont();
 });
 
+function areArraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+    for (var i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+var savedMoves = []
+
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -35,6 +49,11 @@ function updateCommandCenter() {
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
         var webGameMetadata = existingWebGameMetadata[currentGameID];
         var moves = webGameMetadata.alg_moves;
+        // Don't keep unnecessarily updating
+        if (areArraysEqual(moves, savedMoves)) {
+            return;
+        }
+        savedMoves = moves
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
 
@@ -52,19 +71,42 @@ function updateCommandCenter() {
             var moveRow = document.createElement('div');
             moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
             
-            var leftHalf = document.createElement('div');
+            var leftHalf = document.createElement('button');
             leftHalf.style.width = '50%';
             leftHalf.textContent = move1;
+            leftHalf.className = 'move-button'
+            leftHalf.setAttribute('move-index', i)
+            leftHalf.id = 'move-' + i
 
-            var rightHalf = document.createElement('div');
+            var rightHalf = document.createElement('button');
             rightHalf.style.width = '50%';
             rightHalf.textContent = move2;
+            if (rightHalf.textContent !== '') {
+                rightHalf.className = 'move-button'
+                rightHalf.setAttribute('move-index', i + 1)
+                rightHalf.id = 'move-' + (i + 1)
+            }
 
             if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
                 moveRow.appendChild(leftHalf);
                 moveRow.appendChild(rightHalf);
 
                 movesListContainer.appendChild(moveRow);
+                if (leftHalf.id) {
+                    (function(id) {
+                        leftHalf.addEventListener("click", function() {
+                            handleButton(id, "forward");
+                        });
+                    })(leftHalf.id);
+                }
+                
+                if (rightHalf.id) {
+                    (function(id) {
+                        rightHalf.addEventListener("click", function() {
+                            handleButton(id, "forward");
+                        });
+                    })(rightHalf.id);
+                }
             }
         }
 
@@ -103,6 +145,7 @@ function updateCommandCenter() {
 }
 
 function resetCommandCenter() {
+    savedMoves = [];
     var movesListContainer = document.getElementById('moves-list');
     while (movesListContainer.firstChild) {
         movesListContainer.removeChild(movesListContainer.firstChild);
@@ -131,7 +174,7 @@ function handleWebtoGameAction(buttonId, localStorageObjectName) {
         existingWebGameMetadata[currentGameID] = webGameMetadata
         // Could move this into it's own function
         if (localStorageObjectName == "forward") {
-            if (move_index + 1 >= comp_moves.length) {
+            if (move_index + 1 >= comp_moves.length && buttonId == "forwardButton") {
                 webGameMetadata[localStorageObjectName].execute = false
                 webGameMetadata[localStorageObjectName].index = null
                 existingWebGameMetadata[currentGameID] = webGameMetadata
@@ -140,7 +183,11 @@ function handleWebtoGameAction(buttonId, localStorageObjectName) {
                 document.getElementById(buttonId).disabled = false;
                 return;
             }
-            index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1)
+            if (buttonId !== "forwardButton" && buttonId !== "skipForwardButton") {
+                index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
+            } else {
+                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1)
+            }
             webGameMetadata[localStorageObjectName].index = index_number
         } else if (localStorageObjectName == "backward") {
             if (move_index < 0) {
@@ -172,6 +219,8 @@ var inputList = [
     { buttonId: "flipButton", localStorageObjectName: "flip_board"},
 ];
 
+var selectedMoveId = ""
+
 function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
     if (localStorageObjectName == "forward") {
         webGameMetadata[localStorageObjectName].index = null
@@ -179,8 +228,18 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             move_index++
         } else if (buttonId === "skipForwardButton") {
             move_index = comp_moves.length - 1
+        } else {
+            move_index = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
         }
-        // update move highlighting 
+        moveId = 'move-' + move_index
+        if (move_index !== -1) {
+            document.getElementById(moveId).disabled = true
+        }
+        if (selectedMoveId !== "") {
+            document.getElementById(selectedMoveId).disabled = false;
+        }
+        selectedMoveId = (move_index !== -1 ? moveId: "")
+        // update move highlighting
     } else if (localStorageObjectName == "backward") {
         webGameMetadata[localStorageObjectName].index = null
         if (buttonId === "backwardButton") {
@@ -188,7 +247,15 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
         } else if (buttonId === "skipBackButton") {
             move_index = -1
         }
-        // update move highlighting 
+        // update move highlighting
+        moveId = 'move-' + move_index
+        if (move_index !== -1) {
+            document.getElementById(moveId).disabled = true
+        }
+        if (selectedMoveId !== "") {
+            document.getElementById(selectedMoveId).disabled = false;
+        }
+        selectedMoveId = (move_index !== -1 ? moveId: "")
     }
     return webGameMetadata
 }
@@ -213,6 +280,9 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
         existingWebGameMetadata[currentGameID] = webGameMetadata
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
+        if (buttonId.includes("move")) {
+            return;
+        }
         document.getElementById(buttonId).disabled = false;
     }
 }

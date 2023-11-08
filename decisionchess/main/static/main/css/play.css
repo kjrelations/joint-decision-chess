@@ -61,7 +61,7 @@
 }
 
 .action-button.confirm:disabled:hover .icon-color {
-    color: #000000;
+    color: #727272;
 }
 
 .hidden {
@@ -79,4 +79,26 @@
 
 .even-move-row {
     background-color: rgb(150, 150, 150);
+}
+
+.move-button {
+    border: none;
+    outline: none;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    color: white;
+    text-align: left;
+}
+
+.move-button:focus {
+    outline: none;
+}
+
+.move-button:hover {
+    background-color: #2589da;
+}
+
+.move-button:disabled {
+    background-color: #17568a;
+    cursor: pointer;
 }
