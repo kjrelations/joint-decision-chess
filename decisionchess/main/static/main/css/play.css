@@ -52,6 +52,10 @@
     box-shadow: none;
 }
 
+.form-control:focus {
+    z-index: 0 !important;
+}
+
 .form-control:disabled {
     background-color: #292929;
 }
