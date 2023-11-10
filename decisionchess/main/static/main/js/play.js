@@ -16,14 +16,20 @@ window.addEventListener('load', function() {
     var iframeContainer = document.getElementById('iframe-container');
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
+    iframeContainer.style.height = width + 'px';
+    document.getElementById('chat-box').style.height = width + 'px';
     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
     adjustFont();
+
+    document.getElementById('chat-input').value = '';
 });
 
 window.addEventListener('resize', function() {
     var iframeContainer = document.getElementById('iframe-container');
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
+    iframeContainer.style.height = width + 'px';
+    document.getElementById('chat-box').style.height = width + 'px';
     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
     adjustFont();
 });
@@ -160,6 +166,7 @@ function resetCommandCenter() {
     finalScorebox.innerHTML = ""
 }
 
+var initConnect = false
 var previousConnected = false
 var initCheck = false
 
@@ -188,6 +195,9 @@ function updateConnectedStatus(status) {
         // Handle the response as needed
         // Put in a "waiting message" if it hasn't been played yet
         // Put a disconnect status if in play
+        // Later have reconnects connect to the websocket and 
+        // any disconnects disconnect from the websocket can have 
+        // a variable tracking socket connection status
     })
     .catch(error => {
         console.error('Error updating connection status:', error);
@@ -208,6 +218,7 @@ function checkNewConnect() {
         idStrings.forEach(idString => {
             document.getElementById(idString).classList.remove("hidden")
         })
+        initializeWebSocket();
         initCheck = initialized
     }
 

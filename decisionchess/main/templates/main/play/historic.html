@@ -51,6 +51,21 @@ Play
         <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
         <div class="col-2" style="width: 100%;">
+            <div id="chat-box" class="card chat-box">
+                <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
+                    <div class="chat-wrapper mb-auto">
+                        <div class="chat-messages">
+                            <!-- Chat messages will be displayed here -->
+                            {% for message in chat_messages.all %}
+                                <p>{{message.sender_username}}: {{message.message}}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control chat-input" placeholder="Type a message and press Enter..." id="chat-input" disabled>
+                    </div>
+                </div>
+            </div>
         </div>
         <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->

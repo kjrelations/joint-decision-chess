@@ -23,6 +23,21 @@ Play
         <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
         <div class="col-2" style="width: 100%;">
+            <div id="chat-box" class="card chat-box">
+                <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
+                    <div class="chat-wrapper mb-auto">
+                        <div class="chat-messages">
+                            <!-- Chat messages will be displayed here -->
+                            {% for message in chat_messages.all %}
+                                <p>{{message.sender_username}}: {{message.message}}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control chat-input" placeholder="Type a message and press Enter..." id="chat-input" disabled>
+                    </div>
+                </div>
+            </div>
         </div>
         <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
@@ -66,6 +81,7 @@ Play
             </div>
             <script>
                 var game_uuid = "{{ game_uuid }}";
+                var sender = "{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}";
                 sessionStorage.setItem('connected', "{{ connected }}");
                 sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
                 sessionStorage.setItem('initialized', "{{ initialized }}");
@@ -75,6 +91,68 @@ Play
                 var csrftoken = "{{ csrf_token|escapejs }}";
             </script>
             <script src="{% static 'main/js/play.js' %}"></script>
+            <script>
+                    var socket;
+
+                    function initializeWebSocket() {
+                        socket = new WebSocket("ws://" + window.location.host + "/ws/chat/" + game_uuid + "/");
+    
+                        socket.onmessage = function (event) {
+                            var chat_data = JSON.parse(event.data);
+                            appendMessage(chat_data["message"]);
+                        };
+    
+                        socket.onclose = function (event) {
+                            // add custom chat highlighted message
+                            $("#chat-input").prop("disabled", true);
+                        };
+
+                        $("#chat-input").prop("disabled", false);
+                    }
+
+                    $("#chat-input").keypress(function (e) {
+                        if (e.which === 13) {  // 13 is the Enter key code
+                            e.preventDefault();  // Prevent the Enter key from creating a new line
+                            var message = $(this).val();
+                            if (socket && socket.readyState === WebSocket.OPEN) {
+                                sendMessage(message);
+                            }
+                            $(this).val('');  // Clear the input field
+                        }
+                    });
+
+                    function sendMessage(message) {
+                        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                        var currentGameID = sessionStorage.getItem('current_game_id');
+                        currentGameID = (currentGameID === 'null' ? null : currentGameID);
+                        if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
+                            var webGameMetadata = existingWebGameMetadata[currentGameID];
+                            var playerColor = webGameMetadata["player_color"];
+                            var messageObj = {
+                                message: {
+                                    text: message,
+                                    color: playerColor,
+                                    sender: sender,
+                                    end_state: webGameMetadata["end_state"]
+                                }
+                            };
+                            socket.send(JSON.stringify(messageObj));
+                        } else {
+                            console.warn("Cannot send message")
+                        }
+                    }
+
+                    function appendMessage(data) {
+                        if (data.hasOwnProperty('log')) {
+                            if (data["log"] === "disconnect") {
+                                // Add highlighted message to chat
+                                $("#chat-input").prop("disabled", true);
+                            }
+                            return;
+                        }
+                        $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
+                    }
+            </script>                
         </div>
     </div>
 </div>

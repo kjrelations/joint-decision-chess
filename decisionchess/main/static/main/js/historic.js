@@ -16,14 +16,20 @@ window.addEventListener('load', function() {
     var iframeContainer = document.getElementById('iframe-container');
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
+    iframeContainer.style.height = width + 'px';
+    document.getElementById('chat-box').style.height = width + 'px';
     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
     adjustFont();
+
+    document.getElementById('chat-input').value = '';
 });
 
 window.addEventListener('resize', function() {
     var iframeContainer = document.getElementById('iframe-container');
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
+    iframeContainer.style.height = width + 'px';
+    document.getElementById('chat-box').style.height = width + 'px';
     document.getElementById('command-center').style.height = (width * 0.5) + 'px';
     adjustFont();
 });

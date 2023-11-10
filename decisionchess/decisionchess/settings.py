@@ -25,7 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECRET_KEY = 'django-insecure-gr%tolo@rf*7*eflw06-v!brhnn&jj1yi_dy25)dr$9k=0^xm('
 
 # # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
+# Need to force it to bool else it reads as string same with others way below
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['*', 'www.decisionchess.com', 'decisionchess.com', '127.0.0.1', 'localhost']
 
@@ -34,6 +35,7 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,7 +48,7 @@ INSTALLED_APPS = [
     'main.apps.MainConfig',
     'register.apps.RegisterConfig',
     'middleware',
-    'django_countries',
+    'django_countries'
 ]
 
 MIDDLEWARE = [
@@ -83,7 +85,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'decisionchess.wsgi.application'
+ASGI_APPLICATION = 'decisionchess.asgi.application'
 
+if DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -104,8 +113,6 @@ DATABASES = {
 }
 
 SECRET_KEY = config('SECRET_KEY')
-# Need to force it to bool else it reads as string same with others below
-DEBUG = config('DEBUG', default=False, cast=bool)
 
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')
