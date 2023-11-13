@@ -58,7 +58,11 @@ Play
                 <div id="final-score" class="text-white font-weight-bold text-lg mt-2"></div>
                 <div id="end-message" class="text-white"></div>
                 <div class="d-flex justify-content-center">
-                    <!-- Need a button class here -->
+                    <button id="rematchButton" post-game=true class="action-button confirm hidden">Rematch</button>
+                    <button id="rematchAcceptButton" post-game=true class="action-button confirm check hidden mr-2">Accept Rematch</button>
+                    <button id="rematchDenyButton" post-game=true class="action-button cancel check hidden">Decline Rematch</button>
+                </div>
+                <div class="d-flex justify-content-center">
                     <button id="undoOfferButton" actions="true" class="action-button confirm hidden mr-2">Undo</button>
                     <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
                     <button id="undoOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
@@ -99,7 +103,7 @@ Play
     
                         socket.onmessage = function (event) {
                             var chat_data = JSON.parse(event.data);
-                            appendMessage(chat_data["message"]);
+                            handleMessage(chat_data["message"]);
                         };
     
                         socket.onclose = function (event) {
@@ -121,7 +125,7 @@ Play
                         }
                     });
 
-                    function sendMessage(message) {
+                    function sendMessage(message, type) {
                         var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
                         var currentGameID = sessionStorage.getItem('current_game_id');
                         currentGameID = (currentGameID === 'null' ? null : currentGameID);
@@ -136,21 +140,135 @@ Play
                                     end_state: webGameMetadata["end_state"]
                                 }
                             };
+                            if (type.includes("rematch")) {
+                                messageObj["message"]["log"] = type;
+                            }
                             socket.send(JSON.stringify(messageObj));
                         } else {
-                            console.warn("Cannot send message")
+                            console.warn("Cannot send message");
                         }
                     }
 
-                    function appendMessage(data) {
+                    function handleMessage(data) {
                         if (data.hasOwnProperty('log')) {
+                            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+                            var currentGameID = sessionStorage.getItem('current_game_id');
+                            var playerColor;
+                            var endState;
+                            currentGameID = (currentGameID === 'null' ? null : currentGameID);
+                            if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
+                                playerColor = existingWebGameMetadata[currentGameID]["player_color"];
+                                endState = existingWebGameMetadata[currentGameID]["end_state"];
+                            } else {
+                                return;
+                            }
                             if (data["log"] === "disconnect") {
                                 // Add highlighted message to chat
                                 $("#chat-input").prop("disabled", true);
+                                if (playerColor === "black" && rematch_accepted) {
+                                    fetchUUID(signed_uuid, currentGameID).then(data => {
+                                        window.location.href = '/play/' + data.uuid;
+                                    });
+                                }
+                                if (rematch_request) {
+                                    document.getElementById("rematchButton").classList.add("used");
+                                }
+                            } else if (data["log"] === "rematch_request" && !rematch_request) {
+                                rematch_received = true
+                                const init_name = data["sender"];
+                                signed_uuid = data["text"];
+                                document.getElementById("rematchButton").disabled = true;
+                                showOptions("rematchButton", "rematchAcceptButton", "rematchDenyButton");
+                                document.getElementById("rematchAcceptButton").addEventListener("click", function() {
+                                    document.getElementById("rematchAcceptButton").remove();
+                                    document.getElementById("rematchDenyButton").remove();
+                                    document.getElementById("rematchButton").classList.remove("hidden");
+                                    document.getElementById("rematchButton").classList.add("used");
+                                    rematch_accepted = true;
+                                    sendMessage("", "rematch_accepted");
+                                    if (playerColor === "white") {
+                                        var new_game_id;
+                                        fetchUUID(signed_uuid, currentGameID).then(data => {
+                                            new_game_id = data.uuid;
+                                            generateRematchURL(new_game_id);
+                                        });
+                                    }
+                                }, {once: true});
+                                document.getElementById("rematchDenyButton").addEventListener("click", function() {
+                                    document.getElementById("rematchAcceptButton").remove();
+                                    document.getElementById("rematchDenyButton").remove();
+                                    document.getElementById("rematchButton").classList.remove("hidden");
+                                    document.getElementById("rematchButton").classList.add("used");
+                                    sendMessage("", "rematch_declined");
+                                }, {once: true});
+                            } else if (data["log"] === "rematch_accepted") {
+                                $(".chat-messages").append('<p>Rematch Accepted...</p>');
+                                rematch_accepted = true;
+                                if (!rematch_received) {
+                                    if (playerColor === "white") {
+                                        let new_game_id;
+                                        fetchUUID(signed_uuid, currentGameID).then(data => {
+                                            new_game_id = data.uuid;
+                                            generateRematchURL(new_game_id);
+                                        });
+                                    } else {
+                                        document.getElementById("rematchButton").classList.add("used");
+                                    }
+                                }
+                            } else if (data["log"] === "rematch_declined") {
+                                document.getElementById("rematchButton").classList.add("used");
+                                $(".chat-messages").append('<p>Declined Rematch</p>');
                             }
                             return;
                         }
                         $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
+                    }
+
+                    function fetchUUID(signed_uuid = null, current_game_id = null) {
+                        let optionalData = {}
+                        if (signed_uuid) {
+                            optionalData["signed_uuid"] = signed_uuid;
+                            optionalData["recent_game_id"] = current_game_id;
+                        }
+                        return fetch('/get_private_id/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrftoken,
+                                },
+                                body: JSON.stringify(optionalData),
+                            })
+                            .then(response => {
+                                if (response.status === 200) {
+                                    return response.json();
+                                } else {
+                                    console.error('Error generating key:', response.statusText);
+                                    return Promise.reject('Error generating key');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                            });
+                        }
+
+                    function generateRematchURL(game_id) {
+                        fetch('/create_new_game/' + game_id + '/')
+                        .then(response => {
+                            if (response.status === 200) {
+                                return response.json();
+                            } else {
+                                console.error('Error creating game:', response.statusText);
+                                return Promise.reject('Error creating game');
+                            }
+                        })
+                        .then(data => {
+                            if (data.redirect) {
+                                window.location.href = data.url;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
                     }
             </script>                
         </div>

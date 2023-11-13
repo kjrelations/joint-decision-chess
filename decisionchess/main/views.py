@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
@@ -8,6 +9,7 @@ from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.core.signing import dumps, loads, SignatureExpired, BadSignature
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
@@ -33,20 +35,29 @@ def quick_pair(request):
     else:
         return JsonResponse({'redirect': False, 'error': 'No open games found'}, status=404)
 
-def create_new_game(request):
+def game_exists(game_uuid):
+    lobby_game_exists = ChessLobby.objects.filter(game_uuid=game_uuid).exists()
+    active_game_exists = ActiveGames.objects.filter(gameid=game_uuid).exists()
+    historic_game_exists = GameHistoryTable.objects.filter(gameid=game_uuid).exists()
+    return lobby_game_exists or active_game_exists or historic_game_exists
+
+def create_new_game(request, optional_uuid = None):
     while True:
-        game_uuid = uuid.uuid4()
-        if not ChessLobby.objects.filter(game_uuid=game_uuid).exists():
+        game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
+        if not game_exists(game_uuid):
             new_open_game = ChessLobby(
                 game_uuid=game_uuid,
                 is_open=True,
                 initiator_connected=False
             )
+            if optional_uuid:
+                new_open_game.private = True
             # Later get username and add to initiator name if authenticated
             # Retrieve and add user uuid to appropriate position, generate a unique one if needed
             
             if request.user and request.user.id is not None:
                 user_id = request.user.id
+                new_open_game.initiator_name = request.user.username
             else:
                 user_id = request.session.get('guest_uuid')
             if user_id is None:
@@ -54,7 +65,39 @@ def create_new_game(request):
                 request.session["guest_uuid"] = str(user_id)
             new_open_game.white_uuid = user_id
             new_open_game.save()
-            return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])})
+            return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
+        elif optional_uuid:
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+
+def create_signed_key(request):
+    if request.method == "POST":
+        data = json.loads(request.body.decode('utf-8'))
+        if data.get('signed_uuid'):
+            
+            # This authentication is rematch logic only, this POST uses a rematch specific key in the body; the recent game uuid
+            # SessionStored completed game ids have color prefixed to them.
+            recent_game_id = data.get("recent_game_id").replace("white-", "").replace("black-", "")
+            if request.user.id:
+                user_id = request.user.id
+            else:
+                user_id = request.session.get('guest_uuid')
+            recent_game = GameHistoryTable.objects.get(gameid=recent_game_id)
+            if not recent_game or str(user_id) not in [str(recent_game.whiteid), str(recent_game.blackid)]:
+                return JsonResponse({"status": "error"}, status=401)
+            
+            try:
+                original_value = loads(data.get('signed_uuid'), key=settings.SIGNING_KEY)
+                return JsonResponse({"uuid": original_value}, status=200)
+            except (SignatureExpired, BadSignature):
+                return JsonResponse({"status": "error"}, status=401)
+        elif data == {}:
+            while True:
+                game_uuid = uuid.uuid4()
+                if not game_exists(game_uuid):
+                    signed_uuid = dumps(str(game_uuid), key=settings.SIGNING_KEY)
+                    return JsonResponse({"uuid": signed_uuid}, status=200)
+        else:
+            return JsonResponse({"status": "error"}, status=401)
 
 def get_lobby_games(request):
     expired_games = ChessLobby.objects.filter(expire__lt=timezone.now())
@@ -118,13 +161,21 @@ def play(request, game_uuid):
             if game.black_uuid is None and game.initiator_connected:
                 game.black_uuid = user_id
                 game.save()
+            elif game.white_uuid is None and game.initiator_connected:
+                game.white_uuid = user_id
+                game.save()
+            # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_uuid) == str(game.black_uuid):
+                return redirect('home')
+            elif str(user_id) == str(game.white_uuid) and game.black_uuid is not None:
+                return redirect('home')
+            elif str(user_id) == str(game.black_uuid) and game.white_uuid is not None:
                 return redirect('home')
             game_chat_messages = ActiveChatMessages.objects.filter(gameid = game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play.html", sessionVariables)
         else:
-            game.black_uuid = user_id
+            game.black_uuid = user_id # Later to fill the empty position
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
@@ -142,6 +193,7 @@ def play(request, game_uuid):
             game_chat_messages = ChatMessages.objects.filter(gameid = game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
+        # This would also redirect spectators if it's an active game
         return render(request, "main/play.html", sessionVariables)
 
 def is_valid_uuid(value):
@@ -234,7 +286,7 @@ def save_game(request):
             user_id = request.session.get('guest_uuid')
         try:
             active_game = ActiveGames.objects.get(gameid=completed_game_uuid)
-            if user_id != str(active_game.whiteid) or user_id != str(active_game.blackid):
+            if str(user_id) != str(active_game.whiteid) and str(user_id) != str(active_game.blackid):
                 return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
             lobby_game = ChessLobby.objects.get(game_uuid=completed_game_uuid)
             try:

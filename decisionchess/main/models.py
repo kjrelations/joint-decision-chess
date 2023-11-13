@@ -22,19 +22,22 @@ class ChessLobby(models.Model):
 	expire = models.DateTimeField()
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
+	private = models.BooleanField(default=False)
 
 	def save(self, *args, **kwargs):
-			if not self.timestamp:
-				self.timestamp = timezone.now()
-			if not self.expire:
-				self.expire = self.timestamp + timezone.timedelta(minutes=10)
-			if self.white_uuid and self.black_uuid:
-				self.is_open = False
-			elif (self.white_uuid or self.black_uuid) and self.initiator_connected:
-				self.is_open = True
-			else:
-				self.is_open = False
-			super(ChessLobby, self).save(*args, **kwargs)
+		if not self.timestamp:
+			self.timestamp = timezone.now()
+		if not self.expire:
+			self.expire = self.timestamp + timezone.timedelta(minutes=10)
+		if self.private:
+			self.is_open = False
+		elif self.white_uuid and self.black_uuid:
+			self.is_open = False
+		elif (self.white_uuid or self.black_uuid) and self.initiator_connected:
+			self.is_open = True
+		else:
+			self.is_open = False
+		super(ChessLobby, self).save(*args, **kwargs)
 
 	def __str__(self):
 		return f"Lobby {self.id} ({self.lobby_url})"

@@ -103,6 +103,15 @@
     color: #4d4d4d;
 }
 
+.action-button.confirm.used {
+    color: #4d4d4d;
+}
+
+.action-button.confirm.used:disabled:hover {
+    background-color: #c7c7c7;
+    color: #4d4d4d;
+}
+
 .action-button.cancel.check {
     background-color: rgb(161, 160, 85);
 }

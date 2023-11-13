@@ -34,7 +34,25 @@ window.addEventListener('resize', function() {
     adjustFont();
 });
 
+function areArraysEqual(arr1, arr2) {
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+    for (var i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 var gameSaved = false;
+var signed_uuid = "";
+var rematch_request = false;
+var rematch_accepted = false;
+var rematch_received = false;
+var updated = false;
+var savedMoves = []
 
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -45,15 +63,21 @@ function updateCommandCenter() {
         var moves = webGameMetadata.alg_moves;
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
-        if (endState !== '') {
-            const buttons = document.querySelectorAll(".action-button");
+        const equal_arrays = areArraysEqual(moves, savedMoves)
+        if (endState !== '' && !updated) {
+            const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(requestIntervalId);
             clearInterval(connectIntervalId);
             buttons.forEach(button => {
                 button.remove();
             });
         }
-
+        // Don't keep unnecessarily updating
+        if (equal_arrays && updated) {
+            return;
+        }
+        savedMoves = moves
+        
         movesListContainer.innerHTML = '';
 
         for (var i = 0; i < moves.length; i += 2) {
@@ -121,6 +145,20 @@ function updateCommandCenter() {
                 var FEN_final = webGameMetadata.FEN_final_pos;
                 saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd);
             }
+            
+            if (!rematch_received) {
+                // Race/page visibility conditions can hit this second if page is returned to after hiding it
+                document.getElementById("rematchButton").classList.remove("hidden");
+            } 
+            document.getElementById("rematchButton").addEventListener("click", function() {
+                fetchUUID().then(data => {
+                    signed_uuid = data.uuid;
+                    sendMessage(signed_uuid, "rematch_request");
+                });
+                rematch_request = true;
+                document.getElementById("rematchButton").disabled = true;
+            }, {once: true});
+            updated = true;
         }
     }
 }
@@ -153,6 +191,7 @@ function saveHistoricGame(alg_moves_str, comp_moves_str, score, FEN_final, force
 }
 
 function resetCommandCenter() {
+    savedMoves = [];
     var movesListContainer = document.getElementById('moves-list');
     while (movesListContainer.firstChild) {
         movesListContainer.removeChild(movesListContainer.firstChild);
@@ -227,14 +266,9 @@ function checkNewConnect() {
 
 var connectIntervalId = setInterval(checkNewConnect, 1000);
 
-window.onbeforeunload = function (e) {
-    var confirmationMessage = 'You have unsaved changes. Are you sure you want to leave this page?';
-    e.returnValue = confirmationMessage; // For legacy browsers
-    return confirmationMessage;
-
-    var userConfirmed = confirm(confirmationMessage);
-    if (userConfirmed) {
-        updateConnectedStatus(false); // This simply won't work so we'll just need web-sockets
+window.onbeforeunload = function () {
+    if (!rematch_accepted) {
+        return true;
     }
 };
 
@@ -380,7 +414,7 @@ function showOptions(buttonId, buttonApproveId, buttonAbandonId) {
     document.getElementById(buttonAbandonId).classList.remove("hidden");
 }
 
-function resetButtons(mainbuttonId, localStorageObjectName, Options) {
+function resetButtons(mainbuttonId, Options) {
     result = optionStringsHelper(mainbuttonId, Options)
     const buttonApproveId = result.ApproveId
     const buttonAbandonId = result.AbandonId

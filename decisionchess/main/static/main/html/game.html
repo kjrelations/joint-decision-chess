@@ -1,9 +1,9 @@
-<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.8/pythons.js" type=module id="site" data-os="vtx,fs,snd,gui" async defer>#<!--
+<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.8/pythons.js" type=module id="site" data-python="cpython3.11" data-os="vtx,fs,snd,gui" async defer>#<!--
 
 print("""
 Loading Decision-Chess from joint-decision-chess.apk
-    Pygbag Version : 0.8.0
-    Template Version : 0.7.3
+    Pygbag Version : 0.8.4
+    Template Version : 0.8.3
     Python  : 3.11
     CDN URL : https://pygame-web.github.io/archives/0.8/
     Screen  : {{cookiecutter.width}}x{{cookiecutter.height}}
@@ -238,7 +238,7 @@ config = {
     user_canvas : 0,
     user_canvas_managed : 0,
     ume_block : 1,
-    can_close : 0,
+    can_close : 1,
     archive : "joint-decision-chess",
     gui_debug : 3,
     cdn : "https://pygame-web.github.io/archives/0.8/",
@@ -310,9 +310,9 @@ config = {
         }
 
         .topright{
-           position:absolute;
-           top:0px;
-           right:0px;
+            position:absolute;
+            top:0px;
+            right:0px;
         }
 
         .bottomright {
@@ -328,16 +328,16 @@ config = {
         }
 
         .trinfo{
-           position:relative;
-           right:0px;
-           border: 1px solid rgb(42, 161, 52);
+            position:relative;
+            right:0px;
+            border: 1px solid rgb(42, 161, 52);
         }
 
         .framed{
-           position:relative;
-           top:150px;
-           right:10px;
-           border: 1px solid rgb(39, 26, 158);
+            position:relative;
+            top:150px;
+            right:10px;
+            border: 1px solid rgb(39, 26, 158);
         }
     </style>
 
@@ -378,7 +378,7 @@ height="1px"
                 <div id=load_min>min</div>
                 <div id=load_avg>avg</div>
                 <div id=load_max>max</div>
-              <button id="load_rst" disabled>RESET</button>
+                <button id="load_rst" disabled>RESET</button>
             </div>
 
             <div id="level">(battery level unknown)</div>

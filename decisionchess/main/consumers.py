@@ -55,7 +55,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def is_user_game_member(self, user_id, room_name):
         try:
-            print(type(user_id), user_id)
             game = ActiveGames.objects.get(gameid=room_name)
             return user_id in (str(game.whiteid), str(game.blackid))
         except ActiveGames.DoesNotExist:
