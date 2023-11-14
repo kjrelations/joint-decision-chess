@@ -5,6 +5,18 @@ name = "pypi"
 
 [packages]
 pygame = "*"
+django = "*"
+crispy-bootstrap4 = "*"
+pygbag = "*"
+markdown = "*"
+psycopg = {extras = ["binary"], version = "*"}
+python-decouple = "*"
+django-countries = "*"
+whitenoise = "*"
+gunicorn = "*"
+django-cors-headers = "*"
+daphne = "*"
+channels = {extras = ["daphne"], version = "*"}
 
 [dev-packages]
 pytest = "*"

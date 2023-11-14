@@ -1,5 +1,5 @@
 import pytest
-from joint_decision_chess import calculate_moves
+from helpers import calculate_moves
 
 # Example chess board setup
 @pytest.fixture

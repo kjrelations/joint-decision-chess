@@ -1,0 +1,192 @@
+/* Allow table of contents featuring introduction */
+@media (min-width: 768px) {
+    .homeblock {
+        height: 100px;
+    }
+    .sidenav {
+        height: calc(100% - 100px);
+    }
+}
+
+@media (max-width: 767px), (max-height: 510px) {
+    .homeblock {
+        height: 40px;
+        width: 245px;
+    }
+    .sidenav {
+        height: 40px;
+        width: calc(100% - 245px);
+    }
+    .main {
+        padding-top: 1vh;
+    }
+    .col-10.offset-2.col-md-3 {
+        padding-top: 30px;
+        padding-bottom: 30px;
+    }
+    /* These will be unecessary in the future with more responsive widths or added content */
+    .col-hb-1.col-md-3, .col-hb-1.col-md-3 {
+        flex: 0 0 8.333333%;
+        max-width: 8.3333333%;
+    }
+    .col-hb-10-offset-1.col-md-5 {
+        margin-left: 8.333333%;
+    }
+    .col-hb-10-offset-2.col-md-3 {
+        margin-left: 16.666667%;
+    }
+    .col-hb-2.col-md-3 {
+        flex: 0 0 16.666667%;
+        max-width: 16.666667%;        
+    }
+    .col-hb-10-offset-1.col-md-5, .col-hb-10-offset-2.col-md-3, .col-hb-10.col-md-5 {
+        flex: 0 0 83.333333%;
+        max-width: 83.333333%;  
+    }
+}
+
+@media (max-width: 510px), (max-height: 510px) {
+    .homeblock {
+        display: inline-block;
+    }
+    .sidenav {
+        width: calc(100% - 150px);
+    }
+    #IntroLink {
+        display: none;
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+.new-game {
+    color: white;
+    border: none;
+    outline: none;
+    background-color: #6c757d;
+    transition: background-color 0.3s ease;
+    transition: color 0.1s ease;
+}
+
+.new-game:focus {
+    outline: none;
+}
+
+.new-game:hover {
+    background-color: #34383c;
+    color: #7685d8
+}
+
+.lobby {
+    background-color: #d9e3f3;
+    color: black;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+    max-width: 100%;
+    position: relative;
+    padding-bottom: 63%;
+}
+
+.lobby-header {
+    display: flex;
+    text-align: center; 
+    padding-bottom: 0.5em; 
+    position: sticky; 
+    top: 0; 
+    background-color: #d9e3f3;
+}
+
+.scrollable-lobby-list {
+    position: absolute;
+    max-height: 100%;
+    overflow-y: auto;
+    z-index: 1;
+}
+
+.lobby-row {
+    display: flex;
+    border: none;
+    border-bottom: solid 0.05em #778498;
+    outline: none;
+    min-width: 100%;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    transition: color 0.1s ease;
+    padding: 0;
+}
+
+.lobby-a:hover {
+    text-decoration: none;
+}
+
+.lobby-row:disabled {
+    color: rgb(172, 172, 172);
+    background-color: rgba(125, 131, 140, 0.7);
+}
+
+.lobby-row:disabled:hover {
+    color: rgb(172, 172, 172);
+    background-color: rgba(194, 152, 133, 0.7);
+}
+
+.lobby-row:focus {
+    outline: none;
+}
+
+.lobby-row:hover {
+    color: white;
+    background-color: rgba(190, 176, 126, 0.7);
+}
+
+.lobby-row.empty:hover {
+    color: black;
+    background-color: rgba(166, 174, 186, 0.7);
+}
+
+.quick-pair {
+    border: none;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+    min-width: 50%;
+    max-width: 50%;
+    background-color: #d9e3f3;
+    color: black;
+    transition: background-color 0.3s ease;
+    font-size: large;
+    padding: 5em none;
+}
+
+.quick-pair:focus {
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+}
+
+.quick-pair:hover {
+    color: #805d14;
+    background-color: #ecac22;
+}
+
+body {
+    background: linear-gradient(-45deg, #ffffff, #FAFAEB, #D5EBDA, #d3cfad);
+    background-size: 400% 400%;
+    animation: gradient 25s ease infinite;
+    height: 100%;
+    background-attachment: fixed;
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}

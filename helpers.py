@@ -1,5 +1,6 @@
 import pygame
 import sys
+import asyncio
 from constants import *
 
 ## General Helpers
@@ -29,6 +30,61 @@ def load_piece_image(piece, GRID_SIZE):
 # Helper function for generating bespoke Game moves
 def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
     return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]
+
+# Helper function for translating a simple FEN into a board position
+def translate_FEN_into_board(FEN):
+    board = []
+    FEN_rows = FEN.split('/')
+    for row in FEN_rows:
+        new_row = []
+        for position in row:
+            if position.isdigit():
+                new_row.extend([' '] * int(position))
+            else:
+                new_row.append(position)
+        board.append(new_row)
+    return board
+
+# Helper function for loading a historic game parameters from localStorage values
+def load_historic_game(json_game):
+    starting_player = True
+    # Would depend on starting for games that start at a different position
+    current_turn = len(json_game["comp_moves"]) % 2 == 0
+
+    move = json_game["comp_moves"][-1]
+    prev, curr = list(move[0]), list(move[1])
+    prev_row, prev_col = int(prev[1]), int(prev[2])
+    curr_row, curr_col = int(curr[1]), int(curr[2])
+    previous_position = (prev_row, prev_col)
+    current_position = (curr_row, curr_col)
+
+    _castle_attributes = {
+        'white_king_moved' : False,
+        'left_white_rook_moved' : False,
+        'right_white_rook_moved' : False,
+        'black_king_moved' : False,
+        'left_black_rook_moved' : False,
+        'right_black_rook_moved' : False
+    }
+
+    game_param_dict = {
+        "current_turn": current_turn,
+        "board": translate_FEN_into_board(json_game["FEN_final_pos"]),
+        "moves": json_game["comp_moves"],
+        "alg_moves": json_game["alg_moves"],
+        "castle_attributes": _castle_attributes,
+        "current_position": current_position,
+        "previous_position": previous_position,
+        "board_states": {},
+        "max_states": 500,
+        "end_position": True,
+        "forced_end": json_game["forced_end"],
+        "_debug": False,
+        "_starting_player": starting_player,
+        "_move_undone": False,
+        "_sync": True
+    }
+    return game_param_dict
 
 ## Move logic
 # Helper function to calculate moves for a pawn
@@ -252,9 +308,9 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     captures = []
     special_moves = []
 
-    is_white = piece.isupper() # Check if the piece is white
+    is_white = piece.isupper()
 
-    if piece.lower() == 'p':  # Pawn
+    if piece.lower() == 'p':
         if not only_specials:
             p_moves, p_captures = pawn_moves(board, row, col, is_white)
             moves.extend(p_moves)
@@ -277,31 +333,31 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     and abs(col - int(end[2])) == 1:
                     special_moves.append((destination_row, int(end[2])))
 
-    elif piece.lower() == 'r':  # Rook
+    elif piece.lower() == 'r':
         if not only_specials:
             r_moves, r_captures = rook_moves(board, row, col, is_white)
             moves.extend(r_moves)
             captures.extend(r_captures)
 
-    elif piece.lower() == 'n':  # Knight (L-shaped moves)
+    elif piece.lower() == 'n':
         if not only_specials:
             n_moves, n_captures = knight_moves(board, row, col, is_white)
             moves.extend(n_moves)
             captures.extend(n_captures)
 
-    elif piece.lower() == 'b':  # Bishop
+    elif piece.lower() == 'b':
         if not only_specials:
             b_moves, b_captures = bishop_moves(board, row, col, is_white)
             moves.extend(b_moves)
             captures.extend(b_captures)
 
-    elif piece.lower() == 'q':  # Queen (Bishop-like + Rook-like moves)
+    elif piece.lower() == 'q':
         if not only_specials:
             q_moves, q_captures = queen_moves(board, row, col, is_white)
             moves.extend(q_moves)
             captures.extend(q_captures)
 
-    elif piece.lower() == 'k':  # King
+    elif piece.lower() == 'k':
         if not only_specials:
             k_moves, k_captures = king_moves(board, row, col, is_white)
             moves.extend(k_moves)
@@ -310,7 +366,6 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
         # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
         # and instead use a temp board
         if castle_attributes is not None:
-            # Castling
             queen_castle = True
             king_castle = True
             if is_white:
@@ -469,7 +524,6 @@ def get_board_coordinates(x, y, GRID_SIZE):
 
 # Helper function to generate a chessboard surface loaded as a reference image (drawn only once)
 def generate_chessboard(theme):
-    # Simplify variable names
     GRID_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT = \
     theme.GRID_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT
 
@@ -482,7 +536,6 @@ def generate_chessboard(theme):
 
 # Helper function to generate coordinate fonts and their surface depending on view
 def generate_coordinate_surface(theme):
-    # Simplify variable names
     GRID_SIZE, FONT_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT, INVERSE_PLAYER_VIEW, TEXT_OFFSET = \
     theme.GRID_SIZE, theme.FONT_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT, \
     theme.INVERSE_PLAYER_VIEW, theme.TEXT_OFFSET
@@ -527,7 +580,6 @@ def generate_coordinate_surface(theme):
 
 # Helper function to draw a temporary rectangle with only an outline on a square
 def draw_hover_outline(window, theme, row, col):
-    # Simplify variable names
     GRID_SIZE, HOVER_OUTLINE_COLOR_WHITE, HOVER_OUTLINE_COLOR_BLACK = \
     theme.GRID_SIZE, theme.HOVER_OUTLINE_COLOR_WHITE, theme.HOVER_OUTLINE_COLOR_BLACK
 
@@ -546,12 +598,11 @@ def draw_pieces(window, theme, board, pieces):
 
 # Helper function to draw transparent circles on half of the tiles
 def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials):
-    # Simplify variable names
     GRID_SIZE, WIDTH, HEIGHT, TRANSPARENT_CIRCLES, TRANSPARENT_SPECIAL_CIRCLES = \
     theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT, theme.TRANSPARENT_CIRCLES, theme.TRANSPARENT_SPECIAL_CIRCLES
 
     free_moves = [move for move in valid_moves if move not in valid_captures]
-    # Create surface allowing for transparaency with alpha transparency values defined in colors 
+    # Alpha transparency values defined in theme colors 
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for row, col in free_moves:
         square_x = col * GRID_SIZE + GRID_SIZE // 2
@@ -576,12 +627,10 @@ def get_coordinates(row, col, GRID_SIZE):
 
 # Helper function to draw an arrow
 def draw_arrow(theme, arrow):
-    # Simplify variable names
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    # Arrow color depends on turn
-    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    arrow_color = ARROW_WHITE if theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -693,7 +742,6 @@ def draw_arrow(theme, arrow):
 
 # Helper function to highlight selected squares on left or right click
 def draw_highlight(window, theme, row, col, left):
-    # Simplify variable names
     GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
     theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
 
@@ -753,12 +801,12 @@ def draw_board(params):
     if theme.INVERSE_PLAYER_VIEW:
         params = reverse_coordinates(params)
     board = params['board']
-    chessboard = params['chessboard']
+    chessboard = params['drawing_settings']['chessboard'].copy()
     selected_piece = params['selected_piece']
     current_position = params['current_position']
     previous_position = params['previous_position']
     right_clicked_squares = params['right_clicked_squares']
-    coordinate_surface = params['coordinate_surface']
+    coordinate_surface = params['drawing_settings']['coordinate_surface'].copy()
     drawn_arrows = params['drawn_arrows']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
@@ -767,7 +815,6 @@ def draw_board(params):
     hovered_square = params['hovered_square']
     selected_piece_image = params['selected_piece_image']
     
-    # Draw the reference chessboard (constructed only once)
     window.blit(chessboard, (0, 0))
 
     # Highlight left clicked selected squares
@@ -784,28 +831,25 @@ def draw_board(params):
     for square in right_clicked_squares:
         draw_highlight(window, theme, square[0], square[1], left)
 
-    # Draw coordinates after highlights
+    # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))
 
     # Highlight valid move squares
     transparent_circles = draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     window.blit(transparent_circles, (0, 0))
 
-    # Draw the chess pieces on top of the reference board
     draw_pieces(window, theme, board, pieces)
 
-    # Draw the hover outline if a square is hovered
     if hovered_square is not None:
         draw_hover_outline(window, theme, hovered_square[0], hovered_square[1])
 
-    # Draw arrows
     for arrow in drawn_arrows:
         transparent_arrow = draw_arrow(theme, arrow)
-        # Blit each arrow to not blend them with each other
+        # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
     # On mousedown and a piece is selected draw a transparent copy of the piece
-    # Draw after outline and previous layers
+    # Draw after/above outline and previous layers
     if selected_piece_image is not None:
         x, y = pygame.mouse.get_pos()
         # Calculate the position to center the image on the mouse
@@ -832,15 +876,10 @@ class Pawn_Button:
         if event.type == pygame.MOUSEMOTION:
                 self.check_hover(event.pos)
 
-# Helper function for displaying and running until a pawn is promoted 
-def display_promotion_options(draw_board_params, window, row, col, pieces, promotion_required, game):
-    # Instantiate default outputs
-    new_current_position, new_previous_position, end_position, end_state = None, None, False, None
-    # Simplify variable names
-    theme = draw_board_params['theme']
-    GRID_SIZE, WIDTH, HEIGHT = theme.GRID_SIZE, theme.WIDTH, theme.HEIGHT
+# Helper function for creating promotion buttons at the right locations 
+def display_promotion_options(theme,row, col):
+    GRID_SIZE = theme.GRID_SIZE
 
-    # Draw buttons onto a surface
     if row == 0:
         button_col = col
         button_y_values = [i * GRID_SIZE for i in [0, 1, 2, 3]]
@@ -869,67 +908,4 @@ def display_promotion_options(draw_board_params, window, row, col, pieces, promo
             Pawn_Button(button_x, button_y_values[2], GRID_SIZE, GRID_SIZE, 'b'),
             Pawn_Button(button_x, button_y_values[3], GRID_SIZE, GRID_SIZE, 'n'),
         ]
-    
-    while promotion_required:
-        for event in pygame.event.get():
-            for button in promotion_buttons:
-                button.handle_event(event)
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    x, y = pygame.mouse.get_pos()
-                    if button.rect.collidepoint(x, y):
-                        game.promote_to_piece(row, col, button.piece)
-                        promotion_required = False  # Exit promotion state condition
-            if event.type == pygame.KEYDOWN:
-
-                # Undo move
-                if event.key == pygame.K_u:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    promotion_required = False
-                
-                # Resignation
-                elif event.key == pygame.K_r:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    print("RESIGNATION")
-                    promotion_required = False
-                    end_position = True
-                    end_state = True
-                
-                # Draw
-                elif event.key == pygame.K_d:
-                    # Update current and previous position highlighting
-                    new_current_position, new_previous_position = game.undo_move()
-                    print("DRAW")
-                    promotion_required = False
-                    end_position = True
-                    end_state = False
-        
-        # Clear the screen
-        window.fill((0, 0, 0))
-        
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws
-        draw_board(draw_board_params.copy())
-        
-        # Darken the screen
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-
-        # Blit the overlay surface onto the main window
-        window.blit(overlay, (0, 0))
-
-        # Draw buttons and update the display
-        for button in promotion_buttons:
-            img = pieces[button.piece]
-            img_x, img_y = button.rect.x, button.rect.y
-            if button.is_hovered:
-                img = pygame.transform.smoothscale(img, (GRID_SIZE * 1.5, GRID_SIZE * 1.5))
-                img_x, img_y = button.scaled_x, button.scaled_y
-            window.blit(img, (img_x, img_y))
-
-        pygame.display.flip()
-    
-    return new_current_position, new_previous_position, end_position, end_state
+    return promotion_buttons

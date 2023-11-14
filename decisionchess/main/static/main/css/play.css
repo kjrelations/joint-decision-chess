@@ -1,0 +1,172 @@
+#iframe-container {
+    position: relative;
+    width: 100%;
+}
+#embedded-iframe {
+    width: 100%;
+}
+
+.chat-box {
+    background-color: #4b4b4b;
+    border-radius: 0;
+    color: #b9b9b9;
+}
+
+.chat-wrapper {
+    height: 100% - 1em;
+    overflow-y: auto;
+    padding-bottom: 1em;
+    margin-bottom: 1em;
+}
+
+.chat-messages p {
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    padding-left: 0.25em;
+    font-size: smaller;
+    margin-bottom: 0;
+}
+
+.chat-input {
+    border: none;
+    border-top: 1px solid #253d41;
+    border-radius: 0;
+    color: #b9b9b9;
+    background-color: #4b4b4b;
+    padding: 0;
+    padding-left: 0.25em;
+}
+
+.chat-input::placeholder {
+    font-size: smaller;
+    color: #b9b9b9;
+}
+
+.chat-input:focus {
+    z-index: 0;
+    border: none;
+    border-top: 1px solid #455a5e;
+    border-radius: 0;
+    color: #b9b9b9;
+    background-color: #4b4b4b;
+    box-shadow: none;
+}
+
+.form-control:focus {
+    z-index: 0 !important;
+}
+
+.form-control:disabled {
+    background-color: #292929;
+}
+
+.chat-input:disabled::placeholder {
+    color: transparent;
+    /* background-color: #292929; */
+}
+
+.command-center {
+    background-color: #253d41;
+}
+
+.scrollable-moves-list {
+    overflow-y: scroll;
+    max-height: 40%; /* 10% above for the username later */
+}
+
+.action-button {
+    border: none;
+    outline: none;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    color: white;
+}
+
+.action-button:focus {
+    outline: none;
+}
+
+.action-button.confirm.check {
+    background-color: #6f9176;
+}
+
+.action-button.confirm:hover {
+    background-color: #449255;
+}
+
+.action-button.confirm:disabled:hover {
+    background-color: #da8525;
+}
+
+.action-button.confirm.waiting:disabled:hover {
+    background-color: #c7c7c7;
+    color: #4d4d4d;
+}
+
+.action-button.confirm.used {
+    color: #4d4d4d;
+}
+
+.action-button.confirm.used:disabled:hover {
+    background-color: #c7c7c7;
+    color: #4d4d4d;
+}
+
+.action-button.cancel.check {
+    background-color: rgb(161, 160, 85);
+}
+
+.action-button.cancel:hover {
+    background-color: #a05139;
+}
+
+.action-button.confirm.check .icon-color {
+    color: #da8525;
+}
+
+.action-button.confirm:hover .icon-color {
+    color: #fff6e0;
+}
+
+.action-button.confirm:disabled:hover .icon-color {
+    color: #727272;
+}
+
+.hidden {
+    display: none;
+}
+
+.move-row {
+    display: flex;
+    color: white;
+}
+
+.move-row > div {
+    width: 50%;
+}
+
+.even-move-row {
+    background-color: rgb(150, 150, 150);
+}
+
+.move-button {
+    border: none;
+    outline: none;
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    color: white;
+    text-align: left;
+}
+
+.move-button:focus {
+    outline: none;
+}
+
+.move-button:hover {
+    background-color: #2589da;
+}
+
+.move-button:disabled {
+    background-color: #17568a;
+    cursor: pointer;
+}

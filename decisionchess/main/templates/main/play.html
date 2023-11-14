@@ -1,0 +1,104 @@
+{% extends "main/base.html" %}
+
+{% load static %}
+
+{% block title %}
+Play
+{% endblock %}
+
+{% block style%}
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
+<script>
+    var existingWebGameMetadata = localStorage.getItem('web_game_metadata');
+    if (existingWebGameMetadata == null) {
+        var webGameMetadata = {};
+        localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+        <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
+        <!-- 2 columns for chat and notes -->
+        <div class="col-2" style="width: 100%;">
+            <div id="chat-box" class="card chat-box">
+                <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
+                    <div class="chat-wrapper mb-auto">
+                        <div class="chat-messages">
+                            <!-- Chat messages will be displayed here -->
+                            {% for message in chat_messages.all %}
+                                <p>{{message.sender_username}}: {{message.message}}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control chat-input" placeholder="Type a message and press Enter..." id="chat-input" disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Consider if this col-5 should be present for all play views or just the main one-->
+        <!-- That is we can embedd the game itself in here as it's own template maybe -->
+        <div class="col-10 col-md-5">
+            <div id="iframe-container">
+                <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
+            </div>
+        </div>
+        <!-- Optional blank column for command center alignment on smaller screens -->
+        <div class="col-2 d-md-none" style="width: 100%;"></div>
+        <!-- 4 columns for command center-->
+        <div class="col-10 col-md-4 d-flex align-items-center">
+            <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
+                <!-- Content will be dynamically added here -->
+                <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
+                    <!-- Content will be dynamically added here -->
+                </div>
+                <div id="final-score" class="text-white font-weight-bold text-lg mt-2"></div>
+                <div id="end-message" class="text-white"></div>
+                <div class="d-flex justify-content-center">
+                    <button id="rematchButton" post-game=true class="action-button confirm hidden">Rematch</button>
+                    <button id="rematchAcceptButton" post-game=true class="action-button confirm check hidden mr-2">Accept Rematch</button>
+                    <button id="rematchDenyButton" post-game=true class="action-button cancel check hidden">Decline Rematch</button>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button id="undoOfferButton" actions="true" class="action-button confirm hidden mr-2">Undo</button>
+                    <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="undoOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+                    <button id="undoAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Undo?</button>
+                    <button id="undoDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+
+                    <button id="resignButton" actions="true" class="action-button confirm hidden mr-2">Resign</button>
+                    <button id="resignConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="resignCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+
+                    <button id="drawOfferButton" actions="true" class="action-button confirm hidden mr-2">Draw</button>
+                    <button id="drawOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
+                    <button id="drawOfferCancelButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+                    <button id="drawAcceptButton" followup="true" class="action-button confirm check hidden mr-2">Accept Draw?</button>
+                    <button id="drawDenyButton" followup="true" class="action-button cancel check hidden mr-2">✘</button>
+
+                    <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm hidden">Flip</button>
+                </div>
+            </div>
+            <script>
+                var game_uuid = "{{ game_uuid }}";
+                var sender = "{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}";
+                sessionStorage.setItem('connected', "{{ connected }}");
+                sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
+                sessionStorage.setItem('initialized', "{{ initialized }}");
+                sessionStorage.setItem('draw_request', "{{ draw_request }}");
+                sessionStorage.setItem('undo_request', "{{ undo_request }}");
+                sessionStorage.setItem('total_reset', "{{ total_reset }}");
+                var csrftoken = "{{ csrf_token|escapejs }}";
+            </script>
+            <script src="{% static 'main/js/play.js' %}"></script>                
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

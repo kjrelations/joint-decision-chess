@@ -1,0 +1,101 @@
+<!-- base.html -->
+{% load static %}
+<!doctype html>
+<html>
+<head>
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, interactive-widget=overlays-content, viewport-fit=cover">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+	<title>{% block title %}Decision Chess{% endblock %}</title>
+	{% block style %} 
+	{% endblock %}
+</head>
+	
+<body>
+	<div class="homeblock">
+		<a href="/">Decision Chess</a>
+		{% block side_head_content %}
+		{% endblock %}
+	</div>
+	<div class="container-fluid" style="padding: 0;">
+		<div class="row" style="max-width: 100%;">
+			<div id="header-column" class="col-12 col-hb-12 col-md-1">
+				<div class="sidenav">
+					<div class="nav-new-game">Play</div>
+					<a href="/news">News</a>
+					{% if user %}
+						{% if user.is_authenticated %}
+						<a href="/account/email">Settings</a>
+						<a href="/profile/{{ user.username }}">Profile</a>
+						{% endif %}
+					{% else %}
+						<a href="/login">Sign in</a>
+					{% endif %}
+				</div>
+			</div>
+			
+			<div class="col-12 col-hb-12 col-md-11">
+				<div class="main-wrapper">
+					{% block content %}
+					{% endblock %}
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	{% block footer %}
+	<footer class="footer">
+		<a href="mailto:decisionchess@gmail.com" class="mr-2">Contact Us</a>
+		<a href="/terms-of-service" class="mr-2">Terms of Service</a>
+		<a href="/privacy">Privacy Policy</a>
+	</footer>
+
+	<script>
+		function setFooterHeight() {
+			const footer = document.querySelector('.footer');
+			const footerHeight = footer.offsetHeight + 'px';
+			document.documentElement.style.setProperty('--footer-height', footerHeight);
+		}
+
+		window.addEventListener('load', setFooterHeight);
+		window.addEventListener('resize', setFooterHeight);
+	</script>
+	{% endblock %}
+	
+	<script>
+		function generateGameURL() {
+			fetch('/create_new_game/')
+			.then(response => {
+				if (response.status === 200) {
+                    return response.json();
+                } else {
+                    console.error('Error creating game:', response.statusText);
+                    return Promise.reject('Error creating game');
+                }
+			})
+			.then(data => {
+                if (data.redirect) {
+                    window.location.href = data.url;
+                }
+            })
+			.catch(error => {
+				console.error('Error:', error);
+			});
+		}
+		const newGameQuickStart = document.querySelectorAll('.nav-new-game');
+        newGameQuickStart.forEach(button => {
+            button.addEventListener('click', generateGameURL);
+        });
+	</script>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+</body>
+</html>

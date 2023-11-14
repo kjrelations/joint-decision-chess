@@ -1,0 +1,120 @@
+{% extends "main/base.html" %}
+
+{% load static %}
+
+{% block title %}
+Play
+{% endblock %}
+
+{% block style%}
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
+<script>
+    var existingWebGameMetadata = localStorage.getItem('web_game_metadata');
+    if (existingWebGameMetadata == null || !existingWebGameMetadata.hasOwnProperty(current_game_id)) {
+        var current_game_id = "{{ current_game_id }}";
+        var comp_str = "{{ comp_moves }}";
+        const subgroups = comp_str.split('-');
+        var comp_moves = subgroups.map(subgroup => subgroup.split(','));
+        var move_index = comp_moves.length - 1;
+        var alg_str = "{{ alg_moves }}";
+        const alg_moves = alg_str.split(',')
+        var existingWebGameMetadata = (existingWebGameMetadata !== null ? JSON.parse(existingWebGameMetadata) : {})
+        existingWebGameMetadata[current_game_id] = {
+            "end_state": "{{ outcome }}",
+            "forced_end": "{{ forced_end }}",
+            "alg_moves": alg_moves,
+            "comp_moves": comp_moves,
+            "FEN_final_pos": "{{ FEN }}",
+            "step": {
+                "index": null,
+                "execute": false,
+                "update_executed": false
+            },      
+            "cycle_theme": {
+                "execute": false,
+                "update_executed": false
+            },
+            "flip_board": {
+                "execute": false,
+                "update_executed": false
+            },
+            "console_messages": []
+        }
+        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+        <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
+        <!-- 2 columns for chat and notes -->
+        <div class="col-2" style="width: 100%;">
+            <div id="chat-box" class="card chat-box">
+                <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
+                    <div class="chat-wrapper mb-auto">
+                        <div class="chat-messages">
+                            <!-- Chat messages will be displayed here -->
+                            {% for message in chat_messages.all %}
+                                <p>{{message.sender_username}}: {{message.message}}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control chat-input" placeholder="Type a message and press Enter..." id="chat-input" disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Consider if this col-5 should be present for all play views or just the main one-->
+        <!-- That is we can embedd the game itself in here as it's own template maybe -->
+        <div class="col-10 col-md-5">
+            <div id="iframe-container">
+                <iframe id="embedded-iframe" src="{% static 'main/html/historic_game.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
+            </div>
+        </div>
+        <!-- Optional blank column for command center alignment on smaller screens -->
+        <div class="col-2 d-md-none" style="width: 100%;"></div>
+        <!-- 4 columns for command center-->
+        <div class="col-10 col-md-4 d-flex align-items-center">
+            <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
+                <!-- Content will be dynamically added here -->
+                <div class="d-flex justify-content-center align-items-center">
+                    <button id="skipBackwardButton" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-backward-step icon-color"></i>
+                    </button>
+                    <button id="backwardButton" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play fa-rotate-180 icon-color"></i>
+                    </button>
+                    <button id="forwardButton" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play icon-color"></i>
+                    </button>
+                    <button id="skipForwardButton" class="action-button confirm hidden">
+                        <i class="fa-solid fa-forward-step icon-color"></i>
+                    </button>
+                </div>
+                <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
+                    <!-- Content will be dynamically added here -->
+                </div>
+                <div id="final-score" class="text-white font-weight-bold text-lg mt-2"></div>
+                <div id="end-message" class="text-white"></div>
+                <div class="d-flex justify-content-center">
+                    <!-- Need a button class here -->
+                    <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm hidden">Flip</button>
+                </div>
+            </div>
+            <script>
+                sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
+                sessionStorage.setItem('initialized', "{{ initialized }}");
+                var csrftoken = "{{ csrf_token|escapejs }}";
+            </script>
+            <script src="{% static 'main/js/historic.js' %}"></script>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

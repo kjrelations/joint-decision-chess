@@ -1,0 +1,26 @@
+{% extends "main/base.html" %}
+
+{% block style %}
+{% endblock %}
+
+{% block title %}
+Create an Account
+{% endblock %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div id="content", name="content", class="content">
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+            <div class="col-10 col-md-5">
+                <form method="POST" class="form-group">
+                    {% csrf_token %}
+                    {{form|crispy}}
+                    <button type="submit" class="btn btn-success">Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
