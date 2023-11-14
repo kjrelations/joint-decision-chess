@@ -55,8 +55,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def is_user_game_member(self, user_id, room_name):
         try:
-            game = ActiveGames.objects.get(gameid=room_name)
-            return user_id in (str(game.whiteid), str(game.blackid))
+            game = ActiveGames.objects.get(active_game_id=room_name)
+            return user_id in (str(game.white_id), str(game.black_id))
         except ActiveGames.DoesNotExist:
             return False
 
@@ -108,7 +108,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def save_active_chat_message(self, game_uuid, color, sender_id, username, message):
         chat_message = ActiveChatMessages(
-            gameid=game_uuid, 
+            game_id=game_uuid, 
             sender_color=color, 
             sender=sender_id, 
             sender_username=username, 

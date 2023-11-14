@@ -5,7 +5,7 @@ from django.utils import timezone
 import uuid
 
 class User(AbstractUser):
-	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False) # unique
+	id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	email = models.EmailField(unique=True)
 	bio = models.TextField(blank=True)
 	country = CountryField(blank=True, null=True)
@@ -14,9 +14,9 @@ class User(AbstractUser):
 		return self.username
 
 class ChessLobby(models.Model):
-	game_uuid = models.UUIDField(unique=True) # change to gameid later make it primary
-	white_uuid = models.UUIDField(null=True)
-	black_uuid = models.UUIDField(null=True)
+	lobby_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	white_id = models.UUIDField(null=True)
+	black_id = models.UUIDField(null=True)
 	initiator_name = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
 	timestamp = models.DateTimeField()
 	expire = models.DateTimeField()
@@ -31,32 +31,32 @@ class ChessLobby(models.Model):
 			self.expire = self.timestamp + timezone.timedelta(minutes=10)
 		if self.private:
 			self.is_open = False
-		elif self.white_uuid and self.black_uuid:
+		elif self.white_id and self.black_id:
 			self.is_open = False
-		elif (self.white_uuid or self.black_uuid) and self.initiator_connected:
+		elif (self.white_id or self.black_id) and self.initiator_connected:
 			self.is_open = True
 		else:
 			self.is_open = False
 		super(ChessLobby, self).save(*args, **kwargs)
 
 	def __str__(self):
-		return f"Lobby {self.id} ({self.lobby_url})"
+		return f"{self.lobby_id}"
 
 class ActiveGames(models.Model):
-	gameid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False) # unique
-	whiteid = models.UUIDField(null=False)
-	blackid = models.UUIDField(null=False)
-	starttime = models.DateTimeField(blank=False, null=False, auto_now_add=True)
+	active_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	white_id = models.UUIDField(null=False)
+	black_id = models.UUIDField(null=False)
+	start_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	status = models.CharField(max_length=50, blank=False, null=False, default="")
 
 class GameHistoryTable(models.Model):
-	gameid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False) # unique
-	whiteid = models.UUIDField(null=False)
-	blackid = models.UUIDField(null=False)
+	historic_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	white_id = models.UUIDField(null=False)
+	black_id = models.UUIDField(null=False)
 	algebraic_moves = models.TextField(blank=False, null=False, default="")
-	starttime = models.DateTimeField(blank=False, null=False)
-	endtime = models.DateTimeField(blank=False, null=False, auto_now_add=True)
+	start_time = models.DateTimeField(blank=False, null=False)
+	end_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	outcome = models.CharField(max_length=7, blank=False, null=False, default="")
 	computed_moves = models.TextField(blank=False, null=False, default="")
@@ -64,8 +64,8 @@ class GameHistoryTable(models.Model):
 	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
 
 class ActiveChatMessages(models.Model):
-	messageid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-	gameid = models.UUIDField(null=False)
+	active_message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	game_id = models.UUIDField(null=False)
 	sender_color = models.CharField(max_length=5, null=True)
 	sender = models.UUIDField(null=False)
 	sender_username = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
@@ -73,8 +73,8 @@ class ActiveChatMessages(models.Model):
 	timestamp = models.DateTimeField(default=timezone.now)
 
 class ChatMessages(models.Model):
-	messageid = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, unique=True)
-	gameid = models.UUIDField(null=False)
+	message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	game_id = models.UUIDField(null=False)
 	sender_color = models.CharField(max_length=5, null=True)
 	sender = models.UUIDField(null=False)
 	sender_username = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
@@ -82,7 +82,7 @@ class ChatMessages(models.Model):
 	timestamp = models.DateTimeField(default=timezone.now)
 
 class BlogPosts(models.Model):
-	# Have blogid later that's unique
+	blog_id = models.AutoField(primary_key=True)
 	title = models.CharField(max_length=300, blank=False, null=False, default="")
 	author = models.CharField(max_length=150, default="")
 	content = models.TextField(blank=False, null=False, default="")

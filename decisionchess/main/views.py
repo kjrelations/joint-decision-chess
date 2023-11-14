@@ -31,14 +31,14 @@ def home(request):
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
     if game is not None:
-        return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game.game_uuid)])})
+        return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game.lobby_id)])})
     else:
         return JsonResponse({'redirect': False, 'error': 'No open games found'}, status=404)
 
 def game_exists(game_uuid):
-    lobby_game_exists = ChessLobby.objects.filter(game_uuid=game_uuid).exists()
-    active_game_exists = ActiveGames.objects.filter(gameid=game_uuid).exists()
-    historic_game_exists = GameHistoryTable.objects.filter(gameid=game_uuid).exists()
+    lobby_game_exists = ChessLobby.objects.filter(lobby_id=game_uuid).exists()
+    active_game_exists = ActiveGames.objects.filter(active_game_id=game_uuid).exists()
+    historic_game_exists = GameHistoryTable.objects.filter(historic_game_id=game_uuid).exists()
     return lobby_game_exists or active_game_exists or historic_game_exists
 
 def create_new_game(request, optional_uuid = None):
@@ -46,7 +46,7 @@ def create_new_game(request, optional_uuid = None):
         game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
         if not game_exists(game_uuid):
             new_open_game = ChessLobby(
-                game_uuid=game_uuid,
+                lobby_id=game_uuid,
                 is_open=True,
                 initiator_connected=False
             )
@@ -63,7 +63,7 @@ def create_new_game(request, optional_uuid = None):
             if user_id is None:
                 user_id = uuid.uuid4()
                 request.session["guest_uuid"] = str(user_id)
-            new_open_game.white_uuid = user_id
+            new_open_game.white_id = user_id
             new_open_game.save()
             return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
         elif optional_uuid:
@@ -81,8 +81,8 @@ def create_signed_key(request):
                 user_id = request.user.id
             else:
                 user_id = request.session.get('guest_uuid')
-            recent_game = GameHistoryTable.objects.get(gameid=recent_game_id)
-            if not recent_game or str(user_id) not in [str(recent_game.whiteid), str(recent_game.blackid)]:
+            recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
+            if not recent_game or str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             
             try:
@@ -107,7 +107,7 @@ def get_lobby_games(request):
     serialized_data = [
         {
             "initiator_name": game.initiator_name,
-            "game_uuid": game.game_uuid,
+            "game_uuid": game.lobby_id,
             "timestamp": game.timestamp.strftime("%H:%M:%S")
         }
         for game in lobby_games
@@ -119,7 +119,7 @@ def check_game_availability(request):
         data = json.loads(request.body.decode('utf-8'))
         game_id = data.get('gameId')
         try:
-            game = ChessLobby.objects.get(game_uuid=game_id)
+            game = ChessLobby.objects.get(lobby_id=game_id)
             available = game.is_open
         except ChessLobby.DoesNotExist:
             available = False
@@ -153,33 +153,33 @@ def play(request, game_uuid):
     # Validate uuid (ensure not expired), direct to play, spectator, or historic html, check authentication on former
     # For now, temporarily disallow multiple people from loading the same game
     try:
-        game = ChessLobby.objects.get(game_uuid=game_uuid)
-        if not game.is_open and str(user_id) not in [str(game.white_uuid), str(game.black_uuid)]:
+        game = ChessLobby.objects.get(lobby_id=game_uuid)
+        if not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
             return redirect('home')
-        elif str(user_id) in [str(game.white_uuid), str(game.black_uuid)]:
+        elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
-            if game.black_uuid is None and game.initiator_connected:
-                game.black_uuid = user_id
+            if game.black_id is None and game.initiator_connected:
+                game.black_id = user_id
                 game.save()
-            elif game.white_uuid is None and game.initiator_connected:
-                game.white_uuid = user_id
+            elif game.white_id is None and game.initiator_connected:
+                game.white_id = user_id
                 game.save()
             # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
-            elif str(user_id) == str(game.white_uuid) == str(game.black_uuid):
+            elif str(user_id) == str(game.white_id) == str(game.black_id):
                 return redirect('home')
-            elif str(user_id) == str(game.white_uuid) and game.black_uuid is not None:
+            elif str(user_id) == str(game.white_id) and game.black_id is not None:
                 return redirect('home')
-            elif str(user_id) == str(game.black_uuid) and game.white_uuid is not None:
+            elif str(user_id) == str(game.black_id) and game.white_id is not None:
                 return redirect('home')
-            game_chat_messages = ActiveChatMessages.objects.filter(gameid = game_uuid).order_by('timestamp')
+            game_chat_messages = ActiveChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play.html", sessionVariables)
         else:
-            game.black_uuid = user_id # Later to fill the empty position
+            game.black_id = user_id # Later to fill the empty position
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
-        historic = GameHistoryTable.objects.get(gameid=game_uuid)
+        historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
         if historic:
             sessionVariables = {
                 'current_game_id': str(game_uuid),
@@ -190,7 +190,7 @@ def play(request, game_uuid):
                 'outcome': historic.outcome,
                 'forced_end': historic.termination_reason
             }
-            game_chat_messages = ChatMessages.objects.filter(gameid = game_uuid).order_by('timestamp')
+            game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
         # This would also redirect spectators if it's an active game
@@ -217,12 +217,12 @@ def update_connected(request):
             user_id = request.session.get('guest_uuid')
         web_connect = data.get('web_connect')
         try:
-            game = ChessLobby.objects.get(game_uuid=connect_game_uuid)
+            game = ChessLobby.objects.get(lobby_id=connect_game_uuid)
             
-            compare = game.white_uuid
+            compare = game.white_id
             null_id = "black"
             if compare is None:
-                compare = game.black_uuid
+                compare = game.black_id
                 null_id = "white"
             session_game = request.session.get(connect_game_uuid)
             # This should probably just check if the game is waiting or not in the else case, 
@@ -235,7 +235,7 @@ def update_connected(request):
                 request.session[connect_game_uuid] = [filling]
             # maybe fail if None as a starting condition and add it to session in play view function
             
-            waiting_game = game.white_uuid is None or game.black_uuid is None
+            waiting_game = game.white_id is None or game.black_id is None
             # This allows the one player to join their own game or different games and 
             # multiples of each type
             is_initiator = True if len(request.session[connect_game_uuid]) == 1 and waiting_game else False
@@ -248,9 +248,9 @@ def update_connected(request):
                 message = {"status": "updated"}
             elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
                 if null_id == "black":
-                    game.black_uuid = user_id
+                    game.black_id = user_id
                 else:
-                    game.white_uuid = user_id
+                    game.white_id = user_id
                 game.save()
                 save_to_active = True
                 message = {"status": "updated"}
@@ -259,9 +259,9 @@ def update_connected(request):
                 message = {"status": "updated"}
             if save_to_active:
                 active_game = ActiveGames(
-                    gameid = connect_game_uuid,
-                    whiteid = game.white_uuid,
-                    blackid = game.black_uuid,
+                    active_game_id = connect_game_uuid,
+                    white_id = game.white_id,
+                    black_id = game.black_id,
                     gametype = "classical",
                     status = "playing"
                 )
@@ -285,10 +285,10 @@ def save_game(request):
         else:
             user_id = request.session.get('guest_uuid')
         try:
-            active_game = ActiveGames.objects.get(gameid=completed_game_uuid)
-            if str(user_id) != str(active_game.whiteid) and str(user_id) != str(active_game.blackid):
+            active_game = ActiveGames.objects.get(active_game_id=completed_game_uuid)
+            if str(user_id) != str(active_game.white_id) and str(user_id) != str(active_game.black_id):
                 return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
-            lobby_game = ChessLobby.objects.get(game_uuid=completed_game_uuid)
+            lobby_game = ChessLobby.objects.get(lobby_id=completed_game_uuid)
             try:
                 save_chat_and_game(active_game, data)
             except Exception as e:
@@ -297,7 +297,7 @@ def save_game(request):
             active_game.delete()
             return JsonResponse({"status": "updated"}, status=200)
         except ActiveGames.DoesNotExist:
-            saved_game = GameHistoryTable.objects.get(gameid=completed_game_uuid)
+            saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
             if saved_game:
                 return JsonResponse({}, status=200)
             else:
@@ -305,11 +305,11 @@ def save_game(request):
 
 @transaction.atomic
 def save_chat_and_game(active_game, data):
-    game_chat_messages = ActiveChatMessages.objects.filter(gameid=active_game.gameid).order_by('timestamp')
+    game_chat_messages = ActiveChatMessages.objects.filter(game_id=active_game.active_game_id).order_by('timestamp')
 
     for chat_message in game_chat_messages:
         new_chat_message = ChatMessages(
-            gameid=chat_message.gameid,
+            game_id=chat_message.game_id,
             sender_color=chat_message.sender_color,
             sender=chat_message.sender,
             sender_username=chat_message.sender_username,
@@ -321,11 +321,11 @@ def save_chat_and_game(active_game, data):
 
     # Create and save GameHistoryTable object
     completed_game = GameHistoryTable(
-        gameid=active_game.gameid,
-        whiteid=active_game.whiteid,
-        blackid=active_game.blackid,
+        historic_game_id=active_game.active_game_id,
+        white_id=active_game.white_id,
+        black_id=active_game.black_id,
         algebraic_moves=data.get('alg_moves'),
-        starttime=active_game.starttime,
+        start_time=active_game.start_time,
         gametype=active_game.gametype,
         outcome=data.get('outcome'),
         computed_moves=data.get('comp_moves'),
