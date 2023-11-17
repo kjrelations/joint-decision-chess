@@ -78,33 +78,33 @@ def new_game_board_moves(game):
     all_valid_moves.extend(all_valid_specials)
     return all_valid_moves, special_index_start
 
-def get_piece_value(piece):
+def get_piece_value(piece, row, col):
     if piece == ' ':
         return 0
-    sign = piece.isupper()
-    def get_absolute_value(piece):
+    is_white = piece.isupper()
+    def get_absolute_value(piece, is_white):
         type = piece.lower()
         if type == 'p':
-            return 10
+            return 10 + (pawn_eval_white[row][col] if is_white else pawn_eval_black[row][col])
         elif type == 'n':
-            return 30
+            return 30 + knight_eval[row][col]
         elif type == 'b':
-            return 30
+            return 30 + (bishop_eval_white[row][col] if is_white else bishop_eval_black[row][col])
         elif type == 'r':
-            return 50
+            return 50 + (rook_eval_white[row][col] if is_white else rook_eval_black[row][col])
         elif type == 'q':
-            return 90
+            return 90 + queen_eval[row][col]
         elif type == 'k':
-            return 900
-    abs_val = get_absolute_value(piece)
-    piece_value = abs_val if sign else -1 * abs_val
+            return 900 + (king_eval_white[row][col] if is_white else king_eval_black[row][col])
+    abs_val = get_absolute_value(piece, is_white)
+    piece_value = abs_val if is_white else -1 * abs_val
     return piece_value
 
 def evaluate_board(board):
     total_value = 0
     for row in range(8):
         for col in range(8):
-            total_value += get_piece_value(board[row][col])
+            total_value += get_piece_value(board[row][col], row, col)
     return total_value
 
 def ai_handle_piece_move(game, selected_piece, row, col, special = False, promotion_piece = None):
@@ -115,7 +115,7 @@ def ai_handle_piece_move(game, selected_piece, row, col, special = False, promot
 
 def get_best_move(game, pos):
     pos["position_count"] = 0
-    depth = 2
+    depth = 3
     start = time.time()
     best_piece, best_move, best_promotion, special = minimax_root(depth, game, True, pos)
     end = time.time()
@@ -145,7 +145,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                 promotion_choices = move[1]
                 for promotion in promotion_choices:
                     ai_handle_piece_move(game, selected_piece, row, col, special=special_move, promotion_piece = promotion)
-                    value = minimax(depth - 1, game, not is_maximizing_player, pos)
+                    value = minimax(depth - 1, game, -10000, 10000, not is_maximizing_player, pos)
                     game.undo_move()
                     if value >= best_move:
                         best_move = value
@@ -156,7 +156,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
             else:
                 row, col = move
                 ai_handle_piece_move(game, selected_piece, row, col, special=special_move)
-                value = minimax(depth - 1, game, not is_maximizing_player, pos)
+                value = minimax(depth - 1, game, -10000, 10000, not is_maximizing_player, pos)
                 game.undo_move()
                 if value >= best_move:
                     best_move = value
@@ -166,7 +166,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                     special = special_move
     return best_piece, best_move_found, best_promotion, special
 
-def minimax(depth, game, is_maximizing_player, pos):
+def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
     pos["position_count"] += 1
     if depth == 0:
         return -evaluate_board(game.board)
@@ -184,17 +184,103 @@ def minimax(depth, game, is_maximizing_player, pos):
                 promotion_choices = move[1]
                 for promotion in promotion_choices:
                     ai_handle_piece_move(game, selected_piece, row, col, special=special_move, promotion_piece = promotion)
-                    best_move = select_minimax_optimum(best_move, depth, game, is_maximizing_player, pos)
+                    best_move = select_minimax_optimum(best_move, depth, game, alpha, beta, is_maximizing_player, pos)
                     game.undo_move()
+                    alpha, beta = alpha_beta_calc(alpha, beta, best_move, is_maximizing_player)
+                    if beta <= alpha:
+                        return best_move
             else:
                 row, col = move
                 ai_handle_piece_move(game, selected_piece, row, col, special=special_move)
-                best_move = select_minimax_optimum(best_move, depth, game, is_maximizing_player, pos)
+                best_move = select_minimax_optimum(best_move, depth, game, alpha, beta, is_maximizing_player, pos)
                 game.undo_move()
+                alpha, beta = alpha_beta_calc(alpha, beta, best_move, is_maximizing_player)
+                if beta <= alpha:
+                    return best_move
     return best_move
 
-def select_minimax_optimum(best_move, depth, game, is_maximizing_player, pos):
+def select_minimax_optimum(best_move, depth, game, alpha, beta, is_maximizing_player, pos):
     if is_maximizing_player:
-        return max(best_move, minimax(depth - 1, game, not is_maximizing_player, pos))
+        return max(best_move, minimax(depth - 1, game, alpha, beta, not is_maximizing_player, pos))
     else:
-        return min(best_move, minimax(depth - 1, game, not is_maximizing_player, pos))
+        return min(best_move, minimax(depth - 1, game, alpha, beta, not is_maximizing_player, pos))
+    
+def alpha_beta_calc(alpha, beta, best_move, is_maximizing_player):
+    if is_maximizing_player:
+        return max(alpha, best_move), beta
+    else:
+        return alpha, min(beta, best_move)
+    
+pawn_eval_white =[
+    [0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    [5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0],
+    [1.0,  1.0,  2.0,  3.0,  3.0,  2.0,  1.0,  1.0],
+    [0.5,  0.5,  1.0,  2.5,  2.5,  1.0,  0.5,  0.5],
+    [0.0,  0.0,  0.0,  2.0,  2.0,  0.0,  0.0,  0.0],
+    [0.5, -0.5, -1.0,  0.0,  0.0, -1.0, -0.5,  0.5],
+    [0.5,  1.0, 1.0,  -2.0, -2.0,  1.0,  1.0,  0.5],
+    [0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0]
+]
+
+pawn_eval_black = reverse_chessboard(pawn_eval_white)
+
+knight_eval =[
+    [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
+    [-4.0, -2.0,  0.0,  0.0,  0.0,  0.0, -2.0, -4.0],
+    [-3.0,  0.0,  1.0,  1.5,  1.5,  1.0,  0.0, -3.0],
+    [-3.0,  0.5,  1.5,  2.0,  2.0,  1.5,  0.5, -3.0],
+    [-3.0,  0.0,  1.5,  2.0,  2.0,  1.5,  0.0, -3.0],
+    [-3.0,  0.5,  1.0,  1.5,  1.5,  1.0,  0.5, -3.0],
+    [-4.0, -2.0,  0.0,  0.5,  0.5,  0.0, -2.0, -4.0],
+    [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0]
+]
+
+bishop_eval_white = [
+    [ -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
+    [ -1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -1.0],
+    [ -1.0,  0.0,  0.5,  1.0,  1.0,  0.5,  0.0, -1.0],
+    [ -1.0,  0.5,  0.5,  1.0,  1.0,  0.5,  0.5, -1.0],
+    [ -1.0,  0.0,  1.0,  1.0,  1.0,  1.0,  0.0, -1.0],
+    [ -1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0, -1.0],
+    [ -1.0,  0.5,  0.0,  0.0,  0.0,  0.0,  0.5, -1.0],
+    [ -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0]
+]
+
+bishop_eval_black = reverse_chessboard(bishop_eval_white)
+
+rook_eval_white = [
+    [  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    [  0.5,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  0.5],
+    [ -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5],
+    [ -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5],
+    [ -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5],
+    [ -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5],
+    [ -0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -0.5],
+    [  0.0,   0.0, 0.0,  0.5,  0.5,  0.0,  0.0,  0.0]
+]
+
+rook_eval_black = reverse_chessboard(rook_eval_white)
+
+queen_eval =[
+    [ -2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
+    [ -1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0, -1.0],
+    [ -1.0,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -1.0],
+    [ -0.5,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -0.5],
+    [  0.0,  0.0,  0.5,  0.5,  0.5,  0.5,  0.0, -0.5],
+    [ -1.0,  0.5,  0.5,  0.5,  0.5,  0.5,  0.0, -1.0],
+    [ -1.0,  0.0,  0.5,  0.0,  0.0,  0.0,  0.0, -1.0],
+    [ -2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0]
+]
+
+king_eval_white = [
+    [ -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+    [ -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+    [ -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+    [ -3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
+    [ -2.0, -3.0, -3.0, -4.0, -4.0, -3.0, -3.0, -2.0],
+    [ -1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0],
+    [  2.0,  2.0,  0.0,  0.0,  0.0,  0.0,  2.0,  2.0 ],
+    [  2.0,  3.0,  1.0,  0.0,  0.0,  1.0,  3.0,  2.0 ]
+]
+
+king_eval_black = reverse_chessboard(king_eval_white)
