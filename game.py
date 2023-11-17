@@ -74,6 +74,43 @@ class Game:
         self._move_undone = False
         self._sync = True
 
+    def validate_moves(self, row, col):
+        piece = self.board[row][col]
+        is_white = piece.isupper()
+        selected_piece = (row, col)
+        valid_moves, valid_captures, valid_specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes)
+        for move in valid_moves.copy():
+            # Before making the move, create a copy of the board where the piece has moved
+            temp_board = [rank[:] for rank in self.board]  
+            temp_moves = self.moves.copy()
+            temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]]))
+            temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+            temp_board[selected_piece[0]][selected_piece[1]] = ' '
+            
+            # Temporary invalid move check, Useful for my variant later
+            if is_invalid_capture(temp_board, not is_white):
+                valid_moves.remove(move)
+                if move in valid_captures:
+                    valid_captures.remove(move)
+            elif is_check(temp_board, is_white, temp_moves):
+                valid_moves.remove(move)
+                if move in valid_captures:
+                    valid_captures.remove(move)
+        
+        for move in valid_specials.copy():
+            # Castling moves are already validated in calculate moves, this is only for enpassant
+            if (move[0], move[1]) not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
+                temp_board = [rank[:] for rank in self.board]  
+                temp_moves = self.moves.copy()
+                temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
+                temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+                temp_board[selected_piece[0]][selected_piece[1]] = ' '
+                capture_row = 4 if move[0] == 3 else 5
+                temp_board[capture_row][move[1]] = ' '
+                if is_check(temp_board, is_white, temp_moves):
+                    valid_specials.remove(move)
+        return valid_moves, valid_captures, valid_specials
+
     def update_state(self, new_row, new_col, selected_piece, special=False):
         piece = self.board[selected_piece[0]][selected_piece[1]]
         potential_capture = self.board[new_row][new_col]
@@ -183,7 +220,7 @@ class Game:
                 if other_piece == piece and (row, col) != selected_piece:
                     other_moves, _, _ = calculate_moves(self.board, row, col, self.moves)
                     if (new_row, new_col) in other_moves:
-                        similar_pieces.append((row,col))
+                        similar_pieces.append((row, col))
         
         added_file, added_rank = '', ''
         for similar in similar_pieces:
@@ -372,6 +409,12 @@ class Game:
                     self.castle_attributes['black_king_moved'] = False
                     self.castle_attributes['right_black_rook_moved'] = False
             
+            # TODO Need to handle this better later but this will do.
+            last_state = list(self.board_states.keys())[-1]
+            last_castle_attributes = last_state[-1]
+            for i, key in enumerate(self.castle_attributes.keys()):
+                self.castle_attributes[key] = last_castle_attributes[i]
+
             del self.moves[-1]
             del self.alg_moves[-1]
             self._move_undone = True

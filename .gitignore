@@ -4,5 +4,8 @@ decisionchess/static_collected_files/*
 !decisionchess/static_collected_files/.gitkeep
 historic/*
 !historic/main.py
+simple_ai/*
+!simple_ai/main.py
+!simple_ai/ai.py
 *.pyc
 *.env
