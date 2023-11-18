@@ -232,7 +232,6 @@ function resetCommandCenter() {
     finalScorebox.innerHTML = ""
 }
 
-var initConnect = false
 var previousConnected = false
 var initCheck = false
 
@@ -301,11 +300,9 @@ function handleMessage(data) {
         var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
         var currentGameID = sessionStorage.getItem('current_game_id');
         var playerColor;
-        var endState;
         currentGameID = (currentGameID === 'null' ? null : currentGameID);
         if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
             playerColor = existingWebGameMetadata[currentGameID]["player_color"];
-            endState = existingWebGameMetadata[currentGameID]["end_state"];
         } else {
             return;
         }
@@ -322,7 +319,6 @@ function handleMessage(data) {
             }
         } else if (data["log"] === "rematch_request" && !rematch_request) {
             rematch_received = true
-            const init_name = data["sender"];
             signed_uuid = data["text"];
             document.getElementById("rematchButton").disabled = true;
             showOptions("rematchButton", "rematchAcceptButton", "rematchDenyButton");
@@ -517,10 +513,10 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
     
     // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
-    var optionalReset = false
+    var optionalReset = false;
     if (actionCommandStatus.hasOwnProperty("reset")) {
-        initialDefaults = initialDefaults && !actionCommandStatus.reset
-        optionalReset = actionCommandStatus.reset
+        initialDefaults = initialDefaults && !actionCommandStatus.reset;
+        optionalReset = actionCommandStatus.reset;
     }
     if (!actionCommandStatus.update_executed && optionalReset !== true && !initialDefaults) {
         eventExecutionStatus[localStorageObjectName].timeoutId = setTimeout(function () {
@@ -529,13 +525,13 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
             handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
         }, 10);
     } else {
-        var accept_response_sent = localStorageObjectName.includes("accept") && webGameMetadata[localStorageObjectName].update_executed
-        webGameMetadata[localStorageObjectName].execute = false
-        webGameMetadata[localStorageObjectName].update_executed = false
+        var accept_response_sent = localStorageObjectName.includes("accept") && webGameMetadata[localStorageObjectName].update_executed;
+        webGameMetadata[localStorageObjectName].execute = false;
+        webGameMetadata[localStorageObjectName].update_executed = false;
         
         if (optionalReset === true) {
-            resetButtons(buttonId, localStorageObjectName, Options)
-            webGameMetadata[localStorageObjectName].reset = false
+            resetButtons(buttonId, localStorageObjectName, Options);
+            webGameMetadata[localStorageObjectName].reset = false;
         }
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
         if (totalReset) {
@@ -544,12 +540,12 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
                 for (var i = 0; i < event.eventNames.length; i++) {
                     var subevent = event.eventNames[i];
                     var subOptions = i === 0 ? "followups" : "responses";
-                    document.getElementById(event.mainButtonName).classList.remove("waiting")
-                    document.getElementById(event.mainButtonName).disabled = false
-                    resetButtons(event.mainButtonName, subevent, subOptions)
+                    document.getElementById(event.mainButtonName).classList.remove("waiting");
+                    document.getElementById(event.mainButtonName).disabled = false;
+                    resetButtons(event.mainButtonName, subevent, subOptions);
                 }
             });
-            sessionStorage.setItem("total_reset", 'false')
+            sessionStorage.setItem("total_reset", 'false');
         }
         // We don't want to clear the offer queue on follow-ups or simple client actions or deny (individual resets)
         // Only on accepts, main actions accepts, and total resets
@@ -558,7 +554,7 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
             offerQueue = [];
         }
 
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         document.getElementById(buttonId).disabled = false;
@@ -572,7 +568,7 @@ function optionStringsHelper(mainbuttonId, Options) {
     if (Options === "responses") {
         approveString = "Accept";
         abandonString = "Deny";
-        replaceString = "OfferButton"
+        replaceString = "OfferButton";
     }
     const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
     const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
@@ -592,10 +588,10 @@ function showOptions(buttonId, buttonApproveId, buttonAbandonId) {
 }
 
 function resetButtons(mainbuttonId, Options) {
-    result = optionStringsHelper(mainbuttonId, Options)
-    const buttonApproveId = result.ApproveId
-    const buttonAbandonId = result.AbandonId
-    hideOptions(mainbuttonId, buttonApproveId, buttonAbandonId)
+    result = optionStringsHelper(mainbuttonId, Options);
+    const buttonApproveId = result.ApproveId;
+    const buttonAbandonId = result.AbandonId;
+    hideOptions(mainbuttonId, buttonApproveId, buttonAbandonId);
     var matchingInput = inputList.find(item => item.buttonId === mainbuttonId);
     sessionStorage.setItem(matchingInput["action"], 'false');
 }
@@ -692,6 +688,8 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             var currentGameID = sessionStorage.getItem('current_game_id');
             var webGameMetadata = existingWebGameMetadata[currentGameID];
             
+            // On followup display only, main buttons are disabled. We need to re-enable them
+            // This does not apply to executing or queued actions
             actionbuttons.forEach(function(element) {
                 if (element.id !== buttonId) {
                     element.classList.remove("hidden");

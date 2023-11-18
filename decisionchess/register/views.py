@@ -40,7 +40,7 @@ def register(request):
             to_email = form.cleaned_data.get('email')
             send_mail(subject, "", from_email, [to_email], html_message=html_message)
 
-            return redirect("/home")
+            return redirect("home")
     else:
         form = RegisterForm()    
 

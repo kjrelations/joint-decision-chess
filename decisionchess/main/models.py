@@ -23,6 +23,7 @@ class ChessLobby(models.Model):
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
 	private = models.BooleanField(default=False)
+	computer_game = models.BooleanField(default=False)
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:

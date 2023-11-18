@@ -838,7 +838,6 @@ async def main():
         "cycle_theme_executed": False,
         "resign": False,
         "resign_executed": False,
-        "resign_reset": False,
         "draw_offer": False,
         "draw_offer_executed": False,
         "draw_offer_sent": False,

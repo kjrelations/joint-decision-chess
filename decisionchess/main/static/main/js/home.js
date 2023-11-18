@@ -1,6 +1,16 @@
-// Generic fetch GET redirect function maybe
-function generateGameURL() {
-    fetch('/create_new_game/')
+function generateGame(computer_game = null) {
+    body = {}
+    if (computer_game) {
+        body = {computer_game: true}
+    }
+    fetch('/create_new_game/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify(body),
+    })
     .then(response => {
         if (response.status === 200) {
             return response.json();
@@ -18,9 +28,16 @@ function generateGameURL() {
         console.error('Error:', error);
     });
 }
-const newGameButtons = document.querySelectorAll('.new-game');
+const newGameButtons = document.querySelectorAll('[new-game="true"]');
 newGameButtons.forEach(button => {
-    button.addEventListener('click', generateGameURL);
+    button.addEventListener('click', generateGame);
+});
+
+const newComputerGameButtons = document.querySelectorAll('[new-computer-game="true"]');
+newComputerGameButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        generateGame(computer_game = true)
+    });
 });
 
 function quickPair() {

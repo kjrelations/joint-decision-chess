@@ -41,6 +41,7 @@ def game_exists(game_uuid):
     historic_game_exists = GameHistoryTable.objects.filter(historic_game_id=game_uuid).exists()
     return lobby_game_exists or active_game_exists or historic_game_exists
 
+# TODO on refactor: optional_uuid to a body thing, rename new_open_game, change method to POST only
 def create_new_game(request, optional_uuid = None):
     while True:
         game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
@@ -52,9 +53,11 @@ def create_new_game(request, optional_uuid = None):
             )
             if optional_uuid:
                 new_open_game.private = True
-            # Later get username and add to initiator name if authenticated
-            # Retrieve and add user uuid to appropriate position, generate a unique one if needed
-            
+            if request.method == "POST":
+                data = json.loads(request.body.decode('utf-8'))
+                if data.get('computer_game'):
+                    new_open_game.computer_game = True
+                    new_open_game.private = True
             if request.user and request.user.id is not None:
                 user_id = request.user.id
                 new_open_game.initiator_name = request.user.username
@@ -154,7 +157,9 @@ def play(request, game_uuid):
     # For now, temporarily disallow multiple people from loading the same game
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
-        if not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
+        if game.computer_game and str(user_id) in [str(game.white_id), str(game.black_id)]:
+            return render(request, "main/play/computer.html", sessionVariables)
+        elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
             return redirect('home')
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
@@ -244,6 +249,14 @@ def update_connected(request):
             save_to_active = False
             if game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
+                if game.computer_game and waiting_game:
+                    bot_user = User.objects.get(username="minimax")
+                    bot_id = bot_user.id
+                    if null_id == "black":
+                        game.black_id = bot_id
+                    else:
+                        game.white_id = bot_id
+                    save_to_active = True
                 game.save()
                 message = {"status": "updated"}
             elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
