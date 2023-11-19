@@ -213,6 +213,10 @@ LOGOUT_REDIRECT_URL = "/login"
 
 AUTH_USER_MODEL = "main.User"
 
+AUTHENTICATION_BACKENDS = [
+    'register.backends.CustomAuthBackend'
+]
+
 # 1 week session expire
 SESSION_COOKIE_AGE = 604800
 

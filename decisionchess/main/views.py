@@ -250,7 +250,7 @@ def update_connected(request):
             if game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
                 if game.computer_game and waiting_game:
-                    bot_user = User.objects.get(username="minimax")
+                    bot_user = User.objects.get(username="minimax") # later from the message body
                     bot_id = bot_user.id
                     if null_id == "black":
                         game.black_id = bot_id
@@ -353,6 +353,8 @@ def news(request):
 
 def profile(request, username):
     profile_user = User.objects.get(username=username)
+    if profile_user.bot_account:
+        return redirect('home')
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since})
 

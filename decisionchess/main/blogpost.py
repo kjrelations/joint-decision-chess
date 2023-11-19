@@ -1,3 +1,4 @@
+# Run from main directory with python -m main.blogpost
 import sys
 import os
 import markdown
