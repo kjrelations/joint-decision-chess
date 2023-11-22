@@ -140,10 +140,11 @@ function updateCommandCenter() {
                 saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd);
             }
             
+            var playerColor = webGameMetadata["player_color"]
             document.getElementById("rematchButton").classList.remove("hidden");
             document.getElementById("rematchButton").addEventListener("click", function() {
-                rematch_accepted = true
-                generateRematchURL();
+                rematch_accepted = true;
+                generateRematchURL(playerColor);
                 document.getElementById("rematchButton").disabled = true;
             }, {once: true});
             updated = true;
@@ -253,16 +254,21 @@ function handleMessage(data) {
     $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
 }
 
-function generateRematchURL() {
+function generateRematchURL(position) {
+    if (position !== "white" && position !== "black") {
+        return console.error('Invalid position input')
+    }
+    body = {
+        "position": position,
+        "computer_game": true
+    }
     fetch('/create_new_game/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrftoken,
         },
-        body: JSON.stringify({ 
-            computer_game: true
-        }),
+        body: JSON.stringify(body),
     })
     .then(response => {
         if (response.status === 200) {

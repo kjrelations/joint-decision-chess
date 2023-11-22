@@ -309,9 +309,9 @@ function handleMessage(data) {
         if (data["log"] === "disconnect") {
             // Add highlighted message to chat
             $("#chat-input").prop("disabled", true);
-            if (playerColor === "black" && rematch_accepted) {
+            if (rematch_accepted) {
                 fetchUUID(signed_uuid, currentGameID).then(data => {
-                    window.location.href = '/play/' + data.uuid;
+                    window.location.href = '/play/' + data.uuid + '/';
                 });
             }
             if (rematch_request) {
@@ -329,13 +329,6 @@ function handleMessage(data) {
                 document.getElementById("rematchButton").classList.add("used");
                 rematch_accepted = true;
                 sendMessage("", "rematch_accepted");
-                if (playerColor === "white") {
-                    var new_game_id;
-                    fetchUUID(signed_uuid, currentGameID).then(data => {
-                        new_game_id = data.uuid;
-                        generateRematchURL(new_game_id);
-                    });
-                }
             }, {once: true});
             document.getElementById("rematchDenyButton").addEventListener("click", function() {
                 document.getElementById("rematchAcceptButton").remove();
@@ -348,15 +341,12 @@ function handleMessage(data) {
             $(".chat-messages").append('<p>Rematch Accepted...</p>');
             rematch_accepted = true;
             if (!rematch_received) {
-                if (playerColor === "white") {
-                    let new_game_id;
-                    fetchUUID(signed_uuid, currentGameID).then(data => {
-                        new_game_id = data.uuid;
-                        generateRematchURL(new_game_id);
-                    });
-                } else {
-                    document.getElementById("rematchButton").classList.add("used");
-                }
+                let new_game_id;
+                fetchUUID(signed_uuid, currentGameID).then(data => {
+                    new_game_id = data.uuid;
+                    generateRematchURL(playerColor, new_game_id);
+                });
+                document.getElementById("rematchButton").classList.add("used");
             }
         } else if (data["log"] === "rematch_declined") {
             document.getElementById("rematchButton").classList.add("used");
@@ -367,8 +357,19 @@ function handleMessage(data) {
     $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
 }
 
-function generateRematchURL(game_id) {
-    fetch('/create_new_game/' + game_id + '/')
+function generateRematchURL(position, game_id) {
+    if (position !== "white" && position !== "black") {
+        return console.error('Invalid position input')
+    }
+    body = {"position": position}
+    fetch('/create_new_game/' + game_id + '/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify(body),
+    })
     .then(response => {
         if (response.status === 200) {
             return response.json();

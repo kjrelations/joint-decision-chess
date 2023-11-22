@@ -61,6 +61,16 @@ html {
     scroll-behavior: smooth;
 }
 
+.position-placeholder {
+    border: none;
+    outline: none;
+    padding: 0px;
+}
+
+.position-placeholder:focus {
+    outline: none;
+}
+
 .new-game {
     color: white;
     border: none;

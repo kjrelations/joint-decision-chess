@@ -4,6 +4,7 @@ import json
 import asyncio
 import pygbag
 import pygbag.aio as asyncio
+import fetch
 import pygbag_net
 import builtins
 from game import *
@@ -564,7 +565,6 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                 elif cmd == "clone":
                     # send all history to child
                     node.checkout_for(node.data)
-                    init["starting_player"] = True
                     node.tx({node.CMD: "initialize", "start": not init["starting_player"]})
                     init["initializing"] = True
                     init["sent"] = int(not init["starting_player"])
@@ -813,6 +813,7 @@ async def main():
         "waiting": True,
         "initializing": False,
         "initialized": False,
+        "config_retrieved": False,
         "starting_player": None,
         "sent": None,
         "player": None,
@@ -922,7 +923,24 @@ async def main():
             client_game, game_tab_id = initialize_game(init, game_id, node, drawing_settings)
 
         elif not init["initialized"]:
-            init["starting_player"] = True
+            if not init["config_retrieved"]:
+                try:
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/'
+                    handler = fetch.RequestHandler()
+                    response = await handler.get(url)
+                    data = json.loads(response)
+                    if data.get("status") and data["status"] == "error":
+                        raise Exception(f'Request failed {data}')
+                    init["config_retrieved"] = True
+                    if data["message"]["starting_side"] == "white":
+                        init["starting_player"] = True 
+                    elif data["message"]["starting_side"] == "black":
+                        init["starting_player"] = False 
+                    else:
+                        raise Exception("Bad request")
+                except Exception as e:
+                    window.eval(f"console.log('{str(e)}')")
+                    raise Exception(str(e))
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
             client_game = Game(new_board.copy(), init["starting_player"])

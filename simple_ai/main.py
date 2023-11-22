@@ -4,6 +4,7 @@ import json
 import asyncio
 import pygbag
 import pygbag.aio as asyncio
+import fetch
 from game import *
 from constants import *
 from helpers import *
@@ -366,6 +367,7 @@ async def main():
         "running": True,
         "initializing": False,
         "initialized": False,
+        "config_retrieved": False,
         "starting_player": None,
         "player": None,
         "opponent": None
@@ -429,7 +431,24 @@ async def main():
             init["waiting"] = False
 
         elif not init["initialized"]:
-            init["starting_player"] = True
+            if not init["config_retrieved"]:
+                try:
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/'
+                    handler = fetch.RequestHandler()
+                    response = await handler.get(url)
+                    data = json.loads(response)
+                    if data.get("status") and data["status"] == "error":
+                        raise Exception(f'Request failed {data}')
+                    init["config_retrieved"] = True
+                    if data["message"]["starting_side"] == "white":
+                        init["starting_player"] = True 
+                    elif data["message"]["starting_side"] == "black":
+                        init["starting_player"] = False 
+                    else:
+                        raise Exception("Bad request")
+                except Exception as e:
+                    window.eval(f"console.log('{str(e)}')")
+                    raise Exception(str(e))
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Setting Up")
             client_game = Game(new_board.copy(), init["starting_player"])
