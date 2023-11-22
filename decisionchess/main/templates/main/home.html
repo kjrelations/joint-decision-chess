@@ -36,6 +36,23 @@ Decision Chess
                         <div id="lobby-content"></div>
                     </div>
                 </div>
+                <div class="d-flex justify-content-between w-100 top-margin">
+                    <button class="highlights" onclick="scrollToSection('Introduction')">Introduction</button>
+                    <button class="highlights" onclick="window.location.href = '/news'">
+                        <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                            <div style="font-size: 0.75em;">{{blogs.0.timestamp|date:"M d, Y"}}</div>
+                            <div class="align-self-center" style="font-size: 0.9em;">{{blogs.0.title}}</div>
+                            <div style="font-size: 0.75em;">{{blogs.0.author}}</div>
+                        </div>
+                    </button>
+                    <button class="highlights" onclick="window.location.href = '/news'">
+                        <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                            <div style="font-size: 0.75em;">{{blogs.1.timestamp|date:"M d, Y"}}</div>
+                            <div class="align-self-center" style="font-size: 0.9em;">{{blogs.1.title}}</div>
+                            <div style="font-size: 0.75em;">{{blogs.1.author}}</div>
+                        </div>
+                    </button>
+                </div>
             </div>
             <!-- <div class="col-3 d-md-none" style="width: 0%"></div> -->
             <!-- Game creation, live stats -->

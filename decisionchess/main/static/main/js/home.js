@@ -162,3 +162,10 @@ function checkGameAvailability(gameId, lobbyRow) {
 
 window.addEventListener('load', updateLobby);
 setInterval(updateLobby, 20000);
+
+function scrollToSection(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView();
+    }
+}

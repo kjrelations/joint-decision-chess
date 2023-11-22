@@ -27,7 +27,9 @@ def index(request):
     return render(request, "main/home.html", {})
 
 def home(request):
-    return render(request, "main/home.html", {})
+    recent_blogs = BlogPosts.objects.all().order_by('-timestamp')[:2]
+    context = {"blogs": recent_blogs}
+    return render(request, "main/home.html", context)
 
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
