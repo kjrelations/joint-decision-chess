@@ -37,6 +37,7 @@ class Game:
             self._move_undone = False
             self._sync = True
             self._move_index = -1
+            self._latest = True
         else:
             self.current_turn = custom_params["current_turn"]
             self.board = custom_params["board"]
@@ -59,6 +60,7 @@ class Game:
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
             self._move_index = len(self.moves) - 1 # This could be custom eventually
+            self._latest = True # I think this will always default to true for now, could be a custom move in the future
 
     def synchronize(self, new_game):
         self.current_turn = new_game.current_turn
@@ -73,6 +75,8 @@ class Game:
         self.forced_end = new_game.forced_end
         self._move_undone = False
         self._sync = True
+        self._move_index = new_game._move_index
+        self._latest = True
 
     def validate_moves(self, row, col):
         piece = self.board[row][col]
@@ -112,6 +116,11 @@ class Game:
         return valid_moves, valid_captures, valid_specials
 
     def update_state(self, new_row, new_col, selected_piece, special=False):
+        # Jump to current state before applying moves
+        if self._move_index < len(self.moves) - 1: # should be same as not _latest
+            self.step_to_move(len(self.moves) - 1)
+            self._latest = True
+
         piece = self.board[selected_piece[0]][selected_piece[1]]
         potential_capture = self.board[new_row][new_col]
 
@@ -152,6 +161,7 @@ class Game:
 
         self.moves.append(output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string))
         self.alg_moves.append(algebraic_move)
+        self._move_index += 1
 
         if piece == 'K' and selected_piece == (7, 4) and not self.castle_attributes['white_king_moved']:
             self.castle_attributes['white_king_moved'] = True
@@ -370,6 +380,7 @@ class Game:
                 else:
                     self.board_states[_current_board_state] -= 1
             
+            self._move_index -= 1
             move = self.moves[-1]
 
             prev_pos = list(move[0])
@@ -493,12 +504,13 @@ class Game:
                     self.board[0][5] = rook_future_pos
             
             self._move_index += increment
-            self.current_turn = not self.current_turn
+            # TODO This is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
+            # self.current_turn = not self.current_turn
 
         if self._move_index == len(self.moves) - 1:
-            self.end_position = True
+            self._latest = True
         else:
-            self.end_position = False
+            self._latest = False
         
         if self._move_index != -1:
             new_recent_positions = self.moves[self._move_index]

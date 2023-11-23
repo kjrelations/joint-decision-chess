@@ -393,7 +393,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                             if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
                                 game.end_position:
                                     client_game.synchronize(game)
-                                    drawing_settings["clear_selections"] = True
+                                    drawing_settings["recalc_selections"] = True
                                     init["sent"] = 0
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
@@ -417,7 +417,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                                             break
                                         print("ALG_MOVES: ", client_game.alg_moves)
                     if "_sync" in cmd:
-                        # Need to set game here if no update cmd is trigerred, else we have an old game
+                        # Need to set game here if no update cmd is trigerred, else we have an old game we're comparing to
                         if "game" in node.data:
                             game = Game(custom_params=json.loads(node.data.pop("game")))
                         if game.board == client_game.board and not client_game._sync:
@@ -485,7 +485,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                             if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
                                 game.end_position:
                                     client_game.synchronize(game)
-                                    drawing_settings["clear_selections"] = True
+                                    drawing_settings["recalc_selections"] = True
                                     init["sent"] = 0
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
@@ -670,6 +670,11 @@ def initialize_game(init, game_id, node, drawing_settings):
             "alg_moves": [],
             "comp_moves": [],
             "FEN_final_pos": "",
+            "step": {
+                "execute": False,
+                "update_executed": False,
+                "index": None
+            },
             "undo_move": {
                 "execute": False,
                 "update_executed": False,
@@ -823,6 +828,8 @@ async def main():
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
     client_state_actions = {
+        "step": False,
+        "step_executed": False,
         "undo": False,
         "undo_executed": False,
         "undo_sent": False,
@@ -856,6 +863,7 @@ async def main():
     }
     # This holds the command name for the web localstorage object and the associated keys in the above dictionary
     command_status_names = [
+        ("step", "step", "step_executed"),
         ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("undo_move_accept", "undo_accept", "undo_accept_executed", "undo_accept_reset"),
         ("undo_move_deny", "undo_deny", "undo_deny_executed", "undo_deny_reset"),
@@ -912,6 +920,7 @@ async def main():
         "coordinate_surface": generate_coordinate_surface(current_theme),
         "theme_index": 0,
         "wait_screen_drawn": False,
+        "recalc_selections": False,
         "clear_selections": False
     }
 
@@ -939,7 +948,7 @@ async def main():
                     else:
                         raise Exception("Bad request")
                 except Exception as e:
-                    window.eval(f"console.log('{str(e)}')")
+                    window.eval(f"console.log('{str(e)}')") # Not working I don't think
                     raise Exception(str(e))
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
@@ -953,24 +962,26 @@ async def main():
             await waiting_screen(init, game_window, client_game, drawing_settings)
             continue
 
-        if drawing_settings["clear_selections"]:
-            if selected_piece:
-                row, col = selected_piece
-                piece = client_game.board[row][col]
-                is_white = piece.isupper()
-                first_intent, selected_piece, selected_piece_image, \
-                valid_moves, valid_captures, valid_specials, hovered_square = \
-                    handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
-                selected_piece_image = None
-            drawing_settings["clear_selections"] = False
-
         # Web browser actions/commands are received in previous loop iterations
+        if client_state_actions["step"]:
+            if client_game._sync: # Preventing stepping while syncing required
+                drawing_settings["recalc_selections"] = True
+                drawing_settings["clear_selections"] = True
+                web_game_metadata = window.localStorage.getItem("web_game_metadata")
+                web_game_metadata_dict = json.loads(web_game_metadata)
+                move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
+                client_game.step_to_move(move_index)
+            client_state_actions["step"] = False
+            client_state_actions["step_executed"] = True
+
         if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
             offer_data = {node.CMD: "undo_offer"}
             node.tx(offer_data, shm=True)
             client_state_actions["undo_sent"] = True
         # The sender will sync, only need to apply for receiver
         if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
+            if not client_game._latest:
+                client_game.step_to_move(len(client_game.moves) - 1)
             offer_data = {node.CMD: "undo_accept"}
             node.tx(offer_data, shm=True)
             your_turn = client_game.current_turn == client_game._starting_player
@@ -1003,6 +1014,8 @@ async def main():
             window.sessionStorage.setItem("undo_request", "false")
 
         if client_state_actions["resign"]:
+            if not client_game._latest:
+                client_game.step_to_move(len(client_game.moves) - 1)
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data, shm=True)
             client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
@@ -1018,6 +1031,8 @@ async def main():
             node.tx(offer_data, shm=True)
             client_state_actions["draw_offer_sent"] = True
         if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
+            if not client_game._latest:
+                client_game.step_to_move(len(client_game.moves) - 1)
             offer_data = {node.CMD: "draw_accept"}
             node.tx(offer_data, shm=True)
             client_game.forced_end = "Draw by mutual agreement"
@@ -1063,6 +1078,24 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+
+        # Have this after the step commands to not allow previous selections
+        if drawing_settings["recalc_selections"]:
+            if selected_piece:
+                row, col = selected_piece
+                piece = client_game.board[row][col]
+                is_white = piece.isupper()
+                if piece != ' ' and not drawing_settings["clear_selections"]:
+                    first_intent, selected_piece, selected_piece_image, \
+                    valid_moves, valid_captures, valid_specials, hovered_square = \
+                        handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                else:
+                    first_intent = False
+                    selected_piece = None
+                    valid_moves, valid_captures, valid_specials = [], [], []
+                selected_piece_image = None
+            drawing_settings["recalc_selections"] = False
+            drawing_settings["clear_selections"] = False
 
         # An ugly indent but we need to send the draw_offer and resign execution status and skip unnecessary events
         # TODO make this skip cleaner or move it into a function
@@ -1113,7 +1146,7 @@ async def main():
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
                         else:
-                            if client_game.current_turn == client_game._starting_player:
+                            if client_game.current_turn == client_game._starting_player and client_game._latest:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
@@ -1196,7 +1229,7 @@ async def main():
                         if first_intent and (row, col) == selected_piece:
                             first_intent = not first_intent
                         
-                        if client_game.current_turn == client_game._starting_player:
+                        if client_game.current_turn == client_game._starting_player and client_game._latest:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \
@@ -1391,6 +1424,7 @@ async def main():
 
         if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)

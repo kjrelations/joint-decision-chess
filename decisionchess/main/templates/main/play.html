@@ -52,6 +52,20 @@ Play
         <div class="col-10 col-md-4 d-flex align-items-center">
             <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
                 <!-- Content will be dynamically added here -->
+                <div class="d-flex justify-content-center align-items-center">
+                    <button id="skipBackwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-backward-step icon-color"></i>
+                    </button>
+                    <button id="backwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play fa-rotate-180 icon-color"></i>
+                    </button>
+                    <button id="forwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play icon-color"></i>
+                    </button>
+                    <button id="skipForwardButton" post-game="true" class="action-button confirm hidden">
+                        <i class="fa-solid fa-forward-step icon-color"></i>
+                    </button>
+                </div>
                 <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
                     <!-- Content will be dynamically added here -->
                 </div>
