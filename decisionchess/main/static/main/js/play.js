@@ -1,6 +1,6 @@
 function adjustFont() {
-    const elements = document.querySelectorAll('.action-button')
-    const parent = document.getElementById('command-center')
+    const elements = document.querySelectorAll('.action-button');
+    const parent = document.getElementById('command-center');
     elements.forEach(element => {
         if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
             element.style.fontSize = '0.7rem';
@@ -51,11 +51,11 @@ var signed_uuid = "";
 var rematch_request = false;
 var rematch_accepted = false;
 var rematch_received = false;
-var updated = false;
 var savedMoves = [];
 var comp_moves = [];
 var move_index = -1;
 var selectedMoveId = "";
+var promotion_lock = false;
 
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -68,7 +68,7 @@ function updateCommandCenter() {
         var endState = webGameMetadata.end_state;
         comp_moves = webGameMetadata.comp_moves;
         const equal_arrays = areArraysEqual(moves, savedMoves)
-        if (endState !== '' && !updated) {
+        if (endState !== '' && !equal_arrays) {
             const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(requestIntervalId);
             clearInterval(connectIntervalId);
@@ -76,13 +76,28 @@ function updateCommandCenter() {
                 button.remove();
             });
         }
-        // Don't keep unnecessarily updating
-        if (equal_arrays && updated) {
-            return;
-        } else if (!equal_arrays) {
-            updated = false
+        promoting = sessionStorage.getItem('promoting');
+        promoting = (promoting === 'true' ? true : false);
+        if (promotion_lock !== promoting) {
+            const stepButtons = ["skipBackwardButton", "backwardButton", "forwardButton", "skipForwardButton"];
+            if (promoting) {
+                stepButtons.forEach(buttonId => {
+                    document.getElementById(buttonId).classList.add("used");
+                    document.getElementById(buttonId).disabled = true;
+                });
+            } else {
+                stepButtons.forEach(buttonId => {
+                    document.getElementById(buttonId).classList.remove("used");
+                    document.getElementById(buttonId).disabled = false;
+                });
+            }
+            promotion_lock = promoting;
         }
-        savedMoves = moves
+        // Don't keep unnecessarily updating
+        if (equal_arrays) {
+            return;
+        } 
+        savedMoves = moves;
         
         movesListContainer.innerHTML = '';
 
@@ -202,7 +217,6 @@ function updateCommandCenter() {
             document.getElementById(moveId).disabled = true;
             selectedMoveId = moveId;
         }
-        updated = true;
     }
 }
 
@@ -465,7 +479,7 @@ function checkNewConnect() {
     var currentConnected = sessionStorage.getItem('connected');
     currentConnected = (currentConnected === 'true' ? true : false);
     if (currentConnected === true && previousConnected === false) {
-        updateConnectedStatus(true)
+        updateConnectedStatus(true);
     }
     
     var initialized = sessionStorage.getItem('initialized');
@@ -489,10 +503,10 @@ function checkNewConnect() {
         });
 
         idStrings.forEach(idString => {
-            document.getElementById(idString).classList.remove("hidden")
+            document.getElementById(idString).classList.remove("hidden");
         })
         initializeWebSocket();
-        initCheck = initialized
+        initCheck = initialized;
     }
 
     previousConnected = currentConnected;
@@ -514,6 +528,7 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('draw_request', 'false');
     sessionStorage.setItem('undo_request', 'false');
     sessionStorage.setItem('total_reset', 'false');
+    sessionStorage.setItem('promoting', 'false');
 });
 
 var eventExecutionStatus = {};
@@ -524,32 +539,32 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        webGameMetadata[localStorageObjectName].execute = true;
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
         if (localStorageObjectName == "step") {
             // Could move this block into it's own function later
             if (
                 move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
                 move_index < 0 && buttonId === "backwardButton"
             ) {
-                webGameMetadata[localStorageObjectName].execute = false
-                webGameMetadata[localStorageObjectName].index = null
-                existingWebGameMetadata[currentGameID] = webGameMetadata
+                webGameMetadata[localStorageObjectName].execute = false;
+                webGameMetadata[localStorageObjectName].index = null;
+                existingWebGameMetadata[currentGameID] = webGameMetadata;
                 localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                 
                 document.getElementById(buttonId).disabled = false;
                 return;
             }
             if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
-                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1)
+                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
 
             } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
-                index_number = (buttonId === "backwardButton" ? move_index : -1)
+                index_number = (buttonId === "backwardButton" ? move_index : -1);
             } else {
                 index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
-                index_number = (index_number < move_index ? index_number + 1 : index_number)
+                index_number = (index_number < move_index ? index_number + 1 : index_number);
             }
-            webGameMetadata[localStorageObjectName].index = index_number
+            webGameMetadata[localStorageObjectName].index = index_number;
         }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
@@ -560,7 +575,7 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
         handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
 
     } else {
-        console.warn("Failed to execute action")
+        console.warn("Failed to execute action");
     }
 }
 
@@ -598,28 +613,28 @@ var inputList = [
 
 function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
     if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null
+        webGameMetadata[localStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
-            move_index++
+            move_index++;
         } else if (buttonId === "backwardButton") {
-            move_index--
+            move_index--;
         } else if (buttonId === "skipForwardButton") {
-            move_index = comp_moves.length - 1
+            move_index = comp_moves.length - 1;
         } else if (buttonId === "skipBackwardButton") {
-            move_index = -1
+            move_index = -1;
         } else {
             move_index = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
         }
-        moveId = 'move-' + move_index
+        moveId = 'move-' + move_index;
         if (move_index !== -1) {
-            document.getElementById(moveId).disabled = true
+            document.getElementById(moveId).disabled = true;
         }
         if (selectedMoveId !== "") {
             document.getElementById(selectedMoveId).disabled = false;
         }
-        selectedMoveId = (move_index !== -1 ? moveId: "")
+        selectedMoveId = (move_index !== -1 ? moveId: "");
     }
-    return webGameMetadata
+    return webGameMetadata;
 }
 
 function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options) {
@@ -658,9 +673,13 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
                 for (var i = 0; i < event.eventNames.length; i++) {
                     var subevent = event.eventNames[i];
                     var subOptions = i === 0 ? "followups" : "responses";
-                    document.getElementById(event.mainButtonName).classList.remove("waiting");
-                    document.getElementById(event.mainButtonName).disabled = false;
-                    resetButtons(event.mainButtonName, subevent, subOptions);
+                    const offerEvent = document.getElementById(event.mainButtonName)
+                    // Check for ids that could be removed on end game reached but totalreset is still set
+                    if (offerEvent) {
+                        offerEvent.classList.remove("waiting");
+                        offerEvent.disabled = false;
+                        resetButtons(event.mainButtonName, subevent, subOptions);
+                    }
                 }
             });
             sessionStorage.setItem("total_reset", 'false');
@@ -678,7 +697,11 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         if (buttonId.includes("move")) {
             return;
         }
-        document.getElementById(buttonId).disabled = false;
+        // Resign or draw can quickly remove the button before this, even an undo offer if end game is reached
+        element = document.getElementById(buttonId);
+        if (element) {
+            element.disabled = false;
+        }
     }
 }
 
@@ -693,7 +716,7 @@ function optionStringsHelper(mainbuttonId, Options) {
     }
     const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
     const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
-    return {ApproveId: buttonApproveId, AbandonId: buttonAbandonId, AbandonStr: abandonString}
+    return {ApproveId: buttonApproveId, AbandonId: buttonAbandonId, AbandonStr: abandonString};
 }
 
 function hideOptions(buttonId, buttonApproveId, buttonAbandonId) {
@@ -736,8 +759,8 @@ function requestDisplay(action, ButtonID, baseStorageName) {
     
     var newOptions = (currentValue === true ? "responses": "followups")
     if (currentGameID !== null && initialized === true) {
-        const acceptObjectName = baseStorageName + "_accept"
-        const denyObjectName = baseStorageName + "_deny"
+        const acceptObjectName = baseStorageName + "_accept";
+        const denyObjectName = baseStorageName + "_deny";
         var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
         var acceptReset = existingWebGameMetadata[currentGameID][acceptObjectName].reset;
         var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
@@ -753,7 +776,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
     }
     
     if (currentValue === true || resetDisplay === true) {
-        handleButton(ButtonID, baseStorageName, newOptions, resetDisplay, action)
+        handleButton(ButtonID, baseStorageName, newOptions, resetDisplay, action);
     }
 }
 
@@ -785,9 +808,9 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
         result = optionStringsHelper(buttonId, Options)
-        const buttonApproveId = result.ApproveId
-        const buttonAbandonId = result.AbandonId
-        const abandonString = result.AbandonStr
+        const buttonApproveId = result.ApproveId;
+        const buttonAbandonId = result.AbandonId;
+        const abandonString = result.AbandonStr;
         const acceptObjectName = localStorageObjectName + "_accept";
         const denyObjectName = localStorageObjectName + "_deny";
         if (resetDisplay !== true) {
@@ -814,25 +837,25 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             actionbuttons.forEach(function(element) {
                 if (element.id !== buttonId) {
                     element.classList.remove("hidden");
-                    var actionEvents = actionEventList.find(event => event.mainButtonName === element.id)
-                    var notQueued = offerQueue.every(item => item.mainId !== element.id)
-                    var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames)
+                    var actionEvents = actionEventList.find(event => event.mainButtonName === element.id);
+                    var notQueued = offerQueue.every(item => item.mainId !== element.id);
+                    var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames);
                     if (notExecuting && notQueued) {
                         element.disabled = false;
                     }
                 }
             });
             document.getElementById(buttonApproveId).addEventListener("click", function() { 
-                hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                hideOptions(buttonId, buttonApproveId, buttonAbandonId);
                 if (Options === "responses") {
-                    document.getElementById(buttonId).classList.remove("waiting")
+                    document.getElementById(buttonId).classList.remove("waiting");
                     dequeButton(buttonId)
                         .then(updatedQueue => {
-                        offerQueue = updatedQueue;
-                        showNewOptions(offerQueue);
+                            offerQueue = updatedQueue;
+                            showNewOptions(offerQueue);
                         });
                 } else {
-                    showNewOptions(offerQueue)
+                    showNewOptions(offerQueue);
                 }
                 
                 var responseName = (Options === "followups" ? localStorageObjectName : acceptObjectName)
@@ -840,13 +863,13 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 handleWebtoGameAction(buttonId, responseName, Options);
             }, { once: true });
             document.getElementById(buttonAbandonId).addEventListener("click", function() {
-                hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+                hideOptions(buttonId, buttonApproveId, buttonAbandonId);
                 if (Options === "responses") {
-                    document.getElementById(buttonId).classList.remove("waiting")
+                    document.getElementById(buttonId).classList.remove("waiting");
                     dequeButton(buttonId)
                         .then(updatedQueue => {
-                        offerQueue = updatedQueue;
-                        showNewOptions(offerQueue);
+                            offerQueue = updatedQueue;
+                            showNewOptions(offerQueue);
                         });
                 } else {
                     showNewOptions(offerQueue)
@@ -867,23 +890,27 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 // Need to reset all displayed offer buttons
                 offerEventList.forEach(function(event) {
                     for (var i = 0; i < event.eventNames.length; i++) {
-                        document.getElementById(event.mainButtonName).classList.remove("waiting");
-                        document.getElementById(event.mainButtonName).disabled = false;
-                        var subevent = event.eventNames[i];
-                        var subOptions = i === 0 ? "followups" : "responses";
-                        resetButtons(event.mainButtonName, subevent, subOptions)
+                        const offerEvent = document.getElementById(event.mainButtonName);
+                        // Check for ids that could be removed on end game reached but totalreset is still set
+                        if (offerEvent) {
+                            offerEvent.classList.remove("waiting");
+                            offerEvent.disabled = false;
+                            var subevent = event.eventNames[i];
+                            var subOptions = i === 0 ? "followups" : "responses";
+                            resetButtons(event.mainButtonName, subevent, subOptions);
+                        }
                     }
                 });
-                sessionStorage.setItem("total_reset", 'false')
+                sessionStorage.setItem("total_reset", 'false');
             } else if (Options === "responses") {
-                document.getElementById(buttonId).classList.remove("waiting")
+                document.getElementById(buttonId).classList.remove("waiting");
                 dequeButton(buttonId)
                     .then(updatedQueue => {
-                    offerQueue = updatedQueue;
-                    showNewOptions(offerQueue);
+                        offerQueue = updatedQueue;
+                        showNewOptions(offerQueue);
                     });
             } else {
-                showNewOptions(offerQueue)
+                showNewOptions(offerQueue);
             }
 
             var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -899,7 +926,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             document.getElementById(buttonId).disabled = false;
         }
     } else {
-        handleWebtoGameAction(buttonId, localStorageObjectName)
+        handleWebtoGameAction(buttonId, localStorageObjectName);
     };
 }
 

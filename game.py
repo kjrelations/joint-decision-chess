@@ -509,8 +509,11 @@ class Game:
 
         if self._move_index == len(self.moves) - 1:
             self._latest = True
+            if any(symbol in self.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
+                self.end_position = True
         else:
             self._latest = False
+            self.end_position = False
         
         if self._move_index != -1:
             new_recent_positions = self.moves[self._move_index]

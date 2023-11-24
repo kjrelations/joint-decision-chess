@@ -24,6 +24,7 @@ def ai_move(game, init, drawing_settings):
     if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
         print("ALG_MOVES:", game.alg_moves)
 
+    # Replace following with subsequent version and in other main scripts
     if special and (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
         move_sound.play()
     elif special:
@@ -33,7 +34,7 @@ def ai_move(game, init, drawing_settings):
     else:
         move_sound.play()
 
-    drawing_settings["clear_selections"] = True
+    drawing_settings["recalc_selections"] = True
     if game.alg_moves != []:
         if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
             if "x" not in game.alg_moves[-1]:
@@ -41,7 +42,6 @@ def ai_move(game, init, drawing_settings):
             else:
                 capture_sound.play()
         if game.end_position:
-            init["running"] = False
             is_white = game.current_turn
             checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, is_white, game.moves)
             if checkmate:

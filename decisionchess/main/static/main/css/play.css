@@ -120,10 +120,6 @@
     background-color: #a05139;
 }
 
-.action-button.confirm.check .icon-color {
-    color: #da8525;
-}
-
 .action-button.confirm:hover .icon-color {
     color: #fff6e0;
 }

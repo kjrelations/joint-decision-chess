@@ -180,6 +180,8 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
     promoted, promotion_required = False, True
     
+    window.sessionStorage.setItem("promoting", "true")
+
     while promotion_required:
 
         # Web browser actions/commands are received in previous loop iterations
@@ -225,7 +227,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             node.tx(reset_data, shm=True)
             client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
             print(client_game.forced_end)
-            init["running"] = False
             client_game.end_position = True
             client_game.add_end_game_notation(True)
             client_state_actions["resign"] = False
@@ -245,7 +246,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             node.tx(offer_data, shm=True)
             client_game.forced_end = "Draw by mutual agreement"
             print(client_game.forced_end)
-            init["running"] = False
             client_game.end_position = True
             client_game.add_end_game_notation(False)
             client_state_actions["draw_offer_received"] = False
@@ -259,7 +259,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_game._sync = True
             client_game.forced_end = "Draw by mutual agreement"
             print(client_game.forced_end)
-            init["running"] = False
             client_game.end_position = True
             client_game.add_end_game_notation(False)
             client_state_actions["draw_offer_sent"] = False
@@ -366,6 +365,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         pygame.display.flip()
         await asyncio.sleep(0)
 
+    window.sessionStorage.setItem("promoting", "false")
     await asyncio.sleep(0)
     return promoted
 
@@ -402,7 +402,6 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                                             else:
                                                 capture_sound.play()
                                         if client_game.end_position:
-                                            init["running"] = False
                                             is_white = client_game.current_turn
                                             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
                                             if checkmate:
@@ -494,7 +493,6 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                                             else:
                                                 capture_sound.play()
                                         if client_game.end_position:
-                                            init["running"] = False
                                             is_white = True
                                             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
                                             if checkmate:
@@ -824,6 +822,7 @@ async def main():
         "player": None,
         "opponent": None
     }
+    final_updates = False
     client_game = None
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
@@ -974,92 +973,90 @@ async def main():
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
 
-        if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
-            offer_data = {node.CMD: "undo_offer"}
-            node.tx(offer_data, shm=True)
-            client_state_actions["undo_sent"] = True
-        # The sender will sync, only need to apply for receiver
-        if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
-            if not client_game._latest:
-                client_game.step_to_move(len(client_game.moves) - 1)
-            offer_data = {node.CMD: "undo_accept"}
-            node.tx(offer_data, shm=True)
-            your_turn = client_game.current_turn == client_game._starting_player
-            client_game.undo_move()
-            if not your_turn:
+        if not client_game.end_position:
+            if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
+                offer_data = {node.CMD: "undo_offer"}
+                node.tx(offer_data, shm=True)
+                client_state_actions["undo_sent"] = True
+            # The sender will sync, only need to apply for receiver
+            if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
+                if not client_game._latest:
+                    client_game.step_to_move(len(client_game.moves) - 1)
+                offer_data = {node.CMD: "undo_accept"}
+                node.tx(offer_data, shm=True)
+                your_turn = client_game.current_turn == client_game._starting_player
                 client_game.undo_move()
-            init["sent"] = 0
-            window.sessionStorage.setItem("undo_request", "false")
-            hovered_square = None
-            selected_piece_image = None
-            selected_piece = None
-            first_intent = False
-            valid_moves, valid_captures, valid_specials = [], [], []
-            right_clicked_squares = []
-            drawn_arrows = []
-            client_state_actions["undo_received"] = False
-            client_state_actions["undo_accept"] = False
-            client_state_actions["undo_accept_executed"] = True
-        if client_state_actions["undo_response_received"]:
-            client_state_actions["undo_sent"] = False
-            client_state_actions["undo_response_received"] = False
-            client_state_actions["undo"] = False
-            client_state_actions["undo_executed"] = True
-        if client_state_actions["undo_deny"]:
-            reset_data = {node.CMD: "undo_reset"}
-            node.tx(reset_data, shm=True)
-            client_state_actions["undo_deny"] = False
-            client_state_actions["undo_deny_executed"] = True
-            client_state_actions["undo_received"] = False
-            window.sessionStorage.setItem("undo_request", "false")
+                if not your_turn:
+                    client_game.undo_move()
+                init["sent"] = 0
+                window.sessionStorage.setItem("undo_request", "false")
+                hovered_square = None
+                selected_piece_image = None
+                selected_piece = None
+                first_intent = False
+                valid_moves, valid_captures, valid_specials = [], [], []
+                right_clicked_squares = []
+                drawn_arrows = []
+                client_state_actions["undo_received"] = False
+                client_state_actions["undo_accept"] = False
+                client_state_actions["undo_accept_executed"] = True
+            if client_state_actions["undo_response_received"]:
+                client_state_actions["undo_sent"] = False
+                client_state_actions["undo_response_received"] = False
+                client_state_actions["undo"] = False
+                client_state_actions["undo_executed"] = True
+            if client_state_actions["undo_deny"]:
+                reset_data = {node.CMD: "undo_reset"}
+                node.tx(reset_data, shm=True)
+                client_state_actions["undo_deny"] = False
+                client_state_actions["undo_deny_executed"] = True
+                client_state_actions["undo_received"] = False
+                window.sessionStorage.setItem("undo_request", "false")
 
-        if client_state_actions["resign"]:
-            if not client_game._latest:
-                client_game.step_to_move(len(client_game.moves) - 1)
-            reset_data = {node.CMD: "reset"}
-            node.tx(reset_data, shm=True)
-            client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
-            print(client_game.forced_end)
-            init["running"] = False
-            client_game.end_position = True
-            client_game.add_end_game_notation(True)
-            client_state_actions["resign"] = False
-            client_state_actions["resign_executed"] = True
+            if client_state_actions["resign"]:
+                if not client_game._latest:
+                    client_game.step_to_move(len(client_game.moves) - 1)
+                reset_data = {node.CMD: "reset"}
+                node.tx(reset_data, shm=True)
+                client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+                print(client_game.forced_end)
+                client_game.end_position = True
+                client_game.add_end_game_notation(True)
+                client_state_actions["resign"] = False
+                client_state_actions["resign_executed"] = True
 
-        if client_state_actions["draw_offer"] and not client_state_actions["draw_offer_sent"]:
-            offer_data = {node.CMD: "draw_offer"}
-            node.tx(offer_data, shm=True)
-            client_state_actions["draw_offer_sent"] = True
-        if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
-            if not client_game._latest:
-                client_game.step_to_move(len(client_game.moves) - 1)
-            offer_data = {node.CMD: "draw_accept"}
-            node.tx(offer_data, shm=True)
-            client_game.forced_end = "Draw by mutual agreement"
-            print(client_game.forced_end)
-            init["running"] = False
-            client_game.end_position = True
-            client_game.add_end_game_notation(False)
-            client_state_actions["draw_offer_received"] = False
-            client_state_actions["draw_accept"] = False
-            client_state_actions["draw_accept_executed"] = True
-        if client_state_actions["draw_response_received"]:
-            client_game.forced_end = "Draw by mutual agreement"
-            print(client_game.forced_end)
-            init["running"] = False
-            client_game.end_position = True
-            client_game.add_end_game_notation(False)
-            client_state_actions["draw_offer_sent"] = False
-            client_state_actions["draw_response_received"] = False
-            client_state_actions["draw_offer"] = False
-            client_state_actions["draw_offer_executed"] = True
-        if client_state_actions["draw_deny"]:
-            reset_data = {node.CMD: "draw_offer_reset"}
-            node.tx(reset_data, shm=True)
-            client_state_actions["draw_deny"] = False
-            client_state_actions["draw_deny_executed"] = True
-            client_state_actions["draw_offer_received"] = False
-            window.sessionStorage.setItem("draw_request", "false")
+            if client_state_actions["draw_offer"] and not client_state_actions["draw_offer_sent"]:
+                offer_data = {node.CMD: "draw_offer"}
+                node.tx(offer_data, shm=True)
+                client_state_actions["draw_offer_sent"] = True
+            if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
+                if not client_game._latest:
+                    client_game.step_to_move(len(client_game.moves) - 1)
+                offer_data = {node.CMD: "draw_accept"}
+                node.tx(offer_data, shm=True)
+                client_game.forced_end = "Draw by mutual agreement"
+                print(client_game.forced_end)
+                client_game.end_position = True
+                client_game.add_end_game_notation(False)
+                client_state_actions["draw_offer_received"] = False
+                client_state_actions["draw_accept"] = False
+                client_state_actions["draw_accept_executed"] = True
+            if client_state_actions["draw_response_received"]:
+                client_game.forced_end = "Draw by mutual agreement"
+                print(client_game.forced_end)
+                client_game.end_position = True
+                client_game.add_end_game_notation(False)
+                client_state_actions["draw_offer_sent"] = False
+                client_state_actions["draw_response_received"] = False
+                client_state_actions["draw_offer"] = False
+                client_state_actions["draw_offer_executed"] = True
+            if client_state_actions["draw_deny"]:
+                reset_data = {node.CMD: "draw_offer_reset"}
+                node.tx(reset_data, shm=True)
+                client_state_actions["draw_deny"] = False
+                client_state_actions["draw_deny_executed"] = True
+                client_state_actions["draw_offer_received"] = False
+                window.sessionStorage.setItem("draw_request", "false")
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -1158,7 +1155,6 @@ async def main():
                                     selected_piece, selected_piece_image = None, None
                                     
                                     if client_game.end_position:
-                                        init["running"] = False
                                         break
                                 
                                 ## Specials
@@ -1171,7 +1167,6 @@ async def main():
                                     selected_piece, selected_piece_image = None, None
 
                                     if client_game.end_position:
-                                        init["running"] = False
                                         break
 
                                 else:
@@ -1241,7 +1236,6 @@ async def main():
                                 selected_piece, selected_piece_image = None, None
 
                                 if client_game.end_position:
-                                    init["running"] = False
                                     break
 
                             ## Specials
@@ -1254,7 +1248,6 @@ async def main():
                                 selected_piece, selected_piece_image = None, None
 
                                 if client_game.end_position:
-                                    init["running"] = False
                                     break
 
                     if event.button == 3:
@@ -1393,19 +1386,16 @@ async def main():
             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, not is_white, client_game.moves)
             if checkmate:
                 print("CHECKMATE")
-                init["running"] = False
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
             elif remaining_moves == 0:
                 print("STALEMATE")
-                init["running"] = False
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
             # This seems redundant as promotions should lead to unique boards but we leave it in anyway
             elif client_game.threefold_check():
                 print("STALEMATE BY THREEFOLD REPETITION")
                 client_game.forced_end = "Stalemate by Threefold Repetition"
-                init["running"] = False
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
         
@@ -1424,6 +1414,7 @@ async def main():
 
         if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            # Maybe a simple range list of the index or move number
             web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
@@ -1455,76 +1446,70 @@ async def main():
                     node.tx(txdata, shm=True)
                     init["sent"] = 1
         except Exception as err:
-            init["running"] = False
-            client_game.end_position = True
+            client_game.end_position = True # This would allow for stepping back and playing
             print("Could not send/get games... ", err)
-            break
+
+        if client_game.end_position and not final_updates:
+            try:
+                reset_data = {node.CMD: "reset"}
+                node.tx(reset_data, shm=True)
+                window.sessionStorage.setItem("draw_request", "false")
+                window.sessionStorage.setItem("undo_request", "false")
+                window.sessionStorage.setItem("total_reset", "true")
+                txdata = {node.CMD: f"{init['player']}_update"}
+                send_game = client_game.to_json()
+                txdata.update({"game": send_game})
+                node.tx(txdata, shm=True)
+                
+                web_game_metadata = window.localStorage.getItem("web_game_metadata")
+
+                web_game_metadata_dict = json.loads(web_game_metadata)
+
+                if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
+                    web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
+                    web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
+                    web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+                    web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
+                    web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
+
+                    web_game_metadata = json.dumps(web_game_metadata_dict)
+                    window.localStorage.setItem("web_game_metadata", web_game_metadata)
+                
+                final_updates = True
+            except Exception as err:
+                print("Could not send endgame position... ", err) # This would keep trying to resend which could be fine
+
+        if client_game.end_position and client_game._latest:
+            # Clear any selected highlights
+            right_clicked_squares = []
+            drawn_arrows = []
+            
+            game_window.fill((0, 0, 0))
+
+            draw_board({
+                'window': game_window,
+                'theme': current_theme,
+                'board': client_game.board,
+                'drawing_settings': drawing_settings,
+                'selected_piece': selected_piece,
+                'current_position': client_game.current_position,
+                'previous_position': client_game.previous_position,
+                'right_clicked_squares': right_clicked_squares,
+                'drawn_arrows': drawn_arrows,
+                'valid_moves': valid_moves,
+                'valid_captures': valid_captures,
+                'valid_specials': valid_specials,
+                'pieces': pieces,
+                'hovered_square': hovered_square,
+                'selected_piece_image': selected_piece_image
+            })
+
+            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
+
+            game_window.blit(overlay, (0, 0))
 
         pygame.display.flip()
-        await asyncio.sleep(0)
-
-    if client_game.end_position:
-        try:
-            reset_data = {node.CMD: "reset"}
-            node.tx(reset_data, shm=True)
-            window.sessionStorage.setItem("draw_request", "false")
-            window.sessionStorage.setItem("undo_request", "false")
-            window.sessionStorage.setItem("total_reset", "true")
-            txdata = {node.CMD: f"{init['player']}_update"}
-            send_game = client_game.to_json()
-            txdata.update({"game": send_game})
-            node.tx(txdata, shm=True)
-        except Exception as err:
-            print("Could not send endgame position... ", err)
-
-    while client_game.end_position:
-        # Clear any selected highlights
-        right_clicked_squares = []
-        drawn_arrows = []
-        
-        game_window.fill((0, 0, 0))
-
-        draw_board({
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'drawing_settings': drawing_settings,
-            'selected_piece': selected_piece,
-            'current_position': client_game.current_position,
-            'previous_position': client_game.previous_position,
-            'right_clicked_squares': right_clicked_squares,
-            'drawn_arrows': drawn_arrows,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': hovered_square,
-            'selected_piece_image': selected_piece_image
-        })
-
-        overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
-
-        game_window.blit(overlay, (0, 0))
-        pygame.display.flip()
-
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
-
-        web_game_metadata_dict = json.loads(web_game_metadata)
-
-        if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
-            web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
-            web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
-            web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                client_game.end_position = False
         await asyncio.sleep(0)
 
     pygame.quit()

@@ -106,6 +106,7 @@ Play
                 sessionStorage.setItem('draw_request', "{{ draw_request }}");
                 sessionStorage.setItem('undo_request', "{{ undo_request }}");
                 sessionStorage.setItem('total_reset', "{{ total_reset }}");
+                sessionStorage.setItem('promoting', 'false');
                 var csrftoken = "{{ csrf_token|escapejs }}";
             </script>
             <script src="{% static 'main/js/play.js' %}"></script>                

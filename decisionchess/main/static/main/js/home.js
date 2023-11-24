@@ -43,7 +43,7 @@ const newComputerGameButtons = document.querySelectorAll('[new-computer-game="tr
 newComputerGameButtons.forEach(button => {
     button.addEventListener('click', () => {
         const position = button.dataset.position;
-        generateGame(position, computer_game = true)
+        generateGame(position, null, true)
     });
 });
 

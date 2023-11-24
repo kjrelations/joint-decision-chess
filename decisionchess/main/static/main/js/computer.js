@@ -1,6 +1,6 @@
 function adjustFont() {
-    const elements = document.querySelectorAll('.action-button')
-    const parent = document.getElementById('command-center')
+    const elements = document.querySelectorAll('.action-button');
+    const parent = document.getElementById('command-center');
     elements.forEach(element => {
         if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
             element.style.fontSize = '0.7rem';
@@ -46,8 +46,11 @@ function areArraysEqual(arr1, arr2) {
 
 var gameSaved = false;
 var rematch_accepted = false;
-var updated = false;
-var savedMoves = []
+var savedMoves = [];
+var comp_moves = [];
+var move_index = -1;
+var selectedMoveId = "";
+var promotion_lock = false;
 
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -58,19 +61,37 @@ function updateCommandCenter() {
         var moves = webGameMetadata.alg_moves;
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
+        comp_moves = webGameMetadata.comp_moves;
         const equal_arrays = areArraysEqual(moves, savedMoves)
-        if (endState !== '' && !updated) {
+        if (endState !== '' && !equal_arrays) {
             const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(connectIntervalId);
             buttons.forEach(button => {
                 button.remove();
             });
         }
+        promoting = sessionStorage.getItem('promoting');
+        promoting = (promoting === 'true' ? true : false);
+        if (promotion_lock !== promoting) {
+            const stepButtons = ["skipBackwardButton", "backwardButton", "forwardButton", "skipForwardButton"];
+            if (promoting) {
+                stepButtons.forEach(buttonId => {
+                    document.getElementById(buttonId).classList.add("used");
+                    document.getElementById(buttonId).disabled = true;
+                });
+            } else {
+                stepButtons.forEach(buttonId => {
+                    document.getElementById(buttonId).classList.remove("used");
+                    document.getElementById(buttonId).disabled = false;
+                });
+            }
+            promotion_lock = promoting;
+        }
         // Don't keep unnecessarily updating
-        if (equal_arrays && updated) {
+        if (equal_arrays) {
             return;
         }
-        savedMoves = moves
+        savedMoves = moves;
         
         movesListContainer.innerHTML = '';
 
@@ -86,19 +107,43 @@ function updateCommandCenter() {
             var moveRow = document.createElement('div');
             moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
             
-            var leftHalf = document.createElement('div');
+            var leftHalf = document.createElement('button');
             leftHalf.style.width = '50%';
             leftHalf.textContent = move1;
+            leftHalf.className = 'move-button';
+            leftHalf.setAttribute('move-index', i);
+            leftHalf.id = 'move-' + i;
 
-            var rightHalf = document.createElement('div');
+            var rightHalf = (move2 === "" ? document.createElement('div'): document.createElement('button'));
             rightHalf.style.width = '50%';
             rightHalf.textContent = move2;
+            if (move2 !== '') {
+                rightHalf.className = 'move-button';
+                rightHalf.setAttribute('move-index', i + 1);
+                rightHalf.id = 'move-' + (i + 1);
+            }
 
             if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
                 moveRow.appendChild(leftHalf);
                 moveRow.appendChild(rightHalf);
 
                 movesListContainer.appendChild(moveRow);
+                movesListContainer.scrollTop = movesListContainer.scrollHeight;
+                if (leftHalf.id) {
+                    (function(id) {
+                        leftHalf.addEventListener("click", function() {
+                            handleButton(id, "step");
+                        });
+                    })(leftHalf.id);
+                }
+                
+                if (rightHalf.id) {
+                    (function(id) {
+                        rightHalf.addEventListener("click", function() {
+                            handleButton(id, "step");
+                        });
+                    })(rightHalf.id);
+                }
             }
 
         }
@@ -135,7 +180,7 @@ function updateCommandCenter() {
             endMessagebox.innerHTML = endmessage;
             if (!gameSaved) { // Only execute this once
                 gameSaved = true
-                var comp_moves = webGameMetadata.comp_moves;
+                comp_moves = webGameMetadata.comp_moves;
                 var FEN_final = webGameMetadata.FEN_final_pos;
                 saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd);
             }
@@ -147,7 +192,19 @@ function updateCommandCenter() {
                 generateRematchURL(playerColor);
                 document.getElementById("rematchButton").disabled = true;
             }, {once: true});
-            updated = true;
+        }
+        if (selectedMoveId !== "") {
+            var previousMove = document.getElementById(selectedMoveId);
+            // Check for existence as undos can remove previously selected move elements
+            if (previousMove) {
+                previousMove.disabled = false;
+            }
+        }
+        move_index = comp_moves.length - 1;
+        moveId = 'move-' + move_index;
+        if (move_index !== -1) {
+            document.getElementById(moveId).disabled = true;
+            selectedMoveId = moveId;
         }
     }
 }
@@ -181,6 +238,7 @@ function saveHistoricGame(alg_moves_str, comp_moves_str, score, FEN_final, force
 
 function resetCommandCenter() {
     savedMoves = [];
+    selectedMoveId = "";
     var movesListContainer = document.getElementById('moves-list');
     while (movesListContainer.firstChild) {
         movesListContainer.removeChild(movesListContainer.firstChild);
@@ -321,18 +379,33 @@ function checkNewConnect() {
     var currentConnected = sessionStorage.getItem('connected');
     currentConnected = (currentConnected === 'true' ? true : false);
     if (currentConnected === true && previousConnected === false) {
-        updateConnectedStatus(true)
+        updateConnectedStatus(true);
     }
     
     var initialized = sessionStorage.getItem('initialized');
     initialized = (initialized === 'true' ? true : false);
     if (initialized === true && initCheck === false) {
-        const idStrings = ["undoOfferButton", "resignButton", "cycleThemeButton", "flipButton"];
+        const idStrings = [
+            "skipBackwardButton", 
+            "backwardButton", 
+            "forwardButton", 
+            "skipForwardButton",
+            "undoOfferButton", 
+            "resignButton", 
+            "cycleThemeButton", 
+            "flipButton"
+        ];
+
+        var buttonsWithMoveIndex = document.querySelectorAll('.move-button');
+        buttonsWithMoveIndex.forEach(button => {
+            idStrings.push(button.id);
+        });
+
         idStrings.forEach(idString => {
-            document.getElementById(idString).classList.remove("hidden")
+            document.getElementById(idString).classList.remove("hidden");
         })
         initializeWebSocket();
-        initCheck = initialized
+        initCheck = initialized;
     }
 
     previousConnected = currentConnected;
@@ -351,6 +424,7 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('connected', 'false');
     sessionStorage.setItem('current_game_id', game_uuid);
     sessionStorage.setItem('initialized', 'null');
+    sessionStorage.setItem('promoting', 'false');
 });
 
 var eventExecutionStatus = {};
@@ -361,8 +435,33 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        webGameMetadata[localStorageObjectName].execute = true;
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
+        if (localStorageObjectName == "step") {
+            // Could move this block into it's own function later
+            if (
+                move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
+                move_index < 0 && buttonId === "backwardButton"
+            ) {
+                webGameMetadata[localStorageObjectName].execute = false;
+                webGameMetadata[localStorageObjectName].index = null;
+                existingWebGameMetadata[currentGameID] = webGameMetadata;
+                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                
+                document.getElementById(buttonId).disabled = false;
+                return;
+            }
+            if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
+                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
+
+            } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
+                index_number = (buttonId === "backwardButton" ? move_index : -1);
+            } else {
+                index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
+                index_number = (index_number < move_index ? index_number + 1 : index_number);
+            }
+            webGameMetadata[localStorageObjectName].index = index_number;
+        }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
         if (!eventExecutionStatus[localStorageObjectName]) {
@@ -372,7 +471,7 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
         handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
 
     } else {
-        console.warn("Failed to execute action")
+        console.warn("Failed to execute action");
     }
 }
 
@@ -382,11 +481,41 @@ var actionEventList = [
 ]
 
 var inputList = [
+    { buttonId: "forwardButton", localStorageObjectName: "step"},
+    { buttonId: "backwardButton", localStorageObjectName: "step"},
+    { buttonId: "skipForwardButton", localStorageObjectName: "step"},
+    { buttonId: "skipBackwardButton", localStorageObjectName: "step"},
     { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups"},
     { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
     { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
     { buttonId: "flipButton", localStorageObjectName: "flip_board"},
 ];
+
+function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
+    if (localStorageObjectName == "step") {
+        webGameMetadata[localStorageObjectName].index = null;
+        if (buttonId === "forwardButton") {
+            move_index++;
+        } else if (buttonId === "backwardButton") {
+            move_index--;
+        } else if (buttonId === "skipForwardButton") {
+            move_index = comp_moves.length - 1;
+        } else if (buttonId === "skipBackwardButton") {
+            move_index = -1;
+        } else {
+            move_index = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
+        }
+        moveId = 'move-' + move_index;
+        if (move_index !== -1) {
+            document.getElementById(moveId).disabled = true;
+        }
+        if (selectedMoveId !== "") {
+            document.getElementById(selectedMoveId).disabled = false;
+        }
+        selectedMoveId = (move_index !== -1 ? moveId: "");
+    }
+    return webGameMetadata;
+}
 
 function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -402,13 +531,22 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
             handleActionStatus(buttonId, currentGameID, localStorageObjectName);
         }, 10);
     } else {
-        webGameMetadata[localStorageObjectName].execute = false
-        webGameMetadata[localStorageObjectName].update_executed = false
+        webGameMetadata[localStorageObjectName].execute = false;
+        webGameMetadata[localStorageObjectName].update_executed = false;
 
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
+
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
-        document.getElementById(buttonId).disabled = false;
+        if (buttonId.includes("move")) {
+            return;
+        }
+        // Resign or draw can quickly remove the button before this 
+        element = document.getElementById(buttonId);
+        if (element) {
+            element.disabled = false;
+        }
     }
 }
 
@@ -418,7 +556,7 @@ function optionStringsHelper(mainbuttonId) {
     var replaceString = "Button";
     const buttonApproveId = mainbuttonId.replace(replaceString, approveString + "Button");
     const buttonAbandonId = mainbuttonId.replace(replaceString, abandonString + "Button");
-    return {ApproveId: buttonApproveId, AbandonId: buttonAbandonId, AbandonStr: abandonString}
+    return {ApproveId: buttonApproveId, AbandonId: buttonAbandonId, AbandonStr: abandonString};
 }
 
 function hideOptions(buttonId, buttonApproveId, buttonAbandonId) {
@@ -453,8 +591,8 @@ function handleButton(buttonId, localStorageObjectName, Options = null) {
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
         result = optionStringsHelper(buttonId, Options)
-        const buttonApproveId = result.ApproveId
-        const buttonAbandonId = result.AbandonId
+        const buttonApproveId = result.ApproveId;
+        const buttonAbandonId = result.AbandonId;
         document.getElementById(buttonId).classList.add("hidden");
         document.getElementById(buttonApproveId).classList.remove("hidden");
         document.getElementById(buttonAbandonId).classList.remove("hidden");
@@ -475,23 +613,23 @@ function handleButton(buttonId, localStorageObjectName, Options = null) {
         actionbuttons.forEach(function(element) {
             if (element.id !== buttonId) {
                 element.classList.remove("hidden");
-                var actionEvents = actionEventList.find(event => event.mainButtonName === element.id)
-                var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames)
+                var actionEvents = actionEventList.find(event => event.mainButtonName === element.id);
+                var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames);
                 if (notExecuting) {
                     element.disabled = false;
                 }
             }
         });
         document.getElementById(buttonApproveId).addEventListener("click", function() { 
-            hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+            hideOptions(buttonId, buttonApproveId, buttonAbandonId);
             handleWebtoGameAction(buttonId, localStorageObjectName, Options);
         }, { once: true });
         document.getElementById(buttonAbandonId).addEventListener("click", function() {
-            hideOptions(buttonId, buttonApproveId, buttonAbandonId)
+            hideOptions(buttonId, buttonApproveId, buttonAbandonId);
             document.getElementById(buttonId).disabled = false;
         }, { once: true });
     } else {
-        handleWebtoGameAction(buttonId, localStorageObjectName)
+        handleWebtoGameAction(buttonId, localStorageObjectName);
     };
 }
 
