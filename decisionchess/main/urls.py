@@ -11,6 +11,7 @@ urlpatterns = [
     path('check_game_availability/', views.check_game_availability, name='available'),
     path('get_private_id/', views.create_signed_key, name='private_id'),
     path('get_lobby_games/', views.get_lobby_games, name='get_lobby_games'),
+    path("config/<uuid:game_uuid>/", views.get_config, name='get_game_config'),
     path('play/<uuid:game_uuid>/', views.play, name='join_new_game'),
     path('update_connected/', views.update_connected, name='update_connected'),
     path('save_game/', views.save_game, name='save_game'),

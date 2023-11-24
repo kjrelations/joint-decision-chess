@@ -1,6 +1,19 @@
-// Generic fetch GET redirect function maybe
-function generateGameURL() {
-    fetch('/create_new_game/')
+function generateGame(position, private = null, computer_game = null) {
+    body = {"position": position}
+    if (computer_game) {
+        body["computer_game"] = true
+    }
+    if (private) {
+        body["private"] = true
+    }
+    fetch('/create_new_game/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify(body),
+    })
     .then(response => {
         if (response.status === 200) {
             return response.json();
@@ -18,9 +31,28 @@ function generateGameURL() {
         console.error('Error:', error);
     });
 }
-const newGameButtons = document.querySelectorAll('.new-game');
+const newGameButtons = document.querySelectorAll('[new-game="true"]');
 newGameButtons.forEach(button => {
-    button.addEventListener('click', generateGameURL);
+    button.addEventListener('click', () => {
+        const position = button.dataset.position;
+        generateGame(position)
+    });
+});
+
+const newComputerGameButtons = document.querySelectorAll('[new-computer-game="true"]');
+newComputerGameButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const position = button.dataset.position;
+        generateGame(position, null, true)
+    });
+});
+
+const newPrivateGameButtons = document.querySelectorAll('[new-private-game="true"]');
+newPrivateGameButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        const position = button.dataset.position;
+        generateGame(position, private = true)
+    });
 });
 
 function quickPair() {
@@ -68,17 +100,22 @@ function updateLobby() {
                 var lobbyRow = document.createElement('button');
                 lobbyRow.className = "lobby-row";
                 
-                var leftHalf = document.createElement('div');
-                leftHalf.textContent = game.initiator_name;
-                leftHalf.style.minWidth = '50%'
-                leftHalf.style.textAlign = 'center';
+                var first = document.createElement('div');
+                first.textContent = game.side;
+                first.style.minWidth = '10%';
+                first.style.textAlign = 'center';
+                var username = document.createElement('div');
+                username.textContent = game.initiator_name;
+                username.style.minWidth = '40%';
+                username.style.textAlign = 'center';
                 var rightHalf = document.createElement('div');
                 rightHalf.textContent = game.timestamp;
-                rightHalf.style.minWidth = '50%'
+                rightHalf.style.minWidth = '50%';
                 rightHalf.style.textAlign = 'right';
-                rightHalf.style.paddingRight = '1em'
+                rightHalf.style.paddingRight = '1em';
                 
-                lobbyRow.appendChild(leftHalf);
+                lobbyRow.appendChild(first);
+                lobbyRow.appendChild(username);
                 lobbyRow.appendChild(rightHalf);
 
                 var gameLink = document.createElement('a');
@@ -125,3 +162,10 @@ function checkGameAvailability(gameId, lobbyRow) {
 
 window.addEventListener('load', updateLobby);
 setInterval(updateLobby, 20000);
+
+function scrollToSection(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView();
+    }
+}

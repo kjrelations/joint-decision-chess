@@ -61,6 +61,16 @@ html {
     scroll-behavior: smooth;
 }
 
+.position-placeholder {
+    border: none;
+    outline: none;
+    padding: 0px;
+}
+
+.position-placeholder:focus {
+    outline: none;
+}
+
 .new-game {
     color: white;
     border: none;
@@ -68,6 +78,8 @@ html {
     background-color: #6c757d;
     transition: background-color 0.3s ease;
     transition: color 0.1s ease;
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 
 .new-game:focus {
@@ -77,6 +89,31 @@ html {
 .new-game:hover {
     background-color: #34383c;
     color: #7685d8
+}
+
+.quick-pair {
+    border: none;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+    min-width: 50%;
+    max-width: 50%;
+    background-color: #d9e3f3;
+    color: black;
+    transition: background-color 0.3s ease;
+    font-size: large;
+    padding: 5em none;
+}
+
+.quick-pair:focus {
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+}
+
+.quick-pair:hover {
+    color: #805d14;
+    background-color: #ecac22;
 }
 
 .lobby {
@@ -146,29 +183,34 @@ html {
     background-color: rgba(166, 174, 186, 0.7);
 }
 
-.quick-pair {
+.highlights {
     border: none;
-    outline-style: solid;
-    outline-width: thin;
-    outline-color: rgb(146, 146, 146);
-    min-width: 50%;
-    max-width: 50%;
     background-color: #d9e3f3;
     color: black;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: rgb(146, 146, 146);
+    aspect-ratio: 1 / 1;
+    width: 33.333%;
+    min-width: 33.333%;
+    position: relative;
     transition: background-color 0.3s ease;
-    font-size: large;
-    padding: 5em none;
+    padding: 0 3px;
 }
 
-.quick-pair:focus {
+.highlights:focus {
     outline-style: solid;
     outline-width: thin;
     outline-color: rgb(146, 146, 146);
 }
 
-.quick-pair:hover {
+.highlights:hover {
     color: #805d14;
-    background-color: #ecac22;
+    background-color: #e7c477;
+}
+
+.top-margin {
+    margin-top: 9px;
 }
 
 body {

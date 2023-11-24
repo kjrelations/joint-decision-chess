@@ -1,6 +1,6 @@
 function adjustFont() {
-    const elements = document.querySelectorAll('.action-button')
-    const parent = document.getElementById('command-center')
+    const elements = document.querySelectorAll('.action-button');
+    const parent = document.getElementById('command-center');
     elements.forEach(element => {
         if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
             element.style.fontSize = '0.7rem';
@@ -46,7 +46,7 @@ function areArraysEqual(arr1, arr2) {
     return true;
 }
 
-var savedMoves = []
+var savedMoves = [];
 
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -80,17 +80,17 @@ function updateCommandCenter() {
             var leftHalf = document.createElement('button');
             leftHalf.style.width = '50%';
             leftHalf.textContent = move1;
-            leftHalf.className = 'move-button'
-            leftHalf.setAttribute('move-index', i)
-            leftHalf.id = 'move-' + i
+            leftHalf.className = 'move-button';
+            leftHalf.setAttribute('move-index', i);
+            leftHalf.id = 'move-' + i;
 
-            var rightHalf = document.createElement('button');
+            var rightHalf = (move2 === "" ? document.createElement('div'): document.createElement('button'));
             rightHalf.style.width = '50%';
             rightHalf.textContent = move2;
-            if (rightHalf.textContent !== '') {
-                rightHalf.className = 'move-button'
-                rightHalf.setAttribute('move-index', i + 1)
-                rightHalf.id = 'move-' + (i + 1)
+            if (move2 !== '') {
+                rightHalf.className = 'move-button';
+                rightHalf.setAttribute('move-index', i + 1);
+                rightHalf.id = 'move-' + (i + 1);
             }
 
             var initialized = sessionStorage.getItem('initialized');
@@ -157,8 +157,8 @@ function updateCommandCenter() {
     }
 }
 
-var selectedMoveId = ""
-var initCheck = false
+var selectedMoveId = "";
+var initCheck = false;
 
 function resetCommandCenter() {
     savedMoves = [];
@@ -173,8 +173,8 @@ function resetCommandCenter() {
     var finalScorebox = document.getElementById('final-score');
 
     movesListContainer.innerHTML = "";
-    endMessagebox.innerHTML = ""
-    finalScorebox.innerHTML = ""
+    endMessagebox.innerHTML = "";
+    finalScorebox.innerHTML = "";
 }
 
 window.addEventListener('load', resetCommandCenter);
@@ -186,7 +186,14 @@ function checkInit() {
     var initialized = sessionStorage.getItem('initialized');
     initialized = (initialized === 'true' ? true : false);
     if (initialized === true && initCheck === false) {
-        const idStrings = ["skipBackwardButton", "backwardButton", "forwardButton", "skipForwardButton", "cycleThemeButton", "flipButton"];
+        const idStrings = [
+            "skipBackwardButton", 
+            "backwardButton", 
+            "forwardButton", 
+            "skipForwardButton", 
+            "cycleThemeButton", 
+            "flipButton"
+        ];
         
         var buttonsWithMoveIndex = document.querySelectorAll('.move-button');
         buttonsWithMoveIndex.forEach(button => {
@@ -194,9 +201,9 @@ function checkInit() {
         });
         
         idStrings.forEach(idString => {
-            document.getElementById(idString).classList.remove("hidden")
+            document.getElementById(idString).classList.remove("hidden");
         })
-        initCheck = initialized
+        initCheck = initialized;
         clearInterval(initIntervalId);
     }
 }
@@ -213,37 +220,37 @@ function handleWebtoGameAction(buttonId, localStorageObjectName) {
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        webGameMetadata[localStorageObjectName].execute = true;
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
         if (localStorageObjectName == "step") {
             // Could move this block into it's own function later
             if (
-                (move_index + 1 >= comp_moves.length && buttonId === "forwardButton") || 
+                move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
                 move_index < 0 && buttonId === "backwardButton"
             ) {
-                webGameMetadata[localStorageObjectName].execute = false
-                webGameMetadata[localStorageObjectName].index = null
-                existingWebGameMetadata[currentGameID] = webGameMetadata
+                webGameMetadata[localStorageObjectName].execute = false;
+                webGameMetadata[localStorageObjectName].index = null;
+                existingWebGameMetadata[currentGameID] = webGameMetadata;
                 localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                 
                 document.getElementById(buttonId).disabled = false;
                 return;
             }
             if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
-                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1)
+                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
             } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
-                index_number = (buttonId === "backwardButton" ? move_index : -1)
+                index_number = (buttonId === "backwardButton" ? move_index : -1);
             } else {
                 index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
-                index_number = (index_number < move_index ? index_number + 1 : index_number)
+                index_number = (index_number < move_index ? index_number + 1 : index_number);
             }
-            webGameMetadata[localStorageObjectName].index = index_number
+            webGameMetadata[localStorageObjectName].index = index_number;
         }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
         handleActionStatus(buttonId, currentGameID, localStorageObjectName);
     } else {
-        console.warn("Failed to execute action")
+        console.warn("Failed to execute action");
     }
 }
 
@@ -258,28 +265,28 @@ var inputList = [
 
 function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
     if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null
+        webGameMetadata[localStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
-            move_index++
+            move_index++;
         } else if (buttonId === "backwardButton") {
-            move_index--
+            move_index--;
         } else if (buttonId === "skipForwardButton") {
-            move_index = comp_moves.length - 1
+            move_index = comp_moves.length - 1;
         } else if (buttonId === "skipBackwardButton") {
-            move_index = -1
+            move_index = -1;
         } else {
             move_index = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
         }
-        moveId = 'move-' + move_index
+        moveId = 'move-' + move_index;
         if (move_index !== -1) {
-            document.getElementById(moveId).disabled = true
+            document.getElementById(moveId).disabled = true;
         }
         if (selectedMoveId !== "") {
             document.getElementById(selectedMoveId).disabled = false;
         }
-        selectedMoveId = (move_index !== -1 ? moveId: "")
+        selectedMoveId = (move_index !== -1 ? moveId: "");
     }
-    return webGameMetadata
+    return webGameMetadata;
 }
 
 function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
@@ -294,12 +301,12 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
             handleActionStatus(buttonId, currentGameID, localStorageObjectName);
         }, 0);
     } else {
-        webGameMetadata[localStorageObjectName].execute = false
-        webGameMetadata[localStorageObjectName].update_executed = false
+        webGameMetadata[localStorageObjectName].execute = false;
+        webGameMetadata[localStorageObjectName].update_executed = false;
 
-        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName)
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
 
-        existingWebGameMetadata[currentGameID] = webGameMetadata
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         if (buttonId.includes("move")) {
@@ -317,7 +324,7 @@ inputList.forEach(function(input) {
 
 function handleButton(buttonId, localStorageObjectName) {
     document.getElementById(buttonId).disabled = true;
-    handleWebtoGameAction(buttonId, localStorageObjectName)
+    handleWebtoGameAction(buttonId, localStorageObjectName);
 }
 
 // // Logging Debug python console messages; Only for development hence keep it commented. Maybe add a global dev flag too

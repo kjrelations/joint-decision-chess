@@ -384,7 +384,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             if not moved_king:
                 if not left_rook_moved:
                     # Empty squares between king and rook
-                    if not all(element == ' ' for element in board[king_row][2:4]):
+                    if not all(element == ' ' for element in board[king_row][1:4]):
                         queen_castle = False
                     else:
                         # Not moving through/into check and not currently under check

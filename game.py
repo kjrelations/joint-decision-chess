@@ -37,6 +37,7 @@ class Game:
             self._move_undone = False
             self._sync = True
             self._move_index = -1
+            self._latest = True
         else:
             self.current_turn = custom_params["current_turn"]
             self.board = custom_params["board"]
@@ -59,6 +60,7 @@ class Game:
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
             self._move_index = len(self.moves) - 1 # This could be custom eventually
+            self._latest = True # I think this will always default to true for now, could be a custom move in the future
 
     def synchronize(self, new_game):
         self.current_turn = new_game.current_turn
@@ -73,8 +75,52 @@ class Game:
         self.forced_end = new_game.forced_end
         self._move_undone = False
         self._sync = True
+        self._move_index = new_game._move_index
+        self._latest = True
+
+    def validate_moves(self, row, col):
+        piece = self.board[row][col]
+        is_white = piece.isupper()
+        selected_piece = (row, col)
+        valid_moves, valid_captures, valid_specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes)
+        for move in valid_moves.copy():
+            # Before making the move, create a copy of the board where the piece has moved
+            temp_board = [rank[:] for rank in self.board]  
+            temp_moves = self.moves.copy()
+            temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]]))
+            temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+            temp_board[selected_piece[0]][selected_piece[1]] = ' '
+            
+            # Temporary invalid move check, Useful for my variant later
+            if is_invalid_capture(temp_board, not is_white):
+                valid_moves.remove(move)
+                if move in valid_captures:
+                    valid_captures.remove(move)
+            elif is_check(temp_board, is_white, temp_moves):
+                valid_moves.remove(move)
+                if move in valid_captures:
+                    valid_captures.remove(move)
+        
+        for move in valid_specials.copy():
+            # Castling moves are already validated in calculate moves, this is only for enpassant
+            if (move[0], move[1]) not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
+                temp_board = [rank[:] for rank in self.board]  
+                temp_moves = self.moves.copy()
+                temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
+                temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
+                temp_board[selected_piece[0]][selected_piece[1]] = ' '
+                capture_row = 4 if move[0] == 3 else 5
+                temp_board[capture_row][move[1]] = ' '
+                if is_check(temp_board, is_white, temp_moves):
+                    valid_specials.remove(move)
+        return valid_moves, valid_captures, valid_specials
 
     def update_state(self, new_row, new_col, selected_piece, special=False):
+        # Jump to current state before applying moves
+        if self._move_index < len(self.moves) - 1: # should be same as not _latest
+            self.step_to_move(len(self.moves) - 1)
+            self._latest = True
+
         piece = self.board[selected_piece[0]][selected_piece[1]]
         potential_capture = self.board[new_row][new_col]
 
@@ -115,6 +161,7 @@ class Game:
 
         self.moves.append(output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string))
         self.alg_moves.append(algebraic_move)
+        self._move_index += 1
 
         if piece == 'K' and selected_piece == (7, 4) and not self.castle_attributes['white_king_moved']:
             self.castle_attributes['white_king_moved'] = True
@@ -183,7 +230,7 @@ class Game:
                 if other_piece == piece and (row, col) != selected_piece:
                     other_moves, _, _ = calculate_moves(self.board, row, col, self.moves)
                     if (new_row, new_col) in other_moves:
-                        similar_pieces.append((row,col))
+                        similar_pieces.append((row, col))
         
         added_file, added_rank = '', ''
         for similar in similar_pieces:
@@ -333,6 +380,7 @@ class Game:
                 else:
                     self.board_states[_current_board_state] -= 1
             
+            self._move_index -= 1
             move = self.moves[-1]
 
             prev_pos = list(move[0])
@@ -372,6 +420,12 @@ class Game:
                     self.castle_attributes['black_king_moved'] = False
                     self.castle_attributes['right_black_rook_moved'] = False
             
+            # TODO Need to handle this better later but this will do.
+            last_state = list(self.board_states.keys())[-1]
+            last_castle_attributes = last_state[-1]
+            for i, key in enumerate(self.castle_attributes.keys()):
+                self.castle_attributes[key] = last_castle_attributes[i]
+
             del self.moves[-1]
             del self.alg_moves[-1]
             self._move_undone = True
@@ -450,11 +504,15 @@ class Game:
                     self.board[0][5] = rook_future_pos
             
             self._move_index += increment
-            self.current_turn = not self.current_turn
+            # TODO This is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
+            # self.current_turn = not self.current_turn
 
         if self._move_index == len(self.moves) - 1:
-            self.end_position = True
+            self._latest = True
+            if any(symbol in self.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']):
+                self.end_position = True
         else:
+            self._latest = False
             self.end_position = False
         
         if self._move_index != -1:

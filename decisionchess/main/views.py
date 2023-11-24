@@ -21,12 +21,15 @@ from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, 
 from .forms import ChangeEmailForm, EditProfile
 import uuid
 import json
+import random
 
 def index(request):
     return render(request, "main/home.html", {})
 
 def home(request):
-    return render(request, "main/home.html", {})
+    recent_blogs = BlogPosts.objects.all().order_by('-timestamp')[:2]
+    context = {"blogs": recent_blogs}
+    return render(request, "main/home.html", context)
 
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
@@ -41,6 +44,7 @@ def game_exists(game_uuid):
     historic_game_exists = GameHistoryTable.objects.filter(historic_game_id=game_uuid).exists()
     return lobby_game_exists or active_game_exists or historic_game_exists
 
+# TODO on refactor: optional_uuid to a body thing, rename new_open_game, change method to POST only
 def create_new_game(request, optional_uuid = None):
     while True:
         game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
@@ -52,9 +56,6 @@ def create_new_game(request, optional_uuid = None):
             )
             if optional_uuid:
                 new_open_game.private = True
-            # Later get username and add to initiator name if authenticated
-            # Retrieve and add user uuid to appropriate position, generate a unique one if needed
-            
             if request.user and request.user.id is not None:
                 user_id = request.user.id
                 new_open_game.initiator_name = request.user.username
@@ -63,7 +64,27 @@ def create_new_game(request, optional_uuid = None):
             if user_id is None:
                 user_id = uuid.uuid4()
                 request.session["guest_uuid"] = str(user_id)
-            new_open_game.white_id = user_id
+            if request.method == "POST":
+                data = json.loads(request.body.decode('utf-8'))
+                if data.get('computer_game'):
+                    new_open_game.computer_game = True
+                    new_open_game.private = True
+                position = data.get('position')
+                if position == "white":
+                    new_open_game.white_id = user_id
+                    new_open_game.initiator_color = "white"
+                elif position == "black":
+                    new_open_game.black_id = user_id
+                    new_open_game.initiator_color = "black"
+                elif position == "random":
+                    column_to_fill = random.choice(["black_id", "white_id"])
+                    setattr(new_open_game, column_to_fill, user_id)
+                    new_open_game.initiator_color = "white" if column_to_fill == "white_id" else "black"
+                else:
+                    return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                private = data.get('private')
+                if private:
+                    new_open_game.private = True
             new_open_game.save()
             return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
         elif optional_uuid:
@@ -108,7 +129,8 @@ def get_lobby_games(request):
         {
             "initiator_name": game.initiator_name,
             "game_uuid": game.lobby_id,
-            "timestamp": game.timestamp.strftime("%H:%M:%S")
+            "timestamp": game.timestamp.strftime("%H:%M:%S"),
+            "side": "white" if game.white_id is None else "black"
         }
         for game in lobby_games
     ]
@@ -130,6 +152,35 @@ def check_game_availability(request):
         return JsonResponse(serialized_data)
     else:
         return JsonResponse({}, status=405)  # Method Not Allowed
+
+def get_config(request, game_uuid):
+    if request.user and request.user.id is not None:
+        user_id = request.user.id
+    else:
+        user_id = request.session.get('guest_uuid')
+        if user_id is None:
+            return JsonResponse({"status": "error"}, status=401)
+    try:
+        game = ChessLobby.objects.get(lobby_id=game_uuid)
+        if str(user_id) not in [str(game.white_id), str(game.black_id)]:
+            return JsonResponse({"status": "error"}, status=401)
+        fill = None
+        if str(user_id) == str(game.white_id) == str(game.black_id):
+            if game.initiator_color == "black":
+                fill = "white"
+            elif game.initiator_color == "white":
+                fill = "black"
+            else:
+                return JsonResponse({"status": "error"}, status=401)
+        elif str(user_id) == str(game.white_id):
+            fill = "white"
+        elif str(user_id) == str(game.black_id):
+            fill = "black"
+        else:
+            return JsonResponse({"status": "error"}, status=401)
+        return JsonResponse({"message": {"starting_side": fill}}, status=200)
+    except ChessLobby.DoesNotExist:
+        return JsonResponse({"status": "error"}, status=401)
 
 def play(request, game_uuid):
     if request.user and request.user.id is not None:
@@ -154,7 +205,9 @@ def play(request, game_uuid):
     # For now, temporarily disallow multiple people from loading the same game
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
-        if not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
+        if game.computer_game and str(user_id) in [str(game.white_id), str(game.black_id)]:
+            return render(request, "main/play/computer.html", sessionVariables)
+        elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
             return redirect('home')
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
@@ -175,7 +228,10 @@ def play(request, game_uuid):
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play.html", sessionVariables)
         else:
-            game.black_id = user_id # Later to fill the empty position
+            column_to_fill = "black_id"
+            if game.white_id is None:
+                column_to_fill = "white_id"
+            setattr(game, column_to_fill, user_id)
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
@@ -238,12 +294,23 @@ def update_connected(request):
             waiting_game = game.white_id is None or game.black_id is None
             # This allows the one player to join their own game or different games and 
             # multiples of each type
-            is_initiator = True if len(request.session[connect_game_uuid]) == 1 and waiting_game else False
+            is_initiator = False
+            if (game.white_id == user_id and game.initiator_color == "white") or \
+               (game.black_id == user_id and game.initiator_color == "black"):
+                is_initiator = True
 
             message = {}
             save_to_active = False
             if game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
+                if game.computer_game and waiting_game:
+                    bot_user = User.objects.get(username="minimax") # later from the message body
+                    bot_id = bot_user.id
+                    if null_id == "black":
+                        game.black_id = bot_id
+                    else:
+                        game.white_id = bot_id
+                    save_to_active = True
                 game.save()
                 message = {"status": "updated"}
             elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
@@ -340,6 +407,8 @@ def news(request):
 
 def profile(request, username):
     profile_user = User.objects.get(username=username)
+    if profile_user.bot_account:
+        return redirect('home')
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since})
 

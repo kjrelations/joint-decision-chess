@@ -9,14 +9,15 @@ django = "*"
 crispy-bootstrap4 = "*"
 pygbag = "*"
 markdown = "*"
-psycopg = {extras = ["binary"], version = "*"}
+psycopg = {extras = ["binary"] }
 python-decouple = "*"
 django-countries = "*"
 whitenoise = "*"
 gunicorn = "*"
 django-cors-headers = "*"
 daphne = "*"
-channels = {extras = ["daphne"], version = "*"}
+channels = {extras = ["daphne"] }
+requests = "*"
 
 [dev-packages]
 pytest = "*"

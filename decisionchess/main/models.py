@@ -9,9 +9,14 @@ class User(AbstractUser):
 	email = models.EmailField(unique=True)
 	bio = models.TextField(blank=True)
 	country = CountryField(blank=True, null=True)
+	bot_account = models.BooleanField(default=False)
 
 	def __str__(self):
 		return self.username
+
+class BotInformation(models.Model):
+	bot_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	config = models.TextField(blank=False)
 
 class ChessLobby(models.Model):
 	lobby_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -23,6 +28,8 @@ class ChessLobby(models.Model):
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
 	private = models.BooleanField(default=False)
+	computer_game = models.BooleanField(default=False)
+	initiator_color = models.CharField(max_length=5, null=True)
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
