@@ -56,6 +56,7 @@ def activate_account(request, uidb64, token):
         if default_token_generator.check_token(user, token):
             # Activate the user's account
             user.is_active = True
+            user.email_reference = user.email
             user.save()
 
             # Redirect to a success page

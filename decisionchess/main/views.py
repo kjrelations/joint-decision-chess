@@ -12,13 +12,13 @@ from django.core.mail import send_mail
 from django.core.signing import dumps, loads, SignatureExpired, BadSignature
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse
 from django.urls import reverse
 from base64 import binascii
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages
-from .forms import ChangeEmailForm, EditProfile
+from .forms import ChangeEmailForm, EditProfile, CloseAccount
 import uuid
 import json
 import random
@@ -470,6 +470,7 @@ def confirm_email(request, uidb64, token):
             # Check if the token is valid
             if default_token_generator.check_token(user, token):
                 user.email = new_email
+                user.email_reference = new_email
                 user.save()
 
                 form = ChangeEmailForm(user) 
@@ -542,3 +543,31 @@ def edit_profile(request):
         form = EditProfile(initial={'biography': user.bio, 'country': user.country})
     
     return render(request, "main/settings/edit_profile.html", {"form": form })
+
+@login_required
+def close_account(request):
+    if request.method == "POST":
+        form = CloseAccount(request.user, request.POST)
+        if form.is_valid():
+            try:
+                username = request.user.username
+                request.user.is_active = False
+                request.user.account_closed = True
+                request.user.set_password(str(uuid.uuid4()))
+                unique = False
+                while not unique:
+                    placeholder_email = f"{uuid.uuid4()}@{uuid.uuid4()}.com"
+                    if not User.objects.filter(email=placeholder_email).exists():
+                        request.user.email = placeholder_email
+                        unique = True
+                request.user.save()
+
+                logout(request)
+
+                return redirect(reverse('profile', kwargs={'username': username}))
+            except Exception as e:
+                messages.error(request, 'An error occurred')
+    else:
+        form = CloseAccount(request.user)    
+
+    return render(request, "main/settings/close_account.html", {"form": form })
