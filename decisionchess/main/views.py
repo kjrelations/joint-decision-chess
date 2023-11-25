@@ -101,7 +101,7 @@ def create_signed_key(request):
             if request.user.id:
                 user_id = request.user.id
             else:
-                user_id = request.session.get('guest_uuid')
+                user_id = uuid.UUID(request.session.get('guest_uuid'))
             recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
             if not recent_game or str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
@@ -157,9 +157,11 @@ def get_config(request, game_uuid):
     if request.user and request.user.id is not None:
         user_id = request.user.id
     else:
-        user_id = request.session.get('guest_uuid')
-        if user_id is None:
+        guest_uuid = request.session.get('guest_uuid')
+        if guest_uuid is None:
             return JsonResponse({"status": "error"}, status=401)
+        else:
+            user_id = uuid.UUID(guest_uuid)
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
         if str(user_id) not in [str(game.white_id), str(game.black_id)]:
@@ -188,9 +190,10 @@ def play(request, game_uuid):
     else:
         guest_uuid = request.session.get('guest_uuid')
         if guest_uuid is None:
-            guest_uuid = uuid.uuid4()
-            request.session["guest_uuid"] = str(guest_uuid)
-        user_id = guest_uuid
+            user_id = uuid.uuid4()
+            request.session["guest_uuid"] = str(user_id)
+        else:
+            user_id = uuid.UUID(guest_uuid)
     sessionVariables = {
         'game_uuid': game_uuid, # str unneeded?
         'connected': 'false',
@@ -270,7 +273,11 @@ def update_connected(request):
         if request.user and request.user.id is not None:
             user_id = request.user.id
         else:
-            user_id = request.session.get('guest_uuid')
+            guest_uuid = request.session.get('guest_uuid')
+            if guest_uuid is None:
+                return JsonResponse({"status": "error"}, status=400)
+            else:
+                user_id = uuid.UUID(guest_uuid)
         web_connect = data.get('web_connect')
         try:
             game = ChessLobby.objects.get(lobby_id=connect_game_uuid)
@@ -295,8 +302,8 @@ def update_connected(request):
             # This allows the one player to join their own game or different games and 
             # multiples of each type
             is_initiator = False
-            if (game.white_id == user_id and game.initiator_color == "white") or \
-               (game.black_id == user_id and game.initiator_color == "black"):
+            if (str(game.white_id) == str(user_id) and game.initiator_color == "white") or \
+               (str(game.black_id) == str(user_id) and game.initiator_color == "black"):
                 is_initiator = True
 
             message = {}
@@ -350,7 +357,11 @@ def save_game(request):
         if request.user and request.user.id is not None:
             user_id = request.user.id
         else:
-            user_id = request.session.get('guest_uuid')
+            guest_uuid = request.session.get('guest_uuid')
+            if guest_uuid is None:
+                return JsonResponse({"status": "error"}, status=400)
+            else:
+                user_id = uuid.UUID(guest_uuid)
         try:
             active_game = ActiveGames.objects.get(active_game_id=completed_game_uuid)
             if str(user_id) != str(active_game.white_id) and str(user_id) != str(active_game.black_id):
