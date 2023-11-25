@@ -1,0 +1,42 @@
+{% extends 'main/settings/settings.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block extrastyle %}
+<style>
+    .red-border-glow {
+        border: 1px solid red;
+        box-shadow: 0 0 5px red;
+    }
+    .red-border-glow:hover,
+    .red-border-glow:focus {
+        border: 1px solid red;
+        box-shadow: 0 0 5px red;
+    }
+</style>
+{% endblock %}
+
+{% block setting_window %}
+    <h1 style="color: rgb(196, 118, 29);">Close Account</h1>
+    <p>Warning: Closing your account is permanent and will prevent you from recovering your account.</p>
+    <br>
+    <p>Are you sure you want to close your account?</p>
+    <form method="POST" class="form-group">
+        {% csrf_token %}
+        {{form|crispy}}
+        <button type="submit" class="btn btn-success">Close Account</button>
+    </form>
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputField = document.querySelector("#id_password");
+            inputField.classList.add("red-border-glow");
+        });
+    </script>
+{% endblock %}

@@ -425,7 +425,7 @@ def handle_node_events(node, init, client_game, client_state_actions, offers, dr
                             client_game._move_undone = False
                             your_turn = client_game.current_turn == client_game._starting_player
                             init["sent"] = 0 if your_turn else 1
-                        # elif both games are unsynced, synchronize and send something to halt infinite sync signals?
+                        # elif both games are unsynced, synchronize and send something to halt infinite sync signals? Preference syncing with the last move or a specific color
                         elif "req_sync" in cmd:
                             txdata = {node.CMD: f"_sync"}
                             send_game = client_game.to_json()
@@ -1143,7 +1143,8 @@ async def main():
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
                         else:
-                            if client_game.current_turn == client_game._starting_player and client_game._latest:
+                            # Allow moves only on current turn, if up to date, and synchronized
+                            if client_game.current_turn == client_game._starting_player and client_game._latest and client_game._sync:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
@@ -1224,7 +1225,8 @@ async def main():
                         if first_intent and (row, col) == selected_piece:
                             first_intent = not first_intent
                         
-                        if client_game.current_turn == client_game._starting_player and client_game._latest:
+                        # Allow moves only on current turn, if up to date, and synchronized
+                        if client_game.current_turn == client_game._starting_player and client_game._latest and client_game._sync:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \

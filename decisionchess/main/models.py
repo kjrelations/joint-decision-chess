@@ -10,6 +10,8 @@ class User(AbstractUser):
 	bio = models.TextField(blank=True)
 	country = CountryField(blank=True, null=True)
 	bot_account = models.BooleanField(default=False)
+	email_reference = models.EmailField()
+	account_closed = models.BooleanField(default=False)
 
 	def __str__(self):
 		return self.username

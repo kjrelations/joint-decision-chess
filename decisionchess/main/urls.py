@@ -23,4 +23,5 @@ urlpatterns = [
     path("account/confirm/<str:uidb64>/<str:token>/", views.confirm_email, name='activate_account'),
     path("account/passwd", views.change_password, name="change_password"),
     path("account/profile", views.edit_profile, name="edit_profile"),
+    path("account/close_account", views.close_account, name="close_account"),
 ]

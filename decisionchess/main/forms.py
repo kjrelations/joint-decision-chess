@@ -35,3 +35,21 @@ class ChangeEmailForm(forms.Form):
 class EditProfile(forms.Form):
     biography = forms.CharField(widget=forms.Textarea(attrs={'rows': 8}), required=False)
     country = CountryField(blank=True, blank_label="None").formfield()
+
+class CloseAccount(forms.Form):
+    password = forms.CharField(widget=forms.PasswordInput)
+
+    def __init__(self, user, *args, **kwargs):
+        super(CloseAccount, self).__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password(self):
+        password = self.cleaned_data.get('password')
+
+        try:
+            validate_password(password, user=self.user)
+        except forms.ValidationError as error:
+            raise forms.ValidationError(error)
+
+        if not self.user.check_password(password):
+            raise forms.ValidationError('Incorrect password')
