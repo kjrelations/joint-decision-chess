@@ -45,10 +45,19 @@ def game_exists(game_uuid):
     historic_game_exists = GameHistoryTable.objects.filter(historic_game_id=game_uuid).exists()
     return lobby_game_exists or active_game_exists or historic_game_exists
 
+def is_valid_uuid(value):
+    try:
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError):
+        return False
+
 # TODO on refactor: optional_uuid to a body thing, rename new_open_game, change method to POST only
 def create_new_game(request, optional_uuid = None):
     while True:
         game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
+        if optional_uuid and not is_valid_uuid(optional_uuid):
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
         if not game_exists(game_uuid):
             new_open_game = ChessLobby(
                 lobby_id=game_uuid,
@@ -92,6 +101,7 @@ def create_new_game(request, optional_uuid = None):
             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
 def create_signed_key(request):
+    # TODO handle invalid requests: Missing recent_game_id, not logged in users and not a guest id available
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         if data.get('signed_uuid'):
@@ -277,19 +287,15 @@ def play(request, game_uuid):
         # This would also redirect spectators if it's an active game
         return render(request, "main/play.html", sessionVariables)
 
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(value)
-        return True
-    except (ValueError, AttributeError):
-        return False
-
 def update_connected(request):
     # Have this handle live disconnects later
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
-        connect_game_uuid = data.get('game_uuid') # Retrieve from server somehow?
-        # Actually just ensuring it's in session should be fine later
+        # Don't think I can retrieve from server somehow or even if stored in session due to uncertainty of multiple games, 
+        # If I validate that it belongs to session games users can just send another current game of theirs
+        # TODO It's best to use a JWT in the python script
+        # TODO check that it matches some value in session
+        connect_game_uuid = data.get('game_uuid')
         if not is_valid_uuid(connect_game_uuid):
             return JsonResponse({"status": "error"}, status=400)
         if request.user and request.user.id is not None:
@@ -301,6 +307,8 @@ def update_connected(request):
             else:
                 user_id = uuid.UUID(guest_uuid)
         web_connect = data.get('web_connect')
+        if web_connect != True or web_connect != False:
+            return JsonResponse({"status": "error"}, status=400)
         try:
             game = ChessLobby.objects.get(lobby_id=connect_game_uuid)
             
@@ -421,12 +429,13 @@ def get_or_update_state(request, game_uuid):
 
 def save_game(request):
     if request.method == 'PUT':
+        # TODO validate data values, can't have nulls or blanks for example
         data = json.loads(request.body.decode('utf-8'))
+        # TODO It's best to use a JWT in the python script
+        # TODO check that it matches some value in session
         completed_game_uuid = data.get('game_uuid') # Retrieve from server somehow? Would need websockets to bypass web data. That's best and this shouldn't be a http response then
-        # Actually just ensuring it's in session should be fine
         if not is_valid_uuid(completed_game_uuid):
             return JsonResponse({"status": "error"}, status=400)
-        # Needs to be a player with uuid in session to access this endpoint
         if request.user and request.user.id is not None:
             user_id = request.user.id
         else:
@@ -442,7 +451,7 @@ def save_game(request):
             lobby_game = ChessLobby.objects.get(lobby_id=completed_game_uuid)
             try:
                 save_chat_and_game(active_game, data)
-            except Exception as e:
+            except Exception:
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()

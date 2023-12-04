@@ -13,7 +13,7 @@
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <div class="col-5">
-            <h1>{{ profile_user.username }}</h1>
+            <h1>{{ profile_user.username|safe }}</h1>
             {% if profile_user.account_closed %}
                 <p>This account is closed.</p>
             {% else %}
@@ -22,7 +22,7 @@
                     <link rel="stylesheet" href="{% static 'flags/sprite.css' %}">
                     <i class="{{ profile_user.country.flag_css }}"></i>
                 </p>
-                <p>{{ profile_user.bio }}</p>
+                <p>{{ profile_user.bio|safe }}</p>
             {% endif %}
         </div>
     </div>

@@ -2,6 +2,7 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
+from django.utils.html import escape, mark_safe
 from .models import ActiveGames, ActiveChatMessages
 import json
 import uuid
@@ -95,8 +96,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-        # Continue chat after game ends but don't save, 
-        # TODO maybe check historic db row DNE instead
+        # Continue chat after game ends but don't save
+        # TODO maybe check historic db row DNE instead, this would be slower though even if secure to execute each time
+        # Maybe have a chat attribute set for when a game ends via a confirmed jwt token
         if message["end_state"] == '':
             sender = await self.get_user()
             if username == "Anonymous":
@@ -104,16 +106,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             else:
                 sender_id = sender.id
             game_uuid = uuid.UUID(self.room_name)
-            await self.save_active_chat_message(game_uuid, color, sender_id, message["sender"], message)
+            message["text"] = escape(message["text"])
+            message["sender"] = escape(message["sender"])
+            sanitized_sender = mark_safe(message["sender"])
+            sanitized_text = mark_safe(message["text"])
+            await self.save_active_chat_message(game_uuid, color, sender_id, sanitized_sender, sanitized_text)
 
     @database_sync_to_async
-    def save_active_chat_message(self, game_uuid, color, sender_id, username, message):
+    def save_active_chat_message(self, game_uuid, color, sender_id, username, text):
         chat_message = ActiveChatMessages(
             game_id=game_uuid, 
             sender_color=color, 
             sender=sender_id, 
             sender_username=username, 
-            message=message["text"]
+            message=text
         )
         chat_message.save()
 

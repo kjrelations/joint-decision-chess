@@ -309,7 +309,9 @@ function handleMessage(data) {
         }
         return;
     }
-    $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
+    // Prevent XSS script injection attacks by escaping content
+    var message = $('<p></p>').text(data["sender"] + ": " + data["text"]);
+    $(".chat-messages").append(message);
 }
 
 function generateRematchURL(position) {

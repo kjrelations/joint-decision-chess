@@ -57,7 +57,7 @@ Play
                         <div class="chat-messages">
                             <!-- Chat messages will be displayed here -->
                             {% for message in chat_messages.all %}
-                                <p>{{message.sender_username}}: {{message.message}}</p>
+                                <p>{{ message.sender_username|safe }}: {{ message.message|safe }}</p>
                             {% endfor %}
                         </div>
                     </div>

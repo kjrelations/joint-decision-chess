@@ -2,6 +2,7 @@ from django import forms
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.password_validation import validate_password
 from django_countries.fields import CountryField
+from django.utils.html import escape, mark_safe
 from .models import User
 
 class ChangeEmailForm(forms.Form):
@@ -35,6 +36,12 @@ class ChangeEmailForm(forms.Form):
 class EditProfile(forms.Form):
     biography = forms.CharField(widget=forms.Textarea(attrs={'rows': 8}), required=False)
     country = CountryField(blank=True, blank_label="None").formfield()
+
+    def clean_biography(self):
+        biography = self.cleaned_data.get("biography")
+        if biography:
+            return mark_safe(escape(biography))
+        return biography
 
 class CloseAccount(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
