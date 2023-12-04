@@ -29,6 +29,7 @@ class ChessLobby(models.Model):
 	expire = models.DateTimeField()
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
+	opponent_connected = models.BooleanField(default=False)
 	private = models.BooleanField(default=False)
 	computer_game = models.BooleanField(default=False)
 	initiator_color = models.CharField(max_length=5, null=True)
@@ -57,7 +58,8 @@ class ActiveGames(models.Model):
 	black_id = models.UUIDField(null=False)
 	start_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
-	status = models.CharField(max_length=50, blank=False, null=False, default="")
+	status = models.CharField(max_length=50, blank=False, null=False, default="") # "playing" or "completed"
+	state = models.TextField(default="")
 
 class GameHistoryTable(models.Model):
 	historic_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

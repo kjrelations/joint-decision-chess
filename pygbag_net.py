@@ -21,6 +21,16 @@ import io, socket
 # a mini irc included with pygbag python module that will capture all traffic
 # for local testing purpose.
 
+def load_keys(file_path):
+    keys = {}
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            parts = line.strip().split('_')
+            if len(parts) == 2:
+                key, value = parts
+                keys[key] = value
+    return keys
 
 async def aio_sock_open(sock, host, port):
     print(f"20:aio_sock_open({host=},{port=}) {aio.cross.simulator=}")
@@ -135,12 +145,13 @@ class Node:
     LOBBY_GAME = "p"
     GAME = "q"
     SYNC = "r"
+    QUIT = "s"
     CMD = "cmd"
     PID = "pid"
     B64JSON = "j64"
 
-    host = "host"
-    lobby = "#lobby"
+    host = load_keys("secrets.txt")["host"]
+    lobby = load_keys("secrets.txt")["lobby"]
     lobby_channel = f"{lobby}-0"
     lobby_topic = "Welcome to Pygbag lobby [hosted by pmp-p]"
 
@@ -184,19 +195,33 @@ class Node:
         # no game running on start
         self.pid = 0
 
+        # no recent old id on start
+        self.oid = 0
+
         # default is take over channel (operator)
         self.fork = -1
+
+        self.reconnecting = False
+
+        self.closed = False
 
     async def connect(self, host):
         self.peek = []
         async with aio_sock(host, "a+", 5) as sock:
             self.host = host
+            self.aiosock = sock # should come first
             self.events.append(self.CONNECTED)
-            self.aiosock = sock
             self.alarm()
+            if self.offline:
+                self.offline = False
 
             while not aio.exit:
-                rr, rw, re = select.select([sock.socket], [], [], 0)
+                if self.closed:
+                    break
+                try:
+                    rr, rw, re = select.select([sock.socket], [], [], 0)
+                except:
+                    break
                 if rr or rw or re:
                     while not aio.exit and self.aiosock:
                         try:
@@ -204,6 +229,8 @@ class Node:
                             # peek = sock.socket.recv(1, socket.MSG_PEEK |socket.MSG_DONTWAIT)
                             one = sock.socket.recv(1, socket.MSG_DONTWAIT)
                             if one:
+                                if self.reconnecting:
+                                    self.reconnecting = False
                                 self.peek.append(one)
                                 # full line let's send that to event processing
                                 if one == b"\n":
@@ -212,17 +239,32 @@ class Node:
                                     self.events.append(self.RX)
                                     break
                             else:
+                                if self.reconnecting:
+                                    self.offline = True
+                                    raise Exception('Received no data')
                                 # lost con.
                                 print("HANGUP", self.peek)
-                                self.aiosock = None
-                                print("TODO: ask for reconnect")
-                                return
+                                self.offline = True
+                                while self.offline:
+                                    try:
+                                        if not self.reconnecting:
+                                            print("Reconnecting...")
+                                            self.aiosock = None
+                                            self.users = {}
+                                            self.fork = -1
+                                            # alarm_set, rxq, txq, topics, joined, uid is not used
+                                            self.reconnecting = True
+                                            await aio.create_task(self.connect(host)) # Infinite nesting
+                                    except Exception as e:
+                                        print(f"Reconnect failed, Re-attempting in 5... : {str(e)}")
+                                        self.reconnecting = False
+                                    await aio.sleep(5)
+                                return # This is never hit
                         except BlockingIOError as e:
                             if e.errno == 6:
                                 await aio.sleep(0)
                 else:
                     await aio.sleep(0)
-            sock.print("DISCONNECT")
 
     def publish(self):
         self.lobby_cmd(
@@ -291,6 +333,7 @@ class Node:
         self.out(msg)
         self.aiosock.socket.close()
         self.aiosock = None
+        self.closed = True
 
     def check_topic(self):
         if self.joined != self.lobby_channel:
@@ -381,6 +424,12 @@ class Node:
             self.proto, self.data = cmd.strip().split(":", 1)
             self.wire(line.replace("PING ", "PONG ", 1))
             yield self.PING
+            return self.discard()
+
+        if cmd.find("QUIT ") >= 0:
+            self.proto = cmd
+            self.data = line
+            yield self.QUIT
             return self.discard()
 
     # handle Lobby commands : game offer, lobby chat
@@ -485,6 +534,18 @@ class Node:
                 except Exception as e:
                     sys.print_exception(e)
 
+            elif line.startswith(f"{self.pid}:") or line.startswith(f"{self.oid}:"):
+                _, pid, msgtype, data = line.split(":", 3)
+                
+                try:
+                    if msgtype == node.B64JSON:
+                        data = base64.b64decode(data.encode())
+                        self.data = json.loads(data.decode())
+                        yield self.GAME
+                        return self.discard()
+
+                except Exception as e:
+                    sys.print_exception(e)
             # uncompatible fork and not PR.
             else:
                 self.proto = "noise"
@@ -498,6 +559,8 @@ class Node:
         self.pscheck(cpid, n_data["nick"])
 
         current = self.pstree[cpid].get("rev", 0)
+
+        self.oid = self.pid
 
         # register new fork
         if not current:
@@ -562,6 +625,8 @@ class Node:
                 # attribute a pseudo random pid to network agent, use that for uid nickname
                 # not foolproof should use a service for that
                 stime = str(time.time())[-5:].replace(".", "")
+                if self.pid:
+                    self.oid = self.pid 
                 self.pid = int(stime)
                 self.nick = "u_" + str(self.pid)
                 self.pscheck(self.pid, self.nick)
@@ -571,6 +636,9 @@ class Node:
 
                 d = {"nick": self.nick, "channel": self.lobby_channel}
 
+                if self.aiosock is None or not hasattr(self.aiosock, 'socket'):
+                    self.offline = True
+                    break
                 self.aiosock.print(
                     """CAP LS\r\nNICK {nick}\r\nUSER {nick} {nick} localhost :wsocket\r\nJOIN {channel}""".format(**d)
                 )

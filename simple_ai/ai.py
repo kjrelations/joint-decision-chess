@@ -53,6 +53,7 @@ def ai_move(game, init, drawing_settings):
             elif game.forced_end != "":
                 print(game.forced_end)
             print("ALG_MOVES: ", game.alg_moves)
+    init["sent"] = 0
 
 def new_game_board_moves(game):
     all_valid_moves = []

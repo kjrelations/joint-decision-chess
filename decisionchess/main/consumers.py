@@ -95,7 +95,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-        # Continue chat after game ends but don't save
+        # Continue chat after game ends but don't save, 
+        # TODO maybe check historic db row DNE instead
         if message["end_state"] == '':
             sender = await self.get_user()
             if username == "Anonymous":

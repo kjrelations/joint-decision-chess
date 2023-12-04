@@ -198,10 +198,17 @@ window.Fetch = {}
 // generator functions for async fetch API
 // script is meant to be run at runtime in an emscripten environment
 // Fetch API allows data to be posted along with a POST request
-window.Fetch.POST = function * POST (url, data)
+window.Fetch.POST = function * POST (url, data, headers = {})
 {
+    const defaultHeaders = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    };
+    headers = (headers !== {} ? JSON.parse(headers) : {});
+    const mergedHeaders = { ...defaultHeaders, ...headers };
     // post info about the request
-    var request = new Request(url, {headers: {'Accept': 'application/json','Content-Type': 'application/json'},
+    var request = new Request(url, {
+        headers: mergedHeaders,
         method: 'POST', 
         body: data});
     var content = 'undefined';
@@ -288,12 +295,12 @@ window.Fetch.GET = function * GET (url)
     # def get(self, url, params=None, doseq=False):
     #     return await self._get(url, params, doseq)
 
-    async def post(self, url, data=None):
+    async def post(self, url, data=None, headers={}):
         if data is None:
             data = {}
         if self.is_emscripten:
             await asyncio.sleep(0)
-            content = await platform.jsiter(platform.window.Fetch.POST(url, json.dumps(data)))
+            content = await platform.jsiter(platform.window.Fetch.POST(url, json.dumps(data), json.dumps(headers)))
             if self.debug:
                 self.print(content)
             self.result = content
