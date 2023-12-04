@@ -22,6 +22,7 @@ from .forms import ChangeEmailForm, EditProfile, CloseAccount
 import uuid
 import json
 import random
+import jwt
 
 def index(request):
     return render(request, "main/home.html", {})
@@ -216,17 +217,37 @@ def play(request, game_uuid):
             # For now we won't allow multiple joins even from the same person after they've connected twice
             if game.black_id is None and game.initiator_connected:
                 game.black_id = user_id
+                game.opponent_connected = True
                 game.save()
             elif game.white_id is None and game.initiator_connected:
                 game.white_id = user_id
+                game.opponent_connected = True
                 game.save()
             # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_id) == str(game.black_id):
-                return redirect('home')
+                # TODO Don't write to both columns
+                if not game.initiator_connected:
+                    game.initiator_connected = True
+                    game.save()
+                elif not game.opponent_connected:
+                    game.opponent_connected = True
+                    game.save()
+                elif game.opponent_connected and game.initiator_connected:
+                    return redirect('home')
             elif str(user_id) == str(game.white_id) and game.black_id is not None:
-                return redirect('home')
+                if game.initiator_connected and game.opponent_connected:
+                    return redirect('home')
+                else:
+                    game.initiator_connected = False
+                    game.opponent_connected = False
+                    game.save()
             elif str(user_id) == str(game.black_id) and game.white_id is not None:
-                return redirect('home')
+                if game.initiator_connected and game.opponent_connected:
+                    return redirect('home')
+                else:
+                    game.initiator_connected = False
+                    game.opponent_connected = False
+                    game.save()
             game_chat_messages = ActiveChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play.html", sessionVariables)
@@ -234,6 +255,7 @@ def play(request, game_uuid):
             column_to_fill = "black_id"
             if game.white_id is None:
                 column_to_fill = "white_id"
+            game.opponent_connected = True
             setattr(game, column_to_fill, user_id)
             game.save()
             return render(request, "main/play.html", sessionVariables)
@@ -308,9 +330,9 @@ def update_connected(request):
 
             message = {}
             save_to_active = False
-            if game.initiator_connected != web_connect and is_initiator:
+            if waiting_game and game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
-                if game.computer_game and waiting_game:
+                if game.computer_game:
                     bot_user = User.objects.get(username="minimax") # later from the message body
                     bot_id = bot_user.id
                     if null_id == "black":
@@ -331,20 +353,71 @@ def update_connected(request):
             elif not waiting_game:
                 save_to_active = True
                 message = {"status": "updated"}
-            if save_to_active:
-                active_game = ActiveGames(
-                    active_game_id = connect_game_uuid,
-                    white_id = game.white_id,
-                    black_id = game.black_id,
-                    gametype = "classical",
-                    status = "playing"
-                )
-                active_game.save()
+            if save_to_active: # TODO change to update_and_check
+                # We prefer this first definition that can't be tampered with in live matches,
+                # but need the second for self-play
+                message_sending_player = "white" if str(game.white_id) == str(user_id) else "black"
+                message_sending_player = data["color"] if game.white_id == game.black_id else message_sending_player
+                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
+                if active_game_exists: # TODO Run the following block even if it doesn't exist later, also write to the second column for the same player on disconnect
+                    # A disconnect message means the other player disconnected, not the current player
+                    if game.initiator_color == message_sending_player:
+                        field_to_update = "initiator_connected" if web_connect else "opponent_connected"
+                        setattr(game, field_to_update, web_connect)
+                    else:
+                        field_to_update = "opponent_connected" if web_connect else "initiator_connected"
+                        setattr(game, field_to_update, web_connect)
+                    game.save()
+                else:
+                    active_game = ActiveGames(
+                        active_game_id = connect_game_uuid,
+                        white_id = game.white_id,
+                        black_id = game.black_id,
+                        gametype = "classical",
+                        status = "playing"
+                    )
+                    active_game.save()
             return JsonResponse(message, status=200)
         except ChessLobby.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Lobby row DNE"}, status=400)
     else:
         return JsonResponse({"status": "error"}, status=400)
+
+def get_or_update_state(request, game_uuid):
+    if request.user and request.user.id is not None:
+        user_id = request.user.id
+    else:
+        guest_uuid = request.session.get('guest_uuid')
+        if guest_uuid is None:
+            return JsonResponse({"status": "error"}, status=401)
+        else:
+            user_id = uuid.UUID(guest_uuid)
+    if request.method == "POST":
+        data = json.loads(request.body.decode('utf-8'))
+        if data.get("token"):
+            decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
+            if decoded.get('game'):
+                active_game = ActiveGames.objects.get(active_game_id=game_uuid)
+                active_game.state = decoded['game']
+                if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
+                    return JsonResponse({"status": "error"}, status=401)
+                active_game.save()
+                return JsonResponse({"status": "updated"}, status=200)
+            else:
+                return JsonResponse({"status": "error"}, status=400)
+        else:
+            return JsonResponse({"status": "error"}, status=400)
+    elif request.method == "GET":
+        try:
+            active_game = ActiveGames.objects.get(active_game_id=game_uuid)
+            if active_game.state == "":
+                return JsonResponse({"message": "DNE"}, status=200)
+            if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
+                return JsonResponse({"status": "error"}, status=401)
+            token = jwt.encode(json.loads(active_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
+            return JsonResponse({"token": token}, status=200)
+        except ActiveGames.DoesNotExist:
+            return JsonResponse({"message": "DNE"}, status=200)
 
 def save_game(request):
     if request.method == 'PUT':

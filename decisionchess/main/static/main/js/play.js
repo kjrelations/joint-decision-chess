@@ -366,7 +366,6 @@ function handleMessage(data) {
         }
         if (data["log"] === "disconnect") {
             // Add highlighted message to chat
-            $("#chat-input").prop("disabled", true);
             if (rematch_accepted) {
                 fetchUUID(signed_uuid, currentGameID).then(data => {
                     window.location.href = '/play/' + data.uuid + '/';
@@ -446,7 +445,7 @@ function generateRematchURL(position, game_id) {
     });
 }
 
-function updateConnectedStatus(status) {
+function updateConnectedStatus(status, playerColor) {
     fetch('/update_connected/', {
         method: 'POST',
         headers: {
@@ -455,7 +454,8 @@ function updateConnectedStatus(status) {
         },
         body: JSON.stringify({ 
             game_uuid: game_uuid, 
-            web_connect: status
+            web_connect: status,
+            color: playerColor
         }),
     })
     .then(response => response.json())
@@ -477,9 +477,14 @@ function updateConnectedStatus(status) {
 
 function checkNewConnect() {
     var currentConnected = sessionStorage.getItem('connected');
+    var playerColor = sessionStorage.getItem('color');
     currentConnected = (currentConnected === 'true' ? true : false);
-    if (currentConnected === true && previousConnected === false) {
-        updateConnectedStatus(true);
+    if (currentConnected !== previousConnected) {
+        if (playerColor !== null && (playerColor === 'white' || playerColor === 'black')) {
+            updateConnectedStatus(currentConnected, playerColor);
+        } else {
+            return;
+        }
     }
     
     var initialized = sessionStorage.getItem('initialized');
@@ -507,6 +512,10 @@ function checkNewConnect() {
         })
         initializeWebSocket();
         initCheck = initialized;
+    } else if (initialized === true && currentConnected === true) {
+        if (typeof socket !== 'undefined' && socket instanceof WebSocket && socket.readyState === WebSocket.CLOSED) {
+            initializeWebSocket();
+        }
     }
 
     previousConnected = currentConnected;
@@ -520,9 +529,8 @@ window.onbeforeunload = function () {
     }
 };
 
-// to defaults
+// to defaults, not connected though as that would send a request
 window.addEventListener('beforeunload', function () {
-    sessionStorage.setItem('connected', 'false');
     sessionStorage.setItem('current_game_id', game_uuid);
     sessionStorage.setItem('initialized', 'null');
     sessionStorage.setItem('draw_request', 'false');
@@ -671,14 +679,13 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
             // Need to reset all active offer buttons
             offerEventList.forEach(function(event) {
                 for (var i = 0; i < event.eventNames.length; i++) {
-                    var subevent = event.eventNames[i];
                     var subOptions = i === 0 ? "followups" : "responses";
                     const offerEvent = document.getElementById(event.mainButtonName)
                     // Check for ids that could be removed on end game reached but totalreset is still set
                     if (offerEvent) {
                         offerEvent.classList.remove("waiting");
                         offerEvent.disabled = false;
-                        resetButtons(event.mainButtonName, subevent, subOptions);
+                        resetButtons(event.mainButtonName, subOptions);
                     }
                 }
             });
@@ -895,9 +902,8 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                         if (offerEvent) {
                             offerEvent.classList.remove("waiting");
                             offerEvent.disabled = false;
-                            var subevent = event.eventNames[i];
                             var subOptions = i === 0 ? "followups" : "responses";
-                            resetButtons(event.mainButtonName, subevent, subOptions);
+                            resetButtons(event.mainButtonName, subOptions);
                         }
                     }
                 });

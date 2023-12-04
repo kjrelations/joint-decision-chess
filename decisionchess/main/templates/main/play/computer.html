@@ -94,6 +94,7 @@ Play
                 sessionStorage.setItem('initialized', "{{ initialized }}");
                 sessionStorage.setItem('promoting', 'false');
                 var csrftoken = "{{ csrf_token|escapejs }}";
+                sessionStorage.setItem('csrftoken', csrftoken);
             </script>
             <script src="{% static 'main/js/computer.js' %}"></script>                
         </div>

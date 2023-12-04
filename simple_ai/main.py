@@ -305,7 +305,12 @@ def initialize_game(init, game_id, drawing_settings):
         pygame.display.set_caption("Chess - White")
     else:
         pygame.display.set_caption("Chess - Black")
-    client_game = Game(new_board.copy(), init["starting_player"])
+    if init["starting_position"] is None:
+        client_game = Game(new_board.copy(), init["starting_player"])
+        init["sent"] = 1
+    else:
+        client_game = Game(custom_params=init["starting_position"])
+        init["sent"] = int(client_game._starting_player != client_game.current_turn)
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
@@ -365,6 +370,132 @@ def initialize_game(init, game_id, drawing_settings):
         raise Exception("Failed to set web value")
     return client_game, game_tab_id
 
+# TODO Move to helpers later on refactor
+async def get_or_update_game(game_id, access_keys, client_game = "", post = False):
+    if post:
+        if isinstance(client_game, str): # could just be not game but we add hinting later
+            raise Exception('Wrong POST input')
+        client_game._sync = True
+        client_game._move_undone = False
+        client_game_str = client_game.to_json()
+        try:
+            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
+            handler = fetch.RequestHandler()
+            secret_key = access_keys["updatekey"] + game_id
+            js_code = """
+                function generateToken(game_json, secret) {
+                    const oPayload = {game: game_json};
+                    const oHeader = {alg: 'HS256', typ: 'JWT'};
+                    return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
+                };
+                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
+                if (!existingScript) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
+                    script.onload = function() {
+                        window.encryptedToken = generateToken('game_string', 'secret_key');
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    window.encryptedToken = generateToken('game_string', 'secret_key');
+                };
+            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
+            window.eval(js_code)
+            await asyncio.sleep(0)
+            while window.encryptedToken is None:
+                await asyncio.sleep(0)
+            encrytedToken = window.encryptedToken
+            window.encryptedToken = None
+            csrf = window.sessionStorage.getItem("csrftoken")
+            response = await handler.post(url, data = {"token": encrytedToken}, headers = {'X-CSRFToken': csrf})# null token handling
+            data = json.loads(response)
+            if data.get("status") and data["status"] == "error":
+                raise Exception(f'Request failed {data}')
+            # # no response handling?
+        except Exception as e:
+            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
+            window.eval(js_code)
+            raise Exception(str(e))
+    else:
+        try:
+            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
+            handler = fetch.RequestHandler()
+            response = await handler.get(url)
+            data = json.loads(response)
+            if data.get("status") and data["status"] == "error":
+                raise Exception('Request failed')
+            elif data.get("message") and data["message"] == "DNE":
+                return None
+            elif data.get("token"):
+                response_token = data["token"]
+            else:
+                raise Exception('Request failed')
+            # # no response handling?
+            secret_key = access_keys["updatekey"] + game_id
+            js_code = """
+                function decodeToken(token, secret) {
+                    const isValid = KJUR.jws.JWS.verify(token, secret, ['HS256']);
+                    if (isValid) {
+                        const decoded = KJUR.jws.JWS.parse(token);
+                        return JSON.stringify(decoded.payloadObj);
+                    } else {
+                        return "invalid";
+                    };
+                };
+                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
+                if (!existingScript) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
+                    script.onload = function() {
+                        window.payload = decodeToken('response_token', 'secret_key');
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    window.payload = decodeToken('response_token', 'secret_key');
+                };
+            """.replace("response_token", response_token).replace("secret_key", secret_key)
+            window.eval(js_code)
+            await asyncio.sleep(0)
+            while window.payload is None: # Keep trying here
+                await asyncio.sleep(0)
+            game_payload = window.payload
+            window.payload = None
+            return game_payload
+        except Exception as e:
+            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
+            window.eval(js_code)
+            raise Exception(str(e))
+
+# TODO Move to helpers later on refactor
+def load_keys(file_path):
+    keys = {}
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            parts = line.strip().split('_')
+            if len(parts) == 2:
+                key, value = parts
+                keys[key] = value
+    return keys
+
+async def reconnect(game_id, access_keys, init):
+    init["reconnecting"] = True
+    retrieved_state = None
+    try:
+        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+        if retrieved_state is None:
+            init["retrieved"] = Game(new_board.copy(), init["starting_player"])
+        else:
+            retrieved_state = json.loads(retrieved_state)
+            init["retrieved"] = Game(custom_params=retrieved_state)
+        init["sent"] = 1
+    except:
+        err = 'Reconnection Failed. Reattempting...'
+        js_code = f"console.log('{err}')"
+        window.eval(js_code)
+        print(err)
+    init["reconnecting"] = False
+
 # Main loop
 async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
@@ -376,10 +507,17 @@ async def main():
         "initialized": False,
         "config_retrieved": False,
         "starting_player": None,
+        "starting_position": None,
+        "sent": None,
         "player": None,
-        "opponent": None
+        "opponent": None,
+        "local_debug": False,
+        "network_reset_ready": True,
+        "reloaded": True,
+        "reconnecting": False,
+        "retrieved": None,
+        "final_updates": False
     }
-    final_updates = False
     client_game = None
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
@@ -430,7 +568,6 @@ async def main():
         "chessboard": generate_chessboard(current_theme),
         "coordinate_surface": generate_coordinate_surface(current_theme),
         "theme_index": 0,
-        "wait_screen_drawn": False,
         "recalc_selections": False,
         "clear_selections": False
     }
@@ -440,10 +577,10 @@ async def main():
 
         if init["initializing"]:
             client_game, game_tab_id = initialize_game(init, game_id, drawing_settings)
-            init["waiting"] = False
 
-        elif not init["initialized"]:
-            if not init["config_retrieved"]:
+        elif not init["initialized"] :
+            if not init["config_retrieved"] and not init["local_debug"]:
+                access_keys = load_keys("secrets.txt")
                 try:
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/'
                     handler = fetch.RequestHandler()
@@ -458,19 +595,45 @@ async def main():
                         init["starting_player"] = False 
                     else:
                         raise Exception("Bad request")
+                    window.sessionStorage.setItem("color", data["message"]["starting_side"]) # TODO remove on refactor. Not needed for AI games
                 except Exception as e:
-                    window.eval(f"console.log('{str(e)}')") # Not working I don't think
+                    js_code = f"console.log('{str(e)}')"
+                    window.eval(js_code)
                     raise Exception(str(e))
+            retrieved_state = None
+            if init["local_debug"]:
+                init["starting_player"] = True
+                window.sessionStorage.setItem("color", "white")
+            else:
+                retrieved = False
+                while not retrieved:
+                    try:
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+                        init["starting_position"] = json.loads(retrieved_state)
+                        retrieved = True
+                    except:
+                        err = 'Game State retreival Failed. Reattempting...'
+                        js_code = f"console.log('{err}')"
+                        window.eval(js_code)
+                        print(err)
+            
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Setting Up")
-            client_game = Game(new_board.copy(), init["starting_player"])
-            init["player"] = "white"
-            init["opponent"] = "black"
             window.sessionStorage.setItem("connected", "true")
             init["initializing"] = True
             continue
 
-        if client_game._latest:
+        if not init["reloaded"] and not init["reconnecting"]:
+            if init["retrieved"] is None:
+                asyncio.create_task(reconnect(game_id, access_keys, init))
+            else:
+                client_game = init["retrieved"]
+                init["retrieved"] = None
+                init["reloaded"] = True
+                drawing_settings["recalc_selections"] = True
+                drawing_settings["clear_selections"] = True
+
+        if client_game._latest and not init["final_updates"] and init["reloaded"]:
             ai_move(client_game, init, drawing_settings)
 
         # Web browser actions/commands are received in previous loop iterations
@@ -485,6 +648,13 @@ async def main():
             client_state_actions["step_executed"] = True
 
         if not client_game.end_position:
+            if not init["reloaded"] and client_state_actions["undo"]:
+                client_state_actions["undo"] = False
+                client_state_actions["undo_executed"] = True
+            if not init["reloaded"] and client_state_actions["resign"]:
+                client_state_actions["resign"] = False
+                client_state_actions["resign_executed"] = True
+
             if client_state_actions["undo"]:
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
@@ -532,6 +702,7 @@ async def main():
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
 
+        # Have this after the step commands to not allow previous selections
         if drawing_settings["recalc_selections"]:
             if selected_piece:
                 row, col = selected_piece
@@ -598,7 +769,7 @@ async def main():
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
                         else:
-                            if client_game.current_turn == client_game._starting_player and client_game._latest:
+                            if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
@@ -609,6 +780,7 @@ async def main():
                                     # Reset selected piece variables to represent state
                                     selected_piece, selected_piece_image = None, None
                                     
+                                    init["sent"] = 0
                                     if client_game.end_position:
                                         break
                                 
@@ -621,6 +793,7 @@ async def main():
                                     # Reset selected piece variables to represent state
                                     selected_piece, selected_piece_image = None, None
 
+                                    init["sent"] = 0
                                     if client_game.end_position:
                                         break
 
@@ -679,7 +852,7 @@ async def main():
                         if first_intent and (row, col) == selected_piece:
                             first_intent = not first_intent
                         
-                        if client_game.current_turn == client_game._starting_player and client_game._latest:
+                        if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \
@@ -690,6 +863,7 @@ async def main():
                                 # Reset selected piece variables to represent state
                                 selected_piece, selected_piece_image = None, None
 
+                                init["sent"] = 0
                                 if client_game.end_position:
                                     break
 
@@ -702,6 +876,7 @@ async def main():
                                 # Reset selected piece variables to represent state
                                 selected_piece, selected_piece_image = None, None
 
+                                init["sent"] = 0
                                 if client_game.end_position:
                                     break
 
@@ -886,23 +1061,6 @@ async def main():
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
-        if client_game.end_position and not final_updates:
-            web_game_metadata = window.localStorage.getItem("web_game_metadata")
-
-            web_game_metadata_dict = json.loads(web_game_metadata)
-
-            if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
-                web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
-                web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
-                web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-                web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
-                web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
-
-                web_game_metadata = json.dumps(web_game_metadata_dict)
-                window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-            final_updates = True
-
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
             right_clicked_squares = []
@@ -936,8 +1094,43 @@ async def main():
         pygame.display.flip()
         await asyncio.sleep(0)
 
+        try:
+            if not init["sent"]:
+                if not init["local_debug"]:
+                    await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 10)
+                init["sent"] = 1
+        except:
+            init["reloaded"] = False
+            init["sent"] = 1
+            err = 'Could not send game... Reconnecting...'
+            js_code = f"console.log('{err}')"
+            window.eval(js_code)
+            print(err)
+            continue
+
+        if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+
+            web_game_metadata_dict = json.loads(web_game_metadata)
+
+            if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
+                web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
+                web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
+                web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+                web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
+                web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
+
+                web_game_metadata = json.dumps(web_game_metadata_dict)
+                window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+            init["final_updates"] = True
+
     pygame.quit()
     sys.exit()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        js_code = f"console.log('{str(e)}')"
+        window.eval(js_code)

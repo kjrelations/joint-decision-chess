@@ -14,6 +14,7 @@ urlpatterns = [
     path("config/<uuid:game_uuid>/", views.get_config, name='get_game_config'),
     path('play/<uuid:game_uuid>/', views.play, name='join_new_game'),
     path('update_connected/', views.update_connected, name='update_connected'),
+    path("game-state/<uuid:game_uuid>/", views.get_or_update_state, name='get_or_update_state'),
     path('save_game/', views.save_game, name='save_game'),
     path("news/", views.news, name="news"),
     path("profile/<str:username>/", views.profile, name="profile"),

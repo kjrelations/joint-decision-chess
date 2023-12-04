@@ -7,5 +7,6 @@ historic/*
 simple_ai/*
 !simple_ai/main.py
 !simple_ai/ai.py
+secrets.txt
 *.pyc
 *.env

@@ -67,10 +67,16 @@ MIDDLEWARE = [
 
 if DEBUG:
     CORS_ALLOWED_ORIGINS = [
-        "http://127.0.0.1:8585"
+        'http://127.0.0.1:8585',
+        # 'http://<ip>:8000'
     ]
 
 CSRF_TRUSTED_ORIGINS = ['https://decisionchess.com', 'http://decisionchess.com']
+
+# if DEBUG:
+#     CSRF_TRUSTED_ORIGINS.extend([
+#         'http://<myip>:8000'
+#     ])
 
 ROOT_URLCONF = 'decisionchess.urls'
 
@@ -121,6 +127,7 @@ DATABASES = {
 
 SECRET_KEY = config('SECRET_KEY')
 SIGNING_KEY = config('SIGNING_KEY')
+STATE_UPDATE_KEY = config('STATE_UPDATE_KEY')
 
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')

@@ -18,6 +18,7 @@ django-cors-headers = "*"
 daphne = "*"
 channels = {extras = ["daphne"] }
 requests = "*"
+pyjwt = "*"
 
 [dev-packages]
 pytest = "*"
