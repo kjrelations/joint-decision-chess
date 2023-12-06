@@ -10,6 +10,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 from django.contrib import messages
+from main.models import UserSettings
 from base64 import binascii
 from .forms import RegisterForm, ResendActivationEmailForm
 
@@ -57,7 +58,10 @@ def activate_account(request, uidb64, token):
             # Activate the user's account
             user.is_active = True
             user.email_reference = user.email
+            user_default_settings = UserSettings()
             user.save()
+            user_default_settings.user = user
+            user_default_settings.save()
 
             # Redirect to a success page
             return redirect('account_activated')

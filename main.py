@@ -1101,7 +1101,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": False,
+        "local_debug": True,
         "access_keys": None,
         "network_reset_ready": True,
         "desync": False,

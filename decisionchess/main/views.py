@@ -17,8 +17,9 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse
 from django.urls import reverse
 from base64 import binascii
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages
-from .forms import ChangeEmailForm, EditProfile, CloseAccount
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
+from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm
+from .user_settings import default_themes
 import uuid
 import json
 import random
@@ -510,6 +511,58 @@ def terms_of_service(request):
 
 def privacy_policy(request):
     return render(request, "main/privacy.html", {})
+
+@login_required
+def change_themes(request):
+    if request.method == "POST":
+        form = ChangeThemesForm(request.POST)
+        response_themes = []
+        for theme_name in form.fields.keys():
+            if theme_name != 'starting_theme':
+                response_themes.append([theme_name, theme_name.title().replace("-", " ")])
+        
+        if form.is_valid():
+            selected_themes = []
+            initial_theme = form.cleaned_data['starting_theme']
+            selected_themes.append(initial_theme.title().replace("-", " "))
+            for theme_name, value in form.cleaned_data.items():
+                if value and theme_name != 'starting_theme' and theme_name != initial_theme:
+                    selected_themes.append(theme_name.title().replace("-", " "))
+            
+            new_user_themes = default_themes(selected_themes)
+            user_settings = UserSettings.objects.get(user=request.user)
+            user_settings.themes = new_user_themes
+            user_settings.save()
+            request.session['themes'] = selected_themes
+            messages.success(request, 'Themes updated!')
+
+            return render(request, "main/settings/change_themes.html", {"form": form, "themes": response_themes, 'endings': ['1', '2', '3']})
+    else:
+        selected_themes, snake_case_names, response_themes = [], [], []
+        initial_theme = None
+        if 'themes' in request.session:
+            selected_themes = request.session['themes']
+            initial_theme = selected_themes[0].lower().replace(" ", "-")
+        elif request.user and request.user.is_authenticated:
+            user_settings = UserSettings.objects.get(user=request.user)
+            user_themes = user_settings.themes
+            user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
+            selected_themes = [json.loads(theme)["name"] for theme in user_themes]
+            request.session['themes'] = selected_themes
+            initial_theme = selected_themes[0].lower().replace(" ", "-")
+        form = ChangeThemesForm(initial_value=initial_theme)
+
+        if selected_themes != []:
+            snake_case_names = [theme.lower().replace(" ", "-") for theme in selected_themes]
+        for theme_name in form.fields.keys():
+            if snake_case_names != [] and theme_name in snake_case_names:
+                form.fields[theme_name].initial = True
+            elif snake_case_names == []:
+                form.fields[theme_name].initial = True 
+            if theme_name != 'starting_theme':
+                response_themes.append([theme_name, theme_name.title().replace("-", " ")])
+
+    return render(request, "main/settings/change_themes.html", {"form": form, "themes": response_themes, 'endings': ['1', '2', '3']})
 
 @login_required
 def change_email(request):

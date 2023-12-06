@@ -1,7 +1,9 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
 from django_countries.fields import CountryField
 from django.utils import timezone
+from . import user_settings
 import uuid
 
 class User(AbstractUser):
@@ -15,6 +17,17 @@ class User(AbstractUser):
 
 	def __str__(self):
 		return self.username
+
+class UserSettings(models.Model):
+	settings_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+	themes = ArrayField(models.TextField(), blank=False, null=False, default=user_settings.default_themes)
+	username = models.CharField(max_length=150, blank=False)
+
+	def save(self, *args, **kwargs):
+		if self.user:
+			self.username = self.user.username
+		super().save(*args, **kwargs)
 
 class BotInformation(models.Model):
 	bot_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

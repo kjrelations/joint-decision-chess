@@ -1,0 +1,60 @@
+{% extends 'main/settings/settings.html' %}
+
+{% load crispy_forms_tags %}
+
+{% load static %}
+
+{% load custom_filters %}
+
+{% block setting_window %}
+    <h1 style="color: rgb(196, 118, 29);">Themes</h1>
+    <div class="row justify-content-center" style="max-width: 100%;">
+        <form method="post">
+            {% csrf_token %}
+            {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}" style="color: rgb(134, 180, 137);"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            {% if form.errors %}
+                <div class="error-message" style="color: rgb(216, 93, 44);">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+            {% for theme in themes %}
+                <div class="d-flex justify-content-center">
+                    <label for="id_{{ theme.0 }}">
+                        <h2>{{ theme.1 }}</h2>
+                        {% for suffix in endings %}
+                            {% with image_name=theme.0|add:'-'|add:suffix %}
+                                <img src="{% static 'main/images/themes/' %}{{ image_name }}.png" 
+                                    alt="{% if suffix == '1' %}White Selection
+                                         {% elif suffix == '2' %}White Highlights
+                                         {% else %}Black Highlights
+                                         {% endif %}"
+                                    style="max-width: 30%;">
+                            {% endwith %}
+                        {% endfor %}
+                    </label>
+                    {% for field in form.visible_fields%}
+                        {% if field.name|compare:theme.0 %}
+                            {{ field }}
+                            {{ field.errors }}
+                        {% endif %}
+                    {% endfor %}
+                    {% for field in form.starting_theme %}
+                        {% if field.data.value|compare:theme.0 %}
+                            <label for="{{ field.data.attrs.id }}" style="display: flex; align-items: center; margin-bottom: 0px;">
+                                {{ field.tag }}
+                                {{ field.errors }}
+                            </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-success">Save</button>
+        </form>
+    </div>
+{% endblock %}

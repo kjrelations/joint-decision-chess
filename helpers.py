@@ -630,7 +630,7 @@ def draw_arrow(theme, arrow):
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    arrow_color = ARROW_WHITE if theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))

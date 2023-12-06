@@ -1,4 +1,4 @@
-# Admin script to quickly create bot rows, run from main directory with python -m main.bot_register
+# Admin script to quickly create bot rows, run from main directory with python -m register.bot_register
 import os
 import django
 

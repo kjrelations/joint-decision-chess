@@ -20,6 +20,7 @@ urlpatterns = [
     path("profile/<str:username>/", views.profile, name="profile"),
     path("terms-of-service/", views.terms_of_service, name="terms"),
     path("privacy/", views.privacy_policy, name="privacy"),
+    path("account/themes", views.change_themes, name="change_themes"),
     path("account/email", views.change_email, name="change_email"),
     path("account/confirm/<str:uidb64>/<str:token>/", views.confirm_email, name='activate_account'),
     path("account/passwd", views.change_password, name="change_password"),
