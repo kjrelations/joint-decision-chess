@@ -174,40 +174,48 @@ def get_config(request, game_uuid):
             return JsonResponse({"status": "error"}, status=401)
         else:
             user_id = uuid.UUID(guest_uuid)
-    try:
-        game = ChessLobby.objects.get(lobby_id=game_uuid)
-        if str(user_id) not in [str(game.white_id), str(game.black_id)]:
-            return JsonResponse({"status": "error"}, status=401)
-        fill = None
-        if str(user_id) == str(game.white_id) == str(game.black_id):
-            if game.initiator_color == "black":
+    
+    theme_names = request.session.get('themes')
+    if theme_names is None and request.user and request.user.id is not None:
+        # TODO move this into a function
+        user_settings = UserSettings.objects.get(user=request.user)
+        user_themes = user_settings.themes
+        user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
+        theme_names = [json.loads(theme)["name"] for theme in user_themes]
+    elif theme_names is None:
+        themes = default_themes()
+        themes = [theme.replace("'", "\"") for theme in themes]
+        theme_names = [json.loads(theme)["name"] for theme in themes]
+        request.session['themes'] = theme_names
+
+    type = request.GET.get('type')
+    if type == 'live':
+        try:
+            game = ChessLobby.objects.get(lobby_id=game_uuid)
+            if str(user_id) not in [str(game.white_id), str(game.black_id)]:
+                return JsonResponse({"status": "error"}, status=401)
+            fill = None
+            if str(user_id) == str(game.white_id) == str(game.black_id):
+                if game.initiator_color == "black":
+                    fill = "white"
+                elif game.initiator_color == "white":
+                    fill = "black"
+                else:
+                    return JsonResponse({"status": "error"}, status=401)
+            elif str(user_id) == str(game.white_id):
                 fill = "white"
-            elif game.initiator_color == "white":
+            elif str(user_id) == str(game.black_id):
                 fill = "black"
             else:
                 return JsonResponse({"status": "error"}, status=401)
-        elif str(user_id) == str(game.white_id):
-            fill = "white"
-        elif str(user_id) == str(game.black_id):
-            fill = "black"
-        else:
-            return JsonResponse({"status": "error"}, status=401)
-        
-        theme_names = request.session.get('themes')
-        if theme_names is None and request.user and request.user.id is not None:
-            # TODO move this into a function
-            user_settings = UserSettings.objects.get(user=request.user)
-            user_themes = user_settings.themes
-            user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
-            theme_names = [json.loads(theme)["name"] for theme in user_themes]
-        elif theme_names is None:
-            themes = default_themes()
-            themes = [theme.replace("'", "\"") for theme in themes]
-            theme_names = [json.loads(theme)["name"] for theme in themes]
-            request.session['themes'] = theme_names
 
-        return JsonResponse({"message": {"starting_side": fill, "theme_names": theme_names}}, status=200)
-    except ChessLobby.DoesNotExist:
+            return JsonResponse({"message": {"starting_side": fill, "theme_names": theme_names}}, status=200)
+        except ChessLobby.DoesNotExist:
+            # TODO check historic games and send a special refresh message if available
+            return JsonResponse({"status": "error"}, status=401)
+    elif type == 'historic':
+        return JsonResponse({"message": {"theme_names": theme_names}}, status=200)
+    else:
         return JsonResponse({"status": "error"}, status=401)
 
 def play(request, game_uuid):

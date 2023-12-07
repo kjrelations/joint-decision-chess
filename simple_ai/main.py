@@ -582,7 +582,8 @@ async def main():
             if not init["config_retrieved"] and not init["local_debug"]:
                 access_keys = load_keys("secrets.txt")
                 try:
-                    url = 'http://127.0.0.1:8000/config/' + game_id + '/'
+                    # TODO add Retry loop on disconnect
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     response = await handler.get(url)
                     data = json.loads(response)
@@ -595,9 +596,17 @@ async def main():
                         init["starting_player"] = False 
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["theme_names"]:
+                        theme_names = data["message"]["theme_names"]
+                        global themes
+                        themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
+                        current_theme.apply_theme(themes[0])
+                    else:
+                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"]) # TODO remove on refactor. Not needed for AI games
                 except Exception as e:
-                    js_code = f"console.log('{str(e)}')"
+                    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
                     window.eval(js_code)
                     raise Exception(str(e))
             retrieved_state = None
@@ -609,7 +618,8 @@ async def main():
                 while not retrieved:
                     try:
                         retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
-                        init["starting_position"] = json.loads(retrieved_state)
+                        if retrieved_state is not None:
+                            init["starting_position"] = json.loads(retrieved_state)
                         retrieved = True
                     except:
                         err = 'Game State retreival Failed. Reattempting...'

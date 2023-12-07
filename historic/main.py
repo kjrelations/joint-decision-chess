@@ -4,6 +4,7 @@ import json
 import asyncio
 import pygbag
 import pygbag.aio as asyncio
+import fetch
 from game import *
 from constants import *
 from helpers import *
@@ -232,8 +233,10 @@ async def main():
         raise Exception("No game id set")
     init = {
         "running": True,
-        "initializing": True,
-        "initialized": False
+        "initializing": False,
+        "initialized": False,
+        "config_retrieved": False,
+        "local_debug": False
     }
     client_game = None
     # Web Browser actions affect these only. Even if players try to alter it, 
@@ -284,6 +287,31 @@ async def main():
 
         if init["initializing"]:
             client_game = initialize_game(init, game_id, drawing_settings)
+        
+        elif not init["initialized"]:
+            if not init["config_retrieved"] and not init["local_debug"]:
+                # Eventually access keys and game config setup get, 
+                # I could get state here too instead of browser and set browser like normal
+                # TODO add Retry loop on disconnect
+                try:
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=historic'
+                    handler = fetch.RequestHandler()
+                    response = await handler.get(url)
+                    data = json.loads(response)
+                    if data["message"]["theme_names"]:
+                        theme_names = data["message"]["theme_names"]
+                        global themes
+                        themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
+                        current_theme.apply_theme(themes[0])
+                    else:
+                        raise Exception("Bad request")
+                except Exception as e:
+                    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
+                    window.eval(js_code)
+                    raise Exception(str(e))
+            init["initializing"] = True
+            continue
 
         if drawing_settings["clear_selections"]:
             if selected_piece:

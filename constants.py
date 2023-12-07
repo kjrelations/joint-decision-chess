@@ -1,9 +1,9 @@
 import pygame
 
 class Theme:
-    # TODO def __str__ and name
     def __init__(self):
         # Constants
+        self.NAME = 'Standard'
         self.WIDTH, self.HEIGHT = 800, 800
         self.GRID_SIZE = self.WIDTH // 8
         self.WHITE_SQUARE = (255, 230, 155)
@@ -26,6 +26,7 @@ class Theme:
         self.INVERSE_PLAYER_VIEW = False
 
     def apply_theme(self, theme):
+        self.NAME = theme.get("name", self.NAME)
         self.WIDTH = theme.get("width", self.WIDTH)
         self.HEIGHT = theme.get("height", self.HEIGHT)
         self.GRID_SIZE = theme.get("grid_size", self.GRID_SIZE)
@@ -47,6 +48,9 @@ class Theme:
         self.ARROW_HEAD_HEIGHT = theme.get("arrow_head_height", self.ARROW_HEAD_HEIGHT)
         self.ARROW_HEAD_WIDTH = theme.get("arrow_head_width", self.ARROW_HEAD_WIDTH)
         self.INVERSE_PLAYER_VIEW = theme.get("inverse_player_view", self.INVERSE_PLAYER_VIEW)
+
+    def __str__(self):
+        return self.NAME
 
 # Initialize Pygame to initialize fonts
 pygame.init()

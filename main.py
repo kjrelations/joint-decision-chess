@@ -1226,7 +1226,7 @@ async def main():
                 access_keys = load_keys("secrets.txt")
                 init["access_keys"] = access_keys
                 try:
-                    url = 'http://127.0.0.1:8000/config/' + game_id + '/'
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     response = await handler.get(url)
                     data = json.loads(response)
