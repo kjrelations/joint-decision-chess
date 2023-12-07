@@ -9,12 +9,12 @@ class ChangeThemesForm(forms.Form):
     def __init__(self, *args, **kwargs):
         themes = [
             "standard",
-            "contrasting-dark-wood",
+            "dark-wooden",
             "wooden",
             "tournament",
-            "royal-alliance",
-            "royal-adversary",
-            "bold-royal-adversary",
+            "royal",
+            "adversary",
+            "regal",
             "portal",
             "bubblegum"
         ]

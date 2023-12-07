@@ -20,7 +20,7 @@ def default_themes(names = None):
 			"arrow_head_width": 48
 		},
 		{
-			"name": "Contrasting Dark Wood",
+			"name": "Dark Wooden",
 			"white_square": [255, 240, 200],
 			"black_square": [85, 75, 55],
 			"transparent_circles": [255, 180, 155, 160],
@@ -77,7 +77,7 @@ def default_themes(names = None):
 			"arrow_head_width": 48
 		},
 		{
-			"name": "Royal Alliance",
+			"name": "Royal",
 			"white_square": [255, 205, 105],
 			"black_square": [110, 145, 190],
 			"transparent_circles": [175, 125, 105, 160],
@@ -96,7 +96,7 @@ def default_themes(names = None):
 			"arrow_head_width": 48
 		},
 		{
-			"name": "Royal Adversary",
+			"name": "Adversary",
 			"white_square": [255, 205, 105],
 			"black_square": [250, 145, 105],
 			"transparent_circles": [140, 215, 230, 160],
@@ -115,7 +115,7 @@ def default_themes(names = None):
 			"arrow_head_width": 48
 		},
 		{
-			"name": "Bold Royal Adversary",
+			"name": "Regal",
 			"white_square": [255, 205, 105],
 			"black_square": [190, 50, 5],
 			"transparent_circles": [255, 180, 155, 160],

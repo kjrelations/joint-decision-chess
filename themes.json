@@ -24,7 +24,7 @@
         "inverse_player_view": false
     },
     {
-        "name": "Contrasting Dark Wood",
+        "name": "Dark Wooden",
         "width": 800, 
         "height": 800,
         "grid_size": 100,
@@ -96,7 +96,7 @@
         "inverse_player_view": false
     },
     {
-        "name": "Royal Alliance",
+        "name": "Royal",
         "width": 800, 
         "height": 800,
         "grid_size": 100,
@@ -120,7 +120,7 @@
         "inverse_player_view": false
     },
     {
-        "name": "Royal Adversary",
+        "name": "Adversary",
         "width": 800, 
         "height": 800,
         "grid_size": 100,
@@ -144,7 +144,7 @@
         "inverse_player_view": false
     },
     {
-        "name": "Bold Royal Adversary",
+        "name": "Regal",
         "width": 800, 
         "height": 800,
         "grid_size": 100,
