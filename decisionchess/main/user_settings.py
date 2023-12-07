@@ -176,4 +176,5 @@ def default_themes(names = None):
 		ordered = themes
 	else:
 		ordered = [theme for theme in themes if theme['name'] in names]
+	# TODO ? have function replace single quotes
 	return [str(value) for value in ordered]

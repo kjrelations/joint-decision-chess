@@ -1101,7 +1101,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": True,
+        "local_debug": False,
         "access_keys": None,
         "network_reset_ready": True,
         "desync": False,
@@ -1239,9 +1239,19 @@ async def main():
                         init["starting_player"] = False 
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["theme_names"]:
+                        theme_names = data["message"]["theme_names"]
+                        global themes
+                        themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
+                        current_theme.apply_theme(themes[0])
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    else:
+                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
-                    js_code = f"console.log('{str(e)}')"
+                    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
                     window.eval(js_code)
                     raise Exception(str(e))
             retrieved_state = None
@@ -1259,8 +1269,6 @@ async def main():
                 init["opponent"] = "black"
                 init["loaded"] = True
             else:
-                drawing_settings["chessboard"] = generate_chessboard(current_theme)
-                drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = init["starting_player"]
                 client_game = Game(custom_params=init["starting_position"])

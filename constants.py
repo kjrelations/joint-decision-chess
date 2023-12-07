@@ -1,6 +1,7 @@
 import pygame
 
 class Theme:
+    # TODO def __str__ and name
     def __init__(self):
         # Constants
         self.WIDTH, self.HEIGHT = 800, 800

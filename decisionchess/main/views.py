@@ -192,7 +192,21 @@ def get_config(request, game_uuid):
             fill = "black"
         else:
             return JsonResponse({"status": "error"}, status=401)
-        return JsonResponse({"message": {"starting_side": fill}}, status=200)
+        
+        theme_names = request.session.get('themes')
+        if theme_names is None and request.user and request.user.id is not None:
+            # TODO move this into a function
+            user_settings = UserSettings.objects.get(user=request.user)
+            user_themes = user_settings.themes
+            user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
+            theme_names = [json.loads(theme)["name"] for theme in user_themes]
+        elif theme_names is None:
+            themes = default_themes()
+            themes = [theme.replace("'", "\"") for theme in themes]
+            theme_names = [json.loads(theme)["name"] for theme in themes]
+            request.session['themes'] = theme_names
+
+        return JsonResponse({"message": {"starting_side": fill, "theme_names": theme_names}}, status=200)
     except ChessLobby.DoesNotExist:
         return JsonResponse({"status": "error"}, status=401)
 
@@ -308,7 +322,7 @@ def update_connected(request):
             else:
                 user_id = uuid.UUID(guest_uuid)
         web_connect = data.get('web_connect')
-        if web_connect != True or web_connect != False:
+        if web_connect != True and web_connect != False:
             return JsonResponse({"status": "error"}, status=400)
         try:
             game = ChessLobby.objects.get(lobby_id=connect_game_uuid)
