@@ -157,6 +157,7 @@
     }
     .sidenav .last,
     .dropdown-content {
+        bottom: initial;
         right: 0;
     }
     .profile-dropdown {
