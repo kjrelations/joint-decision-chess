@@ -29,25 +29,23 @@
     overflow-x: hidden;
 }
 
-.sidenav a {
+.sidenav a,
+.sidenav .nav-new-game,
+.profile-dropdown {
     padding: 6px 8px 6px 16px;
-    text-decoration: none;
     font-size: 25px;
     color: #818181;
     display: block;
 }
 
-.sidenav a:hover{
+.sidenav a:hover,
+.dropdown-content a:hover {
     color: #f1f1f1;
     text-decoration: none;
 }	
 
-.sidenav .nav-new-game{
-    padding: 6px 8px 6px 16px;
-    text-decoration: none;
-    font-size: 25px;
-    color: #818181;
-    display: block;
+.sidenav .nav-new-game,
+.profile-dropdown {
     cursor: pointer;
 }
 
@@ -56,9 +54,43 @@
     color: #465cda
 }
 
-.sidenav a:last-child {
+.sidenav .last {
     position: absolute;
     bottom: 0;
+}
+
+.profile-dropdown {
+    width: 100%;
+}
+
+.profile-dropdown.selected {
+    background-color: #3c585e;
+    color: #f1f1f1;
+}
+
+.profile-dropdown:hover {
+    color: #f1f1f1;
+}
+
+.dropdown-content {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 160px;
+    background-color: #3c585e;
+    width: 160px;
+    z-index: 3;
+}
+
+.dropdown-content a {
+    color: #ffffff;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #5a747a;
 }
 
 .main-wrapper {
@@ -83,16 +115,6 @@
     .sidenav {
         width: 160px;
         height: calc(100% - 50px);
-    }
-}
-
-@media (min-width: 768px) and (max-height: 295px) {
-    .sidenav {
-        overflow-y: scroll;
-    }
-    .sidenav a:last-child {
-        position: relative;
-        bottom: initial;
     }
 }
 
@@ -133,9 +155,18 @@
     .sidenav a {
         font-size: 1.0rem;
     }
-    .sidenav a:last-child {
-        bottom: initial;
+    .sidenav .last,
+    .dropdown-content {
         right: 0;
+    }
+    .profile-dropdown {
+        font-size: 1.0rem;
+        width: fit-content;
+        height: 100%;
+    }
+    .dropdown-content {
+        top: 40px;
+        left: auto;
     }
     .content {
         padding-top: 1vh;
@@ -152,9 +183,11 @@
     .sidenav {
         overflow-x: scroll;
     }
-    .sidenav a:last-child {
+    .sidenav .last {
         position: relative;
         right: initial;
+        flex-grow: 1;
+        padding-right: auto;
     }
 }
 

@@ -30,15 +30,19 @@
 					<a href="/news">News</a>
 					{% if user %}
 						{% if user.is_authenticated %}
-						<a href="/account/email">Settings</a>
-						<a href="/profile/{{ user.username }}">Profile</a>
+						<a href="/account/themes">Settings</a>
+						<div class="profile-dropdown last" id="profileDropdown">{{ user.username }}</div>
 						{% endif %}
 					{% else %}
-						<a href="/login">Sign in</a>
+						<a class="last" href="/login">Sign in</a>
 					{% endif %}
 				</div>
 			</div>
-			
+			<div class="dropdown-content" id="dropdownContent">
+				<a href="/profile/{{ user.username }}">Profile</a>
+				<a href="/logout">Logout</a>
+			</div>
+
 			<div class="col-12 col-hb-12 col-md-11">
 				<div class="main-wrapper">
 					{% block content %}
@@ -99,6 +103,17 @@
         newGameQuickStart.forEach(button => {
             button.addEventListener('click', generateGameURL);
         });
+
+		$(document).ready(function() {
+			$('#profileDropdown').click(function() {
+				$('#profileDropdown').toggleClass('selected');
+				$('#dropdownContent').toggle();
+			});
+		});
+
+		document.addEventListener("DOMContentLoaded", function() {
+			document.getElementById('dropdownContent').style.display = 'none';
+		});
 	</script>
 
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
