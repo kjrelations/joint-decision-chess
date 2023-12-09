@@ -62,7 +62,6 @@
 
 .chat-input:disabled::placeholder {
     color: transparent;
-    /* background-color: #292929; */
 }
 
 .command-center {

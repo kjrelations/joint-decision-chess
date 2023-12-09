@@ -38,7 +38,7 @@
 					{% endif %}
 				</div>
 			</div>
-			<div class="dropdown-content" id="dropdownContent">
+			<div class="profile-content" id="profileDropdownContent">
 				<a href="/profile/{{ user.username }}">Profile</a>
 				<a href="/logout">Logout</a>
 			</div>
@@ -107,12 +107,12 @@
 		$(document).ready(function() {
 			$('#profileDropdown').click(function() {
 				$('#profileDropdown').toggleClass('selected');
-				$('#dropdownContent').toggle();
+				$('#profileDropdownContent').toggle();
 			});
 		});
 
 		document.addEventListener("DOMContentLoaded", function() {
-			document.getElementById('dropdownContent').style.display = 'none';
+			document.getElementById('profileDropdownContent').style.display = 'none';
 		});
 	</script>
 

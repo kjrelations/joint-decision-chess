@@ -60,7 +60,6 @@
     .theme-row:hover,
     .theme-row.selected.default:hover {
         background-image: linear-gradient(to right, transparent, #6d777a, #6d777a, transparent);
-        /* background-color: #6d777a; */
     }
 
     .dropdown-toggle {
@@ -84,11 +83,11 @@
         background-color: rgba(47, 66, 72, 0.7);
     }
 
-    .dropdown-content {
+    .theme-content {
         display: block; 
     }
 
-    .dropdown-content.hidden {
+    .theme-content.hidden {
         display: none !important;
     }
 </style> 
@@ -125,7 +124,7 @@
                         <button id="row_{{ theme.0 }}" type="button" class="theme-row d-flex justify-content-center" style="width: 100%;">
                             <label for="id_{{ theme.0 }}" class="flex-grow-1" style="margin-bottom: 0px; padding-bottom: 8px; cursor: pointer;">
                                 <h2 id="title_{{ theme.0 }}" style="text-align: left;">{{ theme.1 }}</h2>
-                                <div id="imgs_{{ theme.0 }}" class="dropdown-content hidden d-flex justify-content-around">
+                                <div id="imgs_{{ theme.0 }}" class="theme-content hidden d-flex justify-content-around">
                                     {% for suffix in endings %}
                                         {% with image_name=theme.0|add:'-'|add:suffix %}
                                             <img src="{% static 'main/images/themes/' %}{{ image_name }}.png" 
