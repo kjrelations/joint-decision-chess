@@ -293,8 +293,8 @@ def play(request, game_uuid):
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
-        historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
-        if historic:
+        try:
+            historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -307,8 +307,10 @@ def play(request, game_uuid):
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
-        # This would also redirect spectators if it's an active game
-        return render(request, "main/play.html", sessionVariables)
+        except:
+            # This would also redirect spectators if it's an active game
+            return render(request, "main/play.html", sessionVariables)
+
 
 def update_connected(request):
     # Have this handle live disconnects later

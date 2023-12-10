@@ -14,7 +14,7 @@
         outline: none;
         background-image: linear-gradient(to right, transparent, transparent);
         background-color: transparent;
-        color: rgb(207, 207, 207);
+        color: var(--theme-row-text);
         transition: background-image 0.3s ease;
     }
 
@@ -43,8 +43,7 @@
     }
 
     .theme-row.selected {
-        /* background: linear-gradient(to right, transparent, rgba(214, 189, 151, 0.3), rgba(214, 189, 151, 0.3), transparent); */
-        color: #e4a03a;
+        color: var(--theme-row-selected-text);
     }
 
     .theme-row.selected.default {
@@ -59,7 +58,7 @@
 
     .theme-row:hover,
     .theme-row.selected.default:hover {
-        background-image: linear-gradient(to right, transparent, #6d777a, #6d777a, transparent);
+        background-image: linear-gradient(to right, transparent, var(--theme-row-hover), var(--theme-row-hover), transparent);
     }
 
     .dropdown-toggle {
@@ -94,7 +93,7 @@
 {% endblock %}
 
 {% block setting_window %}
-    <h1 style="color: rgb(196, 118, 29);">Themes</h1>
+    <h1 style="color: var(--title-text);">Themes</h1>
     <div class="container">
         <div class="row" style="padding-bottom: 20px;">
             <form method="post" style="width: 100%;">

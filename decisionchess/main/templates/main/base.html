@@ -3,14 +3,30 @@
 <!doctype html>
 <html>
 <head>
-	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
-
-    <meta charset="utf-8">
+	<meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, interactive-widget=overlays-content, viewport-fit=cover">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 	<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+	
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/site_themes/light_theme.css' %}" id="theme-link">
+	<script>
+		let themePreference = localStorage.getItem('themePreference');
+		const themeLink = document.getElementById('theme-link');
 
+		if (themePreference === 'dark') {
+			if (!themeLink.href.endsWith('dark_theme.css')) {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+			}
+		} else {
+			if (!themeLink.href.endsWith('light_theme.css')) { 
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+			}
+			localStorage.setItem('themePreference', 'light');
+		}
+	</script>
+	
 	<title>{% block title %}Decision Chess{% endblock %}</title>
 	{% block style %} 
 	{% endblock %}
@@ -18,10 +34,11 @@
 	
 <body>
 	<div class="homeblock">
-		<a href="/">Decision Chess</a>
+		<a class="home-button" href="/">Decision Chess</a>
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
+	<button class="theme-toggle" id="theme-toggle-button">Toggle Theme</button>
 	<div class="container-fluid" style="padding: 0;">
 		<div class="row" style="max-width: 100%;">
 			<div id="header-column" class="col-12 col-hb-12 col-md-1">
@@ -72,6 +89,25 @@
 	{% endblock %}
 	
 	<script>
+		function toggleTheme() {
+			const themeLink = document.getElementById('theme-link');
+			document.body.classList.add('disable-all-transitions');
+
+			if (themeLink.getAttribute('href') === '{% static "main/css/site_themes/light_theme.css" %}') {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+				localStorage.setItem('themePreference', 'dark');
+			} else {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+				localStorage.setItem('themePreference', 'light');
+			}
+
+			setTimeout(() => {
+				document.body.classList.remove('disable-all-transitions');
+			}, 1);
+		}
+
+		document.getElementById('theme-toggle-button').addEventListener('click', toggleTheme);
+
 		function generateGameURL(position = "random") {
 			body = {position: position}
 			fetch('/create_new_game/', {

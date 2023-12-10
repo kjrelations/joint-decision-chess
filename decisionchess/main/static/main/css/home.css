@@ -72,10 +72,10 @@ html {
 }
 
 .new-game {
-    color: white;
+    color: var(--new-game-text);
     border: none;
     outline: none;
-    background-color: #6c757d;
+    background-color: var(--new-game-background);
     transition: background-color 0.3s ease;
     transition: color 0.1s ease;
     margin-top: 5px;
@@ -87,19 +87,19 @@ html {
 }
 
 .new-game:hover {
-    background-color: #34383c;
-    color: #7685d8;
+    color: var(--new-game-text-hover);
+    background-color: var(--new-game-background-hover);
 }
 
 .quick-pair {
     border: none;
     outline-style: solid;
     outline-width: thin;
-    outline-color: rgb(146, 146, 146);
+    outline-color: var(--quick-pair-outline);
+    color: var(--quick-pair-text);
     min-width: 50%;
     max-width: 50%;
-    background-color: #d9e3f3;
-    color: black;
+    background-color: var(--quick-pair-background);
     transition: background-color 0.3s ease;
     font-size: large;
     padding: 5em none;
@@ -108,20 +108,20 @@ html {
 .quick-pair:focus {
     outline-style: solid;
     outline-width: thin;
-    outline-color: rgb(146, 146, 146);
+    outline-color: var(--quick-pair-outline);
 }
 
 .quick-pair:hover {
-    color: #805d14;
-    background-color: #ecac22;
+    color: var(--quick-pair-text-hover);
+    background-color: var(--quick-pair-background-hover);
 }
 
 .lobby {
-    background-color: #d9e3f3;
-    color: black;
+    color: var(--lobby-text);
+    background-color: var(--lobby-background);
     outline-style: solid;
     outline-width: thin;
-    outline-color: rgb(146, 146, 146);
+    outline-color: var(--lobby-outline);
     max-width: 100%;
     position: relative;
     padding-bottom: 63%;
@@ -133,7 +133,7 @@ html {
     padding-bottom: 0.5em; 
     position: sticky; 
     top: 0; 
-    background-color: #d9e3f3;
+    background-color: var(--lobby-header-background);
 }
 
 .scrollable-lobby-list {
@@ -146,9 +146,10 @@ html {
 .lobby-row {
     display: flex;
     border: none;
-    border-bottom: solid 0.05em #778498;
+    border-bottom: solid 0.05em var(--lobby-row-border);
     outline: none;
     min-width: 100%;
+    color: var(--lobby-row-text);
     background-color: transparent;
     transition: background-color 0.3s ease;
     transition: color 0.1s ease;
@@ -160,13 +161,13 @@ html {
 }
 
 .lobby-row:disabled {
-    color: rgb(172, 172, 172);
-    background-color: rgba(125, 131, 140, 0.7);
+    color: var(--lobby-row-disabled-text);
+    background-color: var(--lobby-row-disabled-background);
 }
 
 .lobby-row:disabled:hover {
-    color: rgb(172, 172, 172);
-    background-color: rgba(194, 152, 133, 0.7);
+    color: var(--lobby-row-disabled-hover-text);
+    background-color: var(--lobby-row-disabled-hover-background);
 }
 
 .lobby-row:focus {
@@ -174,22 +175,26 @@ html {
 }
 
 .lobby-row:hover {
-    color: white;
-    background-color: rgba(190, 176, 126, 0.7);
+    color: var(--lobby-row-hover-text);
+    background-color: var(--lobby-row-hover-background);
+}
+
+.lobby-row.empty {
+    color: var(--lobby-row-empty-text);
 }
 
 .lobby-row.empty:hover {
-    color: black;
-    background-color: rgba(166, 174, 186, 0.7);
+    color: var(--lobby-row-empty-text);
+    background-color: var(--lobby-row-empty-background);
 }
 
 .highlights {
     border: none;
-    background-color: #d9e3f3;
-    color: black;
+    color: var(--highlights-text);
+    background-color: var(--highlights-background);
     outline-style: solid;
     outline-width: thin;
-    outline-color: rgb(146, 146, 146);
+    outline-color: var(--highlights-outline);
     aspect-ratio: 1 / 1;
     width: 33.333%;
     min-width: 33.333%;
@@ -201,12 +206,12 @@ html {
 .highlights:focus {
     outline-style: solid;
     outline-width: thin;
-    outline-color: rgb(146, 146, 146);
+    outline-color: var(--highlights-focus-outline);
 }
 
 .highlights:hover {
-    color: #805d14;
-    background-color: #e7c477;
+    color: var(--highlights-hover-text);
+    background-color: var(--highlights-hover-background);
 }
 
 .top-margin {
@@ -214,11 +219,11 @@ html {
 }
 
 body {
-    background: linear-gradient(-45deg, #ffffff, #FAFAEB, #D5EBDA, #d3cfad);
-    background-size: 400% 400%;
+    background: linear-gradient(-45deg, var(--home-body-1), var(--home-body-2), var(--home-body-3), var(--home-body-4));
+    background-size: 400% 400% !important;
     animation: gradient 25s ease infinite;
     height: 100%;
-    background-attachment: fixed;
+    background-attachment: fixed !important;
 }
 
 @keyframes gradient {

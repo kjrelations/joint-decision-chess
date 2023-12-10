@@ -4,17 +4,11 @@
 
 {% block style %}
 <style>
-    .block {
-        color: white;
-        background-color: #435e67;
-        height: 400px;
-    }
-
     .bio {
         overflow-y: auto;
-        border: 2px solid rgb(46, 46, 46);
+        border: 2px solid var(--bio-border);
         border-radius: 5px;
-        background-color: #2e4147;
+        background-color: var(--bio-background);
         padding: 5px;
         flex-grow: 1;
     }
@@ -30,7 +24,7 @@
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
         <div class="col-2"></div>
         <div class="col-7 block">
-            <div class="d-flex flex-column" style="overflow: hidden; height: 100%">
+            <div class="d-flex flex-column" style="overflow: hidden; height: 400px">
                 <h1 style="color: #e4a03a;">{{ profile_user.username|safe }}</h1>
                 {% if profile_user.account_closed %}
                     <p>This account is closed.</p>

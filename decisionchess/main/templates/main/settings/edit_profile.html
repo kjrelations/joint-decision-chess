@@ -3,7 +3,7 @@
 {% load crispy_forms_tags %}
 
 {% block setting_window %}
-    <h1 style="color: rgb(196, 118, 29);">Edit Profile</h1>
+    <h1 style="color: var(--title-text);">Edit Profile</h1>
     <form method="POST" class="form-group">
         {% csrf_token %}
         {{form|crispy}}

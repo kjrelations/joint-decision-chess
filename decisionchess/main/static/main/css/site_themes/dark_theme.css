@@ -1,0 +1,107 @@
+
+:root {
+    --title-text: #e4a03a;
+    /* Base Overlay */
+    --body-text: white;
+    --body-background: #1e2f2b;
+    --block-text: white;
+    --block-background: #121e20;
+    --form-control-text: white;
+    --form-control-background: #090e0f;
+    --modal-content-background: #2f3133;
+    --model-header-border: #737373;
+    --close-text: white;
+    --close-shadow: black;
+    --homeblock-a: #ec9f88;
+    --homeblock-a-hover: #ecac22;
+    --homeblock-home: #F84E4E;
+    --homeblock-header-background: #1e2f2b;
+    --sidenav-background: #00110f;
+    --sidenav-element: #818181;
+    --sidenav-element-hover: #f1f1f1;
+    --sidenav-new-game-hover: #465cda;
+    --profile-dropdown-selected: #00201d;
+    --profile-dropdown-hover-text: #f1f1f1;
+    --profile-content-a-text: white;
+    --profile-content-a-hover-background: #183e3a;
+    --footer-text: white;
+    --footer-background: #141e19;
+    --footer-a-text: white;
+    --footer-a-hover-text: #F84E4E;
+    /* Home */
+    --new-game-text: #e8e6e6;
+    --new-game-background: #2f3133;
+    --new-game-text-hover: #7685d8;
+    --new-game-background-hover: #34383c;
+    --quick-pair-outline: #828282;
+    --quick-pair-text: white;
+    --quick-pair-background: #2f3133;
+    --quick-pair-text-hover: #f2a708;
+    --quick-pair-background-hover: #917843;
+    --lobby-text: white;
+    --lobby-background: #2f3133;
+    --lobby-outline: #828282;
+    --lobby-header-background: #2f3133;
+    --lobby-row-border: #778498;
+    --lobby-row-text: rgba(179, 179, 179, 0.8);
+    --lobby-row-hover-text: white;
+    --lobby-row-hover-background: rgba(151, 128, 83, 0.7);
+    --lobby-row-disabled-text: rgba(91, 91, 91, 0.8);
+    --lobby-row-disabled-background: rgba(30, 30, 30, 0.7);
+    --lobby-row-disabled-hover-text: rgba(91, 91, 91, 0.8);
+    --lobby-row-disabled-hover-background: rgba(45, 8, 8, 0.7);
+    --lobby-row-empty-text: white;
+    --lobby-row-empty-background: rgba(32, 32, 32, 0.7);
+    --highlights-text: white;
+    --highlights-background: #2f3133;
+    --highlights-outline: #828282;
+    --highlights-focus-outline: #828282;
+    --highlights-hover-text: #f2a708;
+    --highlights-hover-background: #917843;
+    --home-body-1: #000000;
+    --home-body-2: #113027;
+    --home-body-3: rgb(13, 13, 41);
+    --home-body-4: #251f08;
+    /* News */
+    --news-title-text: #F84E4E;
+    --blog-titles: #e4a03a;
+    /* Play */
+    --chat-box-text: #b9b9b9;
+    --chat-box-background: #405860;
+    --chat-input-border: #1e4d27;
+    --chat-input-text: #b9b9b9;
+    --chat-input-background: #3b5057;
+    --chat-input-placeholder: #bfbfbf;
+    --chat-input-focus-border: #538a5d;
+    --chat-input-focus-text: #b9b9b9;
+    --chat-input-focus-background: #33464d;
+    --chat-input-disabled: #33464d;
+    --command-center-background: #121e20;
+    --action-button: white;
+    --action-button-waiting-text: #4d4d4d;
+    --action-button-waiting-background: #c7c7c7;
+    --action-button-icon-hover: #fff6e0;
+    --action-button-icon-disabled: #727272;
+    --move-row-text: white;
+    --even-move-row-background: rgb(66, 66, 66);
+    --move-button-text: white;
+    --move-button-background-hover: #2589da;
+    --move-button-disabled-background: #17568a;
+    /* Profile */
+    --bio-border: rgb(46, 46, 46);
+    --bio-background: #090e0f;
+    /* Settings */
+    --settings-side-nav-a-text: #5c67a3;
+    --settings-side-nav-a-text-hover: #e4a03a;
+    /* Change Themes Page */
+    --theme-row-text: rgb(207, 207, 207);
+    --theme-row-selected-text: #e4a03a;
+    --theme-row-hover: #6d777a;
+    /*     
+    --theme-row-title-primary: rgb(80, 180, 87);
+    --theme-row-title-invalid: #e45c3a;
+     */
+    /* Close Account Page */
+    --warning-text: rgb(255, 156, 156);
+    /* Registration Pages */
+}
