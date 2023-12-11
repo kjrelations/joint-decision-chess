@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
@@ -137,6 +138,19 @@ def get_lobby_games(request):
     expired_games.delete()
 
     lobby_games = ChessLobby.objects.filter(is_open=True)
+    position_filter = request.GET.get('position')
+    username_filter = request.GET.get('username')
+
+    position_query = Q()
+    if position_filter == 'white':
+        position_query = Q(Q(white_id__isnull=True) & Q(initiator_color="black"))
+    elif position_filter == 'black':
+        position_query = Q(Q(black_id__isnull=True) & Q(initiator_color="white"))
+
+    lobby_games = lobby_games.filter(
+        Q(initiator_name=username_filter) if username_filter else Q(),
+        position_query
+    )
     serialized_data = [
         {
             "initiator_name": game.initiator_name,

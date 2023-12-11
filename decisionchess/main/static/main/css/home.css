@@ -116,6 +116,17 @@ html {
     background-color: var(--quick-pair-background-hover);
 }
 
+.lobby-filter-button {
+    border: none;
+    outline: none;
+    color: var(--body-text);
+    background-color: transparent;
+}
+
+.lobby-filter-button:focus {
+    outline: none;
+}
+
 .lobby {
     color: var(--lobby-text);
     background-color: var(--lobby-background);

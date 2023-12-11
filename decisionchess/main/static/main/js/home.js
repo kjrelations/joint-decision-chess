@@ -81,7 +81,19 @@ quickPairButton.addEventListener('click', quickPair)
 function updateLobby() {
     var lobbyListContainer = document.getElementById('lobby-content');
 
-    fetch('/get_lobby_games/')
+    const filters = ['position', 'username'];
+    const queryParams = new URLSearchParams();
+
+    filters.forEach(filter => {
+        const filterValue = document.getElementById(`${filter}Filter`).value;
+        if (filterValue) {
+            queryParams.set(filter, filterValue);
+        }
+    });
+
+    var queryString = queryParams.toString();
+
+    fetch('/get_lobby_games/' + (queryString ? '?' + queryString : ''))
         .then(response => response.json())
         .then(data => {
             lobbyListContainer.innerHTML = ''
@@ -137,6 +149,11 @@ function updateLobby() {
             console.error('Error:', error);
         });
 }
+
+document.getElementById('updateFilterButton').addEventListener('click', function () {
+    $('#LobbyFilterMenu').modal('hide');
+    updateLobby();
+});
 
 function checkGameAvailability(gameId, lobbyRow) {
     fetch('/check_game_availability/', {

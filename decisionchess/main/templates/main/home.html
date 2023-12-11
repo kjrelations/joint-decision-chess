@@ -26,11 +26,42 @@ Decision Chess
             <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
                 <!-- <img src="{% static 'main/images/coming-soon-landing.PNG' %}" alt="Join Section" style="max-width: 100%;"> -->
                 <button id="quick-pair" class="quick-pair">Quick Pair</button>
+                <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <div class="modal fade" id="LobbyFilterMenu" tabindex="-1" role="dialog" aria-labelledby="LobbyFilterLabel" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title text-center w-100" id="LobbyFilterLabel">Select Lobby Filters</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        <!-- To recreate within Django eventually -->
+                          <div class="form-group mt-3">
+                              <label for="positionFilter">Position:</label>
+                              <select class="form-control" id="positionFilter">
+                                  <option value="">Select position...</option>
+                                  <option value="white">White</option>
+                                  <option value="black">Black</option>
+                              </select>
+                          </div>
+                          <div class="form-group">
+                              <label for="usernameFilter">Username:</label>
+                              <input type="text" class="form-control" id="usernameFilter" placeholder="Enter username...">
+                          </div>
+                          <button id="updateFilterButton" class="btn btn-primary">Update Filters</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div class="lobby" style="max-width: 100%;">
                     <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
                         <div class="lobby-header">
                             <div style="text-align: center; width: 10%; overflow: hidden;"></div>
-                            <div style="text-align: center; width: 50%; overflow: hidden;">User (Anonymous)</div>
+                            <div style="text-align: center; width: 50%; overflow: hidden;">User</div>
                             <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
                         </div>
                         <div id="lobby-content"></div>
@@ -161,6 +192,8 @@ Decision Chess
                         <br>
                         <br>
                         Currently, this site only offers the classical standard version of chess while basic functionality is developed and enabled.
+                        Consider joining the <a href="https://discord.gg/YDkYCtsV" target="_blank">discord</a> to interact with the community. This site runs soley off of donations and is developed 
+                        by a one-person team, you can contribute here <a href="https://paypal.me/decisionchess" target="_blank">paypal.me/decisionchess</a>.
                         It will allow for classical games and decision chess games in the future. The following is a list of some major upcoming features and pages. <br>
                         Stay tuned...
                     </p>
