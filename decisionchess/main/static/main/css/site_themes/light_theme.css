@@ -69,14 +69,15 @@
     --chat-box-text: #242424;
     --chat-box-background: #B3CDD1;
     --chat-input-border: #7f9397;
-    --chat-input-text: #b9b9b9;
+    --chat-input-text: #242424;
     --chat-input-background: #96afb3;
     --chat-input-placeholder: #6a6a6a;
     --chat-input-focus-border: #4f95d2;
-    --chat-input-focus-text: #b9b9b9;
+    --chat-input-focus-text: #242424;
     --chat-input-focus-background: #849a9d;
     --chat-input-disabled: #849a9d;
     --command-center-background: #253d41;
+    --control-section-text: #3b5458;
     --action-button: white;
     --action-button-waiting-text: #4d4d4d;
     --action-button-waiting-background: #c7c7c7;

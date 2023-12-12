@@ -38,6 +38,7 @@ class ChessLobby(models.Model):
 	white_id = models.UUIDField(null=True)
 	black_id = models.UUIDField(null=True)
 	initiator_name = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
+	opponent_name = models.CharField(max_length=150, blank=False, null=False, default="Waiting...")
 	timestamp = models.DateTimeField()
 	expire = models.DateTimeField()
 	is_open = models.BooleanField(default=True)

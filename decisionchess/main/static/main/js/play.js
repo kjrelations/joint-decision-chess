@@ -18,7 +18,7 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
     adjustFont();
 
     document.getElementById('chat-input').value = '';
@@ -30,7 +30,7 @@ window.addEventListener('resize', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
     adjustFont();
 });
 
@@ -168,6 +168,7 @@ function updateCommandCenter() {
             } else {
                 endmessage += forcedEnd + ' • ';
             }
+            finalScorebox.classList.add('mt-2');
         }
 
         if (endState === '1-0') {
@@ -308,6 +309,10 @@ function initializeWebSocket() {
         handleMessage(chat_data["message"]);
     };
 
+    socket.onopen = function () {
+        sendMessage("", "initialized");
+    }
+
     socket.onclose = function (event) {
         // add custom chat highlighted message
         $("#chat-input").prop("disabled", true);
@@ -343,8 +348,11 @@ function sendMessage(message, type = null) {
             }
         };
         if (type !== null) {
-            if (type.includes("rematch")) {
+            if (type.includes("rematch") || type === "initialized") {
                 messageObj["message"]["log"] = type;
+                if (type == "initialized") {
+                    messageObj["message"]["opponent"] = opponent;
+                }
             }
         }
         socket.send(JSON.stringify(messageObj));
@@ -364,7 +372,24 @@ function handleMessage(data) {
         } else {
             return;
         }
-        if (data["log"] === "disconnect") {
+        if (data["log"] === "connect") {
+            connect_user = data["user"];
+            // Exclude spectators later
+            // Add highlighted message to chat if opponent is the same
+        } else if (data["log"] === "initialized") {
+            connect_user = data["sender"];
+            player = data["opponent"];
+            opponent_color = data["color"];
+            if ((connect_user !== opponent || player !== sender) && opponent_color !== playerColor) {
+                // Assuming top is always opponent to start is fine
+                opponentContent = document.getElementById('topPlayer');
+                opponent = (connect_user !== "black" && connect_user !== "white") ? connect_user : "Anonymous"; // prevent these two usernames
+                opponentContent.innerHTML = opponent;
+                if (player !== sender) {
+                    sendMessage("", "initialized");
+                }
+            }
+        } else if (data["log"] === "disconnect") {
             // Add highlighted message to chat
             if (rematch_accepted) {
                 fetchUUID(signed_uuid, currentGameID).then(data => {
@@ -420,7 +445,9 @@ function generateRematchURL(position, game_id) {
     if (position !== "white" && position !== "black") {
         return console.error('Invalid position input')
     }
-    body = {"position": position}
+    var currentGameID = sessionStorage.getItem('current_game_id');
+    currentGameID = currentGameID.replace(position + '-', '');
+    body = {"position": position, "rematch": currentGameID};
     fetch('/create_new_game/' + game_id + '/', {
         method: 'POST',
         headers: {
@@ -643,6 +670,13 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
+    } else if (localStorageObjectName == "flip_board") {
+        topElement = document.getElementById('topPlayer');
+        bottomElement = document.getElementById('bottomPlayer');
+        topHTML = topElement.innerHTML;
+        bottomHTML = bottomElement.innerHTML;
+        topElement.innerHTML = bottomHTML;
+        bottomElement.innerHTML = topHTML;
     }
     return webGameMetadata;
 }

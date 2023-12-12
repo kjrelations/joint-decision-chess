@@ -1050,7 +1050,7 @@ async def main():
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves:
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
             # Maybe a simple range list of the index or move number
             web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
@@ -1105,7 +1105,7 @@ async def main():
         await asyncio.sleep(0)
 
         try:
-            if not init["sent"]:
+            if not init["sent"] and not init["final_updates"]:
                 if not init["local_debug"]:
                     await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 10)
                 init["sent"] = 1

@@ -29,6 +29,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps({
                     'message': {
                         'log': 'connect',
+                        'user': user.username,
                         'text': 'You are connected to the chat room.'
                     }
                 }))
@@ -41,6 +42,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps({
                     'message': {
                         'log': 'connect',
+                        'user': 'Anonymous',
                         'text': 'You are connected to the chat room.'
                     }
                 }))
@@ -99,7 +101,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Continue chat after game ends but don't save
         # TODO maybe check historic db row DNE instead, this would be slower though even if secure to execute each time
         # Maybe have a chat attribute set for when a game ends via a confirmed jwt token
-        if message["end_state"] == '':
+        if message["end_state"] == '' and message.get('log') is None:
             sender = await self.get_user()
             if username == "Anonymous":
                 sender_id = uuid.UUID(self.scope.get("session", {}).get("guest_uuid"))

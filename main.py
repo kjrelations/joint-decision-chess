@@ -1757,7 +1757,7 @@ async def main():
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves:
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
             # TODO Maybe a simple range list of the index or move number
             web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]

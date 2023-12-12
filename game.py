@@ -317,9 +317,9 @@ class Game:
         self.alg_moves[-1] += piece.upper()
         
         if is_checkmate_or_stalemate(self.board, not is_white, self.moves)[0]:
-            self.alg_moves[-1] += 'X'
+            self.alg_moves[-1] += '#'
         elif is_check(self.board, not is_white, self.moves):
-            self.alg_moves[-1] += 'x'
+            self.alg_moves[-1] += '+'
         
         # Change turns after pawn promotion
         if not self._debug:
@@ -470,7 +470,8 @@ class Game:
             potential_capture = move[2]
             special = move[3]
 
-            piece, prev_row, prev_col = prev_pos[0], int(prev_pos[1]), int(prev_pos[2])
+            piece = prev_pos[0] if increment < 0 else curr_pos[0]
+            prev_row, prev_col = int(prev_pos[1]), int(prev_pos[2])
             curr_row, curr_col = int(curr_pos[1]), int(curr_pos[2])
 
             if special != 'enpassant':

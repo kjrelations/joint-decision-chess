@@ -18,7 +18,7 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
     adjustFont();
 });
 
@@ -28,7 +28,7 @@ window.addEventListener('resize', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
     adjustFont();
 });
 
@@ -162,6 +162,7 @@ function updateCommandCenter() {
             } else {
                 endmessage += forcedEnd + ' • ';
             }
+            finalScorebox.classList.add('mt-2');
         }
 
         if (endState === '1-0') {
@@ -515,6 +516,13 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
+    } else if (localStorageObjectName == "flip_board") {
+        topElement = document.getElementById('topPlayer');
+        bottomElement = document.getElementById('bottomPlayer');
+        topHTML = topElement.innerHTML;
+        bottomHTML = bottomElement.innerHTML;
+        topElement.innerHTML = bottomHTML;
+        bottomElement.innerHTML = topHTML;
     }
     return webGameMetadata;
 }

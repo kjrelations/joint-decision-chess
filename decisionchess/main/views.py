@@ -58,8 +58,6 @@ def is_valid_uuid(value):
 def create_new_game(request, optional_uuid = None):
     while True:
         game_uuid = optional_uuid if optional_uuid else uuid.uuid4()
-        if optional_uuid and not is_valid_uuid(optional_uuid):
-            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
         if not game_exists(game_uuid):
             new_open_game = ChessLobby(
                 lobby_id=game_uuid,
@@ -81,19 +79,35 @@ def create_new_game(request, optional_uuid = None):
                 if data.get('computer_game'):
                     new_open_game.computer_game = True
                     new_open_game.private = True
+                    new_open_game.opponent_name = "minimax" # Later look up name with more bots
                 position = data.get('position')
+                opponent_column_to_fill = "black_id"
                 if position == "white":
                     new_open_game.white_id = user_id
                     new_open_game.initiator_color = "white"
                 elif position == "black":
                     new_open_game.black_id = user_id
                     new_open_game.initiator_color = "black"
+                    opponent_column_to_fill = "white_id"
                 elif position == "random":
                     column_to_fill = random.choice(["black_id", "white_id"])
                     setattr(new_open_game, column_to_fill, user_id)
                     new_open_game.initiator_color = "white" if column_to_fill == "white_id" else "black"
+                    opponent_column_to_fill = "white_id" if column_to_fill == "black_id" else "black_id"
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                if data.get('rematch'):
+                    try:
+                        historic = GameHistoryTable.objects.get(historic_game_id=data.get('rematch'))
+                        opponent_id = getattr(historic, opponent_column_to_fill)
+                        setattr(new_open_game, opponent_column_to_fill, opponent_id)
+                        try:
+                            opponent = User.objects.get(id=opponent_id)
+                            new_open_game.opponent_name = opponent.username
+                        except User.DoesNotExist:
+                            new_open_game.opponent_name = "Anonymous"
+                    except:
+                        return JsonResponse({"status": "error", "message": "Recent Game DNE"}, status=401)
                 private = data.get('private')
                 if private:
                     new_open_game.private = True
@@ -256,23 +270,37 @@ def play(request, game_uuid):
     # For now, temporarily disallow multiple people from loading the same game
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
+        
+        player = "Anonymous"
+        if request.user.is_authenticated:
+            player = request.user.username
+        if (game.initiator_color == 'black' and str(game.black_id) == str(user_id)) or \
+           (game.initiator_color == 'white' and str(game.white_id) == str(user_id)):
+            opponent = game.opponent_name
+        else:
+            opponent = game.initiator_name
+        sessionVariables.update({'opponent': opponent})
+
         if game.computer_game and str(user_id) in [str(game.white_id), str(game.black_id)]:
             return render(request, "main/play/computer.html", sessionVariables)
         elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
+            # This should later redirect spectators to a spectator view if it's an active game, otherwise to home, maybe also to home for private games
             return redirect('home')
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
             if game.black_id is None and game.initiator_connected:
                 game.black_id = user_id
                 game.opponent_connected = True
+                game.opponent_name = player
                 game.save()
             elif game.white_id is None and game.initiator_connected:
                 game.white_id = user_id
                 game.opponent_connected = True
+                game.opponent_name = player
                 game.save()
             # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_id) == str(game.black_id):
-                # TODO Don't write to both columns
+                # TODO Write False to both columns
                 if not game.initiator_connected:
                     game.initiator_connected = True
                     game.save()
@@ -303,6 +331,7 @@ def play(request, game_uuid):
             if game.white_id is None:
                 column_to_fill = "white_id"
             game.opponent_connected = True
+            game.opponent_name = player
             setattr(game, column_to_fill, user_id)
             game.save()
             return render(request, "main/play.html", sessionVariables)
@@ -318,12 +347,23 @@ def play(request, game_uuid):
                 'outcome': historic.outcome,
                 'forced_end': historic.termination_reason
             }
+            try:
+                white_user = User.objects.get(id=historic.white_id)
+                white_user = white_user.username
+            except User.DoesNotExist:
+                white_user = "Anonymous"
+            try:
+                black_user = User.objects.get(id=historic.black_id)
+                black_user = black_user.username
+            except User.DoesNotExist:
+                black_user = "Anonymous"
+            # Later load historic side in script if logged in and played the game like the live view
+            sessionVariables.update({'player': white_user, 'opponent': black_user})
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
         except:
-            # This would also redirect spectators if it's an active game
-            return render(request, "main/play.html", sessionVariables)
+            return redirect('home')
 
 
 def update_connected(request):
@@ -389,11 +429,16 @@ def update_connected(request):
                     save_to_active = True
                 game.save()
                 message = {"status": "updated"}
+            # Possibly redundant block now
             elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
                 if null_id == "black":
                     game.black_id = user_id
                 else:
                     game.white_id = user_id
+                opponent = "Anonymous"
+                if request.user.is_authenticated:
+                    opponent = request.user.username
+                game.opponent_name = opponent
                 game.save()
                 save_to_active = True
                 message = {"status": "updated"}
@@ -444,12 +489,15 @@ def get_or_update_state(request, game_uuid):
         if data.get("token"):
             decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
             if decoded.get('game'):
-                active_game = ActiveGames.objects.get(active_game_id=game_uuid)
-                active_game.state = decoded['game']
-                if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
-                    return JsonResponse({"status": "error"}, status=401)
-                active_game.save()
-                return JsonResponse({"status": "updated"}, status=200)
+                try:
+                    active_game = ActiveGames.objects.get(active_game_id=game_uuid)
+                    active_game.state = decoded['game']
+                    if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
+                        return JsonResponse({"status": "error"}, status=401)
+                    active_game.save()
+                    return JsonResponse({"status": "updated"}, status=200)
+                except ActiveGames.DoesNotExist:
+                    return JsonResponse({"message": "DNE"}, status=200)
             else:
                 return JsonResponse({"status": "error"}, status=400)
         else:
