@@ -29,7 +29,8 @@ def register(request):
 
             # Create a validation link with the user's ID and token
             uid = urlsafe_base64_encode(force_bytes(user.pk))
-            validation_link = f"{get_current_site(request)}/register/validate/{uid}/{token}/"
+            protocol = 'https' if request.is_secure() else 'http'
+            validation_link = f"{protocol}://{get_current_site(request)}/register/validate/{uid}/{token}/"
 
             # Send an email with the validation link to the user
             subject = "Decision Chess Account Activation"

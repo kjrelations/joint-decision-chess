@@ -665,7 +665,8 @@ def change_email(request):
                 # TODO only use hash for uuid this is too easily decoded
                 uid = urlsafe_base64_encode(force_bytes(request.user.pk))
                 new_email_encoded = urlsafe_base64_encode(force_bytes(new_email))
-                confirmation_link = f"{get_current_site(request)}/account/confirm/{uid}/{token}/?new_email={new_email_encoded}"
+                protocol = 'https' if request.is_secure() else 'http'
+                confirmation_link = f"{protocol}://{get_current_site(request)}/account/confirm/{uid}/{token}/?new_email={new_email_encoded}"
 
                 # Send an email with the confirmation link to the user
                 subject = "Confirm Email - Decision Chess"
