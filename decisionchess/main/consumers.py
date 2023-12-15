@@ -3,7 +3,6 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.utils.html import escape, mark_safe
-from .models import ActiveGames, ActiveChatMessages
 import json
 import uuid
 
@@ -57,6 +56,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
     @database_sync_to_async
     def is_user_game_member(self, user_id, room_name):
+        from .models import ActiveGames # Lazy import to run app
         try:
             game = ActiveGames.objects.get(active_game_id=room_name)
             return user_id in (str(game.white_id), str(game.black_id))
@@ -116,6 +116,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_active_chat_message(self, game_uuid, color, sender_id, username, text):
+        from .models import ActiveChatMessages # Lazy import to run app
         chat_message = ActiveChatMessages(
             game_id=game_uuid, 
             sender_color=color, 
