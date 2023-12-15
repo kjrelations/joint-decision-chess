@@ -264,7 +264,13 @@ setInterval(updateCommandCenter, 100);
 var socket;
 
 function initializeWebSocket() {
-    socket = new WebSocket("ws://" + window.location.host + "/ws/chat/" + game_uuid + "/");
+    if (window.location.protocol == 'https:') {
+        wsProtocol = 'wss://';
+    } else {
+        wsProtocol = 'ws://';
+    }
+
+    socket = new WebSocket(wsProtocol + window.location.host + "/ws/chat/" + game_uuid + "/");
 
     socket.onmessage = function (event) {
         var chat_data = JSON.parse(event.data);

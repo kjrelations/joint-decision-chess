@@ -106,6 +106,16 @@ if DEBUG:
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                    'hosts': [(config('REDIS_HOST'), config('REDIS_PORT'))],
+                    'password': config('REDIS_PASSWORD', default=None),
+                },
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

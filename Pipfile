@@ -19,6 +19,7 @@ daphne = "*"
 channels = {extras = ["daphne"] }
 requests = "*"
 pyjwt = "*"
+channels-redis = "*"
 
 [dev-packages]
 pytest = "*"
