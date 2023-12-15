@@ -15,13 +15,17 @@ from django.core.asgi import get_asgi_application
 # Import settings before routing import
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'decisionchess.settings')
 
-import main.routing
+# Define a function to defer imports
+def get_ws_application():
+    import main.routing  # Import inside the function to defer the import
 
-application = ProtocolTypeRouter({
-  'http': get_asgi_application(),
-  'websocket': AuthMiddlewareStack(  
-        URLRouter(
-            main.routing.websocket_urlpatterns
-        )
-    ), 
-})
+    return ProtocolTypeRouter({
+        'http': get_asgi_application(),
+        'websocket': AuthMiddlewareStack(  
+            URLRouter(
+                main.routing.websocket_urlpatterns
+            )
+        ), 
+    })
+
+application = get_ws_application()
