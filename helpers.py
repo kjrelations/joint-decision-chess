@@ -27,6 +27,75 @@ def load_piece_image(piece, GRID_SIZE):
 
     return img, transparent_surface
 
+def blur_surface(surface):
+    # Create a temporary surface to hold the blurred result
+    temp_surface = surface.copy()
+    width, height = surface.get_size()
+
+    for y in range(height):
+        for x in range(width):
+            # Average color values of neighboring pixels
+            color_sum = [0, 0, 0, 0]
+            total_pixels = 0
+            for dy in range(-2, 3):
+                for dx in range(-2, 3):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < width and 0 <= ny < height:
+                        pixel_color = surface.get_at((nx, ny))
+                        color_sum[0] += pixel_color[0]
+                        color_sum[1] += pixel_color[1]
+                        color_sum[2] += pixel_color[2]
+                        color_sum[3] += pixel_color[3]
+                        total_pixels += 1
+            
+            # Calculate the average color
+            average_color = (
+                color_sum[0] // total_pixels,
+                color_sum[1] // total_pixels,
+                color_sum[2] // total_pixels,
+                color_sum[3] // total_pixels
+            )
+            temp_surface.set_at((x, y), average_color)
+    
+    # Update the original surface with the blurred result
+    surface.blit(temp_surface, (0, 0))
+    
+    return surface
+
+# Check and checkmate outlines
+def king_outlines(king_image):
+    # TODO get colors from current theme
+    check_color = (111, 230, 70)
+    checkmate_color = (255, 0, 0)
+    check_surface = king_image.copy()
+    checkmate_surface = king_image.copy()
+
+    mask = pygame.mask.from_surface(king_image)
+
+    king_height = king_image.get_height()
+    king_width = king_image.get_width()
+    for y in range(king_height):
+        for x in range(king_width):
+            # TODO add outline width param for this
+            if mask.get_at((x, y)) or \
+               (x + 3 <= king_width - 1 and mask.get_at((x + 3, y))) or \
+               (y + 3 <= king_height - 1 and mask.get_at((x, y + 3))) or \
+               (x - 3 >= 0 and mask.get_at((x - 3, y ))) or \
+               (y - 3 >= 0 and mask.get_at((x, y - 3))):
+                for offset in range(3):
+                    check_surface.set_at((x - offset, y), check_color)
+                    check_surface.set_at((x + offset, y), check_color)
+                    check_surface.set_at((x, y - offset), check_color)
+                    check_surface.set_at((x, y + offset), check_color)
+                    checkmate_surface.set_at((x - offset, y), checkmate_color)
+                    checkmate_surface.set_at((x + offset, y), checkmate_color)
+                    checkmate_surface.set_at((x, y - offset), checkmate_color)
+                    checkmate_surface.set_at((x, y + offset), checkmate_color)
+                
+    check_surface = blur_surface(check_surface)
+    checkmate_surface = blur_surface(checkmate_surface)
+    return [check_surface, checkmate_surface]
+
 # Helper function for generating bespoke Game moves
 def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
     return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]
@@ -515,6 +584,21 @@ def is_checkmate_or_stalemate(board, is_color, moves):
 
     return checkmate, possible_moves
 
+# Set check or checkmate draw flags
+def set_check_or_checkmate_settings(drawing_settings, client_game):
+    drawing_settings["check_white"] = is_check(client_game.board, True, client_game.moves)
+    if drawing_settings["check_white"]:
+        drawing_settings["checkmate_white"] = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)[0]
+        return
+    else:
+        drawing_settings["check_black"] = is_check(client_game.board, False, client_game.moves)
+        if drawing_settings["check_black"]:
+            drawing_settings["checkmate_black"] = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)[0]
+            return
+    if drawing_settings["checkmate_white"] or drawing_settings["checkmate_black"]:
+        drawing_settings["checkmate_white"] = False
+        drawing_settings["checkmate_black"] = False
+
 ## Drawing Logic
 # Helper Function to get the chessboard coordinates from mouse click coordinates
 def get_board_coordinates(x, y, GRID_SIZE):
@@ -587,6 +671,21 @@ def draw_hover_outline(window, theme, row, col):
     HOVER_OUTLINE_COLOR = HOVER_OUTLINE_COLOR_WHITE if (row + col) % 2 == 0 else HOVER_OUTLINE_COLOR_BLACK
     pygame.draw.rect(hover_outline, HOVER_OUTLINE_COLOR, (0, 0, GRID_SIZE, GRID_SIZE), 5)
     window.blit(hover_outline, (col * GRID_SIZE, row * GRID_SIZE))
+
+# Helper function to draw the background king check and checkmate highlights
+def draw_king_outline(window, theme, board, king_outlines, drawing_settings):
+    if not (drawing_settings['checkmate_white'] or drawing_settings['check_white'] \
+        or drawing_settings['checkmate_black'] or drawing_settings['check_black']):
+        return
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece == 'K' and (drawing_settings['checkmate_white'] or drawing_settings['check_white']):
+                outline = king_outlines[1] if drawing_settings['checkmate_white'] else king_outlines[0]
+                window.blit(outline, (col * theme.GRID_SIZE, row * theme.GRID_SIZE))
+            elif piece == 'k' and (drawing_settings['checkmate_black'] or drawing_settings['check_black']):
+                outline = king_outlines[1] if drawing_settings['checkmate_black'] else king_outlines[0]
+                window.blit(outline, (col * theme.GRID_SIZE, row * theme.GRID_SIZE))
 
 # Helper function to draw the chess pieces
 def draw_pieces(window, theme, board, pieces):
@@ -811,6 +910,7 @@ def draw_board(params):
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
+    king_outlines = params['drawing_settings']['king_outlines']
     pieces = params['pieces']
     hovered_square = params['hovered_square']
     selected_piece_image = params['selected_piece_image']
@@ -838,6 +938,7 @@ def draw_board(params):
     transparent_circles = draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials)
     window.blit(transparent_circles, (0, 0))
 
+    draw_king_outline(window, theme, board, king_outlines, params['drawing_settings'])
     draw_pieces(window, theme, board, pieces)
 
     if hovered_square is not None:

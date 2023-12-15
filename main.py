@@ -34,6 +34,8 @@ for color in ['w', 'b']:
         piece_key, image_name_key = name_keys(color, piece_lower)
         pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key, current_theme.GRID_SIZE)
 
+outlines = king_outlines(transparent_pieces['k'])
+
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
@@ -1101,7 +1103,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": False,
+        "local_debug": True,
         "access_keys": None,
         "network_reset_ready": True,
         "desync": False,
@@ -1205,7 +1207,12 @@ async def main():
         "theme_index": 0,
         "wait_screen_drawn": False,
         "recalc_selections": False,
-        "clear_selections": False
+        "clear_selections": False,
+        "king_outlines": outlines,
+        "checkmate_white": False,
+        "check_white": False,
+        "checkmate_black": False,
+        "check_black": False
     }
 
     # Main game loop
@@ -1632,6 +1639,8 @@ async def main():
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
+        set_check_or_checkmate_settings(drawing_settings, client_game)
+
         game_window.fill((0, 0, 0))
 
         draw_board_params = {
@@ -1701,6 +1710,8 @@ async def main():
                 valid_moves, valid_captures, valid_specials = [], [], []
                 right_clicked_squares = []
                 drawn_arrows = []
+
+            set_check_or_checkmate_settings(drawing_settings, client_game)
 
             # Remove the overlay and buttons by redrawing the board
             game_window.fill((0, 0, 0))
@@ -1856,6 +1867,7 @@ async def main():
                 'selected_piece_image': selected_piece_image
             })
 
+            # TODO remove later
             overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 128))
 
