@@ -20,6 +20,7 @@ channels = {extras = ["daphne"] }
 requests = "*"
 pyjwt = "*"
 channels-redis = "*"
+twisted = {extras = ["http2", "tls"], version = "*"}
 
 [dev-packages]
 pytest = "*"
