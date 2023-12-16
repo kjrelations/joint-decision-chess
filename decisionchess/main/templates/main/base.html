@@ -11,8 +11,8 @@
 	
 	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
 	<link rel="stylesheet" type="text/css" href="{% static 'main/css/site_themes/light_theme.css' %}" id="theme-link">
-	<link rel="icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}">
-	<link rel="shortcut icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}">
+	<link rel="icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}" id="favicon">
+	<link rel="shortcut icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}" id="favicon-short">
 	<script>
 		function loadSVG() {
 			fetch("{% static 'images/decision-chess-title.svg' %}")
@@ -42,7 +42,7 @@
 		}
 	</script>
 	
-	<title>{% block title %}Decision Chess{% endblock %}</title>
+	<title id="title">{% block title %}Decision Chess{% endblock %}</title>
 	{% block style %} 
 	{% endblock %}
 </head>

@@ -2,8 +2,6 @@ build
 decisionchess/db.sqlite3
 decisionchess/static_collected_files/*
 !decisionchess/static_collected_files/.gitkeep
-decisionchess/static/*
-!decisionchess/static/.gitkeep
 historic/*
 !historic/main.py
 simple_ai/*
