@@ -11,7 +11,7 @@ def apply_action(client_state_actions, base_command, client_game, node, action):
             if not your_turn:
                 client_game.undo_move()
             sent = 0
-            window.sessionStorage.setItem("undo_request", "false")
+            # window.sessionStorage.setItem("undo_request", "false")
             hovered_square = None
             selected_piece_image = None
             selected_piece = None
@@ -66,7 +66,7 @@ def handle_state_actions(client_state_actions, base_command, client_game, node):
         client_state_actions[deny_status] = False
         client_state_actions[deny_executed] = True
         client_state_actions[received_status] = False
-        window.sessionStorage.setItem(request_name, "false")
+        # window.sessionStorage.setItem(request_name, "false")
 # This loop can replace that later section
 # for client_status in ["undo", "draw"]:
 #     handle_state_actions(client_state_actions, client_status, client_game, node)
