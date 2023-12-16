@@ -76,9 +76,9 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
             print("ALG_MOVES:", game.alg_moves)
         
         if (row, col) in valid_captures:
-            capture_sound.play()
+            handle_play(window, capture_sound)
         else:
-            move_sound.play()
+            handle_play(window, move_sound)
         
         selected_piece = None
 
@@ -116,9 +116,9 @@ def handle_piece_special_move(game, selected_piece, row, col):
     game.update_state(row, col, selected_piece, special=True)
     print("ALG_MOVES:", game.alg_moves)
     if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        move_sound.play()
+        handle_play(window, move_sound)
     else:
-        capture_sound.play()
+        handle_play(window, capture_sound)
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -410,9 +410,9 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
                                             if "x" not in client_game.alg_moves[-1]:
-                                                move_sound.play()
+                                                handle_play(window, move_sound)
                                             else:
-                                                capture_sound.play()
+                                                handle_play(window, capture_sound)
                                         if client_game.end_position:
                                             is_white = client_game.current_turn
                                             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
@@ -551,9 +551,9 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                                     if client_game.alg_moves != []:
                                         if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
                                             if "x" not in client_game.alg_moves[-1]:
-                                                move_sound.play()
+                                                handle_play(window, move_sound)
                                             else:
-                                                capture_sound.play()
+                                                handle_play(window, capture_sound)
                                         if client_game.end_position:
                                             is_white = True
                                             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
@@ -1103,7 +1103,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": True,
+        "local_debug": False,
         "access_keys": None,
         "network_reset_ready": True,
         "desync": False,
@@ -1265,6 +1265,7 @@ async def main():
             if init["local_debug"]:
                 init["starting_player"] = True
                 window.sessionStorage.setItem("color", "white")
+                window.sessionStorage.setItem("muted", "false")
             else:
                 retrieved_state = await get_or_update_game(game_id, access_keys)
             

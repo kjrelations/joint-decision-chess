@@ -34,6 +34,16 @@ window.addEventListener('resize', function() {
     adjustFont();
 });
 
+function handleVisibilityChange() {
+    if (document.hidden) {
+      sessionStorage.setItem('muted', 'true');
+    } else {
+      sessionStorage.setItem('muted', 'false');
+  }
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
 function areArraysEqual(arr1, arr2) {
     if (arr1.length !== arr2.length) {
         return false;

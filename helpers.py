@@ -1,6 +1,7 @@
 import pygame
 import sys
 import asyncio
+import json
 from constants import *
 
 ## General Helpers
@@ -154,6 +155,13 @@ def load_historic_game(json_game):
         "_sync": True
     }
     return game_param_dict
+
+# Helper for playing sound
+def handle_play(window, sound):
+    muted = window.sessionStorage.getItem('muted')
+    muted = json.loads(muted)
+    if not muted:
+        sound.play()
 
 ## Move logic
 # Helper function to calculate moves for a pawn

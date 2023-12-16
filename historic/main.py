@@ -106,9 +106,9 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
             print("ALG_MOVES:", game.alg_moves)
         
         if (row, col) in valid_captures:
-            capture_sound.play()
+            handle_play(window, capture_sound)
         else:
-            move_sound.play()
+            handle_play(window, move_sound)
         
         selected_piece = None
 
@@ -146,9 +146,9 @@ def handle_piece_special_move(game, selected_piece, row, col):
     game.update_state(row, col, selected_piece, special=True)
     print("ALG_MOVES:", game.alg_moves)
     if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        move_sound.play()
+        handle_play(window, move_sound)
     else:
-        capture_sound.play()
+        handle_play(window, capture_sound)
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -317,6 +317,8 @@ async def main():
                     js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
                     window.eval(js_code)
                     raise Exception(str(e))
+            if init["local_debug"]:
+                window.sessionStorage.setItem("muted", "false")
             init["initializing"] = True
             continue
 
