@@ -45,9 +45,10 @@
     }
 }
 
-@media (max-width: 510px), (max-height: 510px) {
+@media (max-width: 510px) {
     .homeblock {
         display: inline-block;
+        width: 150px;
     }
     .sidenav {
         width: calc(100% - 150px);

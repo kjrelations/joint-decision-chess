@@ -44,6 +44,25 @@ body {
     background-color: transparent;
 }
 
+.decision-text {
+    fill: var(--homebutton-decision);
+}
+
+
+.chess-text {
+    fill: var(--homebutton-chess);
+}
+
+.home-button:hover .decision-text,
+.home-button:hover .chess-text {
+    fill: var(--homeblock-hover);
+}
+
+.svg-scaled {
+    width: 100%;
+    height: auto;
+}
+
 .homeblock a {
     padding: 6px 8px 6px 16px;
     text-decoration: none;
@@ -54,12 +73,8 @@ body {
 
 
 .homeblock a:hover {
-    color: var(--homeblock-a-hover);
+    color: var(--homeblock-hover);
     text-decoration: none;
-}	
-
-.homeblock .home-button {
-    color: var(--homeblock-home);
 }
 
 .theme-toggle {

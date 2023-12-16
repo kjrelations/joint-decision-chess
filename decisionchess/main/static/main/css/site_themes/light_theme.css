@@ -12,9 +12,10 @@
     --model-header-border: #dee2e6;
     --close-text: black;
     --close-shadow: white;
-    --homeblock-a: #1720a1;
-    --homeblock-a-hover: #ecac22;
-    --homeblock-home: #1720a1;
+    --homebutton-decision: #F84E4E;
+    --homebutton-chess: black;
+    --homeblock-hover: #ecac22;
+    --homeblock-a: #F84E4E;
     --homeblock-header-background: #E8FFF2;
     --sidenav-background: #001d23;
     --sidenav-element: #818181;
