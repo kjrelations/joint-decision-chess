@@ -64,6 +64,11 @@
     color: transparent;
 }
 
+.scaled-pieces {
+    width: 17px;
+    height: 20px;
+}
+
 .command-center {
     color: white;
     background-color: var(--command-center-background);

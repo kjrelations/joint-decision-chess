@@ -44,13 +44,29 @@ function handleVisibilityChange() {
 
 document.addEventListener('visibilitychange', handleVisibilityChange);
 
-function areArraysEqual(arr1, arr2) {
-    if (arr1.length !== arr2.length) {
-        return false;
-    }
-    for (var i = 0; i < arr1.length; i++) {
-        if (arr1[i] !== arr2[i]) {
+function areEqual(obj1, obj2, type) {
+    if (type === 'array') {
+        if (obj1.length !== obj2.length) {
             return false;
+        }
+
+        for (var i = 0; i < obj1.length; i++) {
+            if (obj1[i] !== obj2[i]) {
+                return false;
+            }
+        }
+    } else if (type === 'object') {
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+
+        if (keys1.length !== keys2.length) {
+            return false;
+        }
+
+        for (let key of keys1) {
+            if (obj1[key] !== obj2[key]) {
+                return false;
+            }
         }
     }
     return true;
@@ -62,10 +78,12 @@ var rematch_request = false;
 var rematch_accepted = false;
 var rematch_received = false;
 var savedMoves = [];
+var savedPieces = {};
 var comp_moves = [];
 var move_index = -1;
 var selectedMoveId = "";
 var promotion_lock = false;
+var flipped = false;
 
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
@@ -77,7 +95,7 @@ function updateCommandCenter() {
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
         comp_moves = webGameMetadata.comp_moves;
-        const equal_arrays = areArraysEqual(moves, savedMoves)
+        const equal_arrays = areEqual(moves, savedMoves, 'array')
         if (endState !== '' && !equal_arrays) {
             const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(requestIntervalId);
@@ -103,6 +121,75 @@ function updateCommandCenter() {
             }
             promotion_lock = promoting;
         }
+
+        var netPieces = webGameMetadata.net_pieces;
+        if (!areEqual(savedPieces, netPieces)) {
+            savedPieces = netPieces;
+            var topPieces = document.getElementById('topPieces');
+            var bottomPieces = document.getElementById('bottomPieces');
+            topPieces.innerHTML = '';
+            bottomPieces.innerHTML = '';
+            var playerPieces = !flipped ? bottomPieces : topPieces;
+            var opponentPieces = !flipped ? topPieces : bottomPieces;
+            pawnSum = netPieces['p'];
+            bishopSum = netPieces['b'];
+            knightSum = netPieces['n'];
+            rookSum = netPieces['r'];
+            queenSum = netPieces['q'];
+            const piecesList = [queenSum, rookSum, knightSum, bishopSum, pawnSum];
+            var score = 0;
+            const color = webGameMetadata.player_color;
+
+            for (let i = 0; i < piecesList.length; i++) {
+                if (piecesList[i] !== 0) {
+                    var content = document.createElement('img');
+                    content.className = 'scaled-pieces';
+                    if (i === 0) {
+                        content.src = queensrc;
+                        score += piecesList[i] * 9;
+                    } else if (i === 1) {
+                        content.src = rooksrc;
+                        score += piecesList[i] * 5;
+                    } else if (i === 2) {
+                        content.src = knightsrc;
+                        score += piecesList[i] * 3;
+                    } else if (i === 3) {
+                        content.src = bishopsrc;
+                        score += piecesList[i] * 3;
+                    } else {
+                        content.src = pawnsrc;
+                        score += piecesList[i];
+                    }
+                    const playerSum = color === 'white' ? piecesList[i] > 0 : piecesList[i] < 0;
+                    if (playerSum) {
+                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                            const clone = content.cloneNode(true);
+                            if (j === piecesList[i] - 1) {
+                                clone.style.marginRight = '2px';
+                            }
+                            playerPieces.appendChild(clone);
+                        }
+                    } else if (piecesList[i] !== 0) {
+                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                            const clone = content.cloneNode(true);
+                            if (j === piecesList[i] - 1) {
+                                clone.style.marginRight = '2px';
+                            }
+                            opponentPieces.appendChild(clone);
+                        }
+                    }
+                }
+            }
+            const scoreCompare = color === 'white' ? score > 0 : score < 0;
+            const scoreElement = document.createElement('div')
+            scoreElement.textContent = '+' + score;
+            if (scoreCompare) {
+                playerPieces.appendChild(scoreElement);
+            } else if (score !== 0) {
+                opponentPieces.appendChild(scoreElement);
+            }
+        }
+
         // Don't keep unnecessarily updating
         if (equal_arrays) {
             return;
@@ -693,6 +780,15 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
         bottomHTML = bottomElement.innerHTML;
         topElement.innerHTML = bottomHTML;
         bottomElement.innerHTML = topHTML;
+
+        topPiecesRow = document.getElementById('topPieces');
+        bottomPiecesRow = document.getElementById('bottomPieces');
+        topPiecesHTML = topPiecesRow.innerHTML;
+        bottomPiecesHTML = bottomPiecesRow.innerHTML;
+        topPiecesRow.innerHTML = bottomPiecesHTML;
+        bottomPiecesRow.innerHTML = topPiecesHTML;
+
+        flipped = !flipped;
     }
     return webGameMetadata;
 }

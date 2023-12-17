@@ -46,7 +46,8 @@ Play
         <!-- Optional blank column for command center alignment on smaller screens -->
         <div class="col-2 d-md-none" style="width: 100%;"></div>
         <!-- 4 columns for command center-->
-        <div class="col-10 col-md-4 d-flex align-items-center">
+        <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start">
+            <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
             <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
                 <div id="topPlayer" class="userblock">{{ opponent }}</div>
                 <!-- Content will be dynamically added here -->
@@ -90,6 +91,7 @@ Play
                 </div>
                 <div id="bottomPlayer" class="userblock">{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}</div>
             </div>
+            <div class="d-flex flex-wrap mb-auto" id="bottomPieces" style="height: 25px;"></div>
             <script>
                 var game_uuid = "{{ game_uuid }}";
                 var sender = "{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}";
@@ -99,6 +101,11 @@ Play
                 sessionStorage.setItem('promoting', 'false');
                 var csrftoken = "{{ csrf_token|escapejs }}";
                 sessionStorage.setItem('csrftoken', csrftoken);
+                const pawnsrc = "{% static 'main/images/material/pawn_grayscale.svg' %}";
+                const bishopsrc = "{% static 'main/images/material/bishop_grayscale.svg' %}";
+                const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";
+                const rooksrc = "{% static 'main/images/material/rook_grayscale.svg' %}";
+                const queensrc = "{% static 'main/images/material/queen_grayscale.svg' %}";
             </script>
             <script src="{% static 'main/js/computer.js' %}"></script>                
         </div>

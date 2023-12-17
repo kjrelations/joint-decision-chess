@@ -14,18 +14,20 @@
 	<link rel="icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}" id="favicon">
 	<link rel="shortcut icon" type="image/svg+xml" href="{% static 'images/placeholder-favicon.svg' %}" id="favicon-short">
 	<script>
-		function loadSVG() {
-			fetch("{% static 'images/decision-chess-title.svg' %}")
-				.then(response => response.text())
-				.then(svgText => {
-					document.getElementById('svg-title-container').innerHTML = svgText;
-				})
-				.catch(error => {
-					console.error('Error fetching SVG:', error);
-				});
-		}
-
-		loadSVG();
+		document.addEventListener("DOMContentLoaded", function() {
+			function loadSVG() {
+				fetch("{% static 'images/decision-chess-title.svg' %}")
+					.then(response => response.text())
+					.then(svgText => {
+						document.getElementById('svg-title-container').innerHTML = svgText;
+					})
+					.catch(error => {
+						console.error('Error fetching SVG:', error);
+					});
+			}
+	
+			loadSVG();
+		});
 
 		let themePreference = localStorage.getItem('themePreference');
 		const themeLink = document.getElementById('theme-link');

@@ -838,6 +838,7 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "alg_moves": [],
                 "comp_moves": [],
                 "FEN_final_pos": "",
+                "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
                 "step": {
                     "execute": False,
                     "update_executed": False,
@@ -1769,6 +1770,14 @@ async def main():
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
+        net_pieces = net_board(client_game.board)
+
+        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
+            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
         if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
             # TODO Maybe a simple range list of the index or move number
@@ -1833,6 +1842,7 @@ async def main():
                     web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
                     web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
                     web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
+                    web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
 
                     web_game_metadata = json.dumps(web_game_metadata_dict)
                     window.localStorage.setItem("web_game_metadata", web_game_metadata)

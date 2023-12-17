@@ -607,6 +607,16 @@ def set_check_or_checkmate_settings(drawing_settings, client_game):
         drawing_settings["checkmate_white"] = False
         drawing_settings["checkmate_black"] = False
 
+# Get board score per piece
+def net_board(board):
+    state = {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0}
+    for row in board:
+        for piece in row:
+            if piece != ' ' and piece.lower() != 'k':
+                value = -1 if piece.islower() else +1
+                state[piece.lower()] += value
+    return state
+
 ## Drawing Logic
 # Helper Function to get the chessboard coordinates from mouse click coordinates
 def get_board_coordinates(x, y, GRID_SIZE):
