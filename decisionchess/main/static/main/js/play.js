@@ -123,7 +123,7 @@ function updateCommandCenter() {
         }
 
         var netPieces = webGameMetadata.net_pieces;
-        if (!areEqual(savedPieces, netPieces)) {
+        if (!areEqual(savedPieces, netPieces, 'object')) {
             savedPieces = netPieces;
             var topPieces = document.getElementById('topPieces');
             var bottomPieces = document.getElementById('bottomPieces');
