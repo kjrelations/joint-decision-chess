@@ -380,7 +380,7 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
             raise Exception('Wrong POST input')
         client_game._sync = True
         client_game._move_undone = False
-        client_game_str = client_game.to_json()
+        client_game_str = client_game.to_json(include_states=True)
         try:
             url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()

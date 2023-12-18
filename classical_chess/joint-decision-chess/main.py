@@ -651,7 +651,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     node.checkout_for(node.data)
                     init_message = {node.CMD: "initialize", "start": not init["starting_player"]}
                     if init["initialized"]:
-                        init_message.update({"starting_position": client_game.to_json()})
+                        init_message.update({"starting_position": client_game.to_json(include_states=True)})
                     else:
                         init["sent"] = int(not init["starting_player"])
                     node.tx(init_message)
@@ -982,7 +982,7 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
             raise Exception('Wrong POST input')
         client_game._sync = True
         client_game._move_undone = False
-        client_game_str = client_game.to_json()
+        client_game_str = client_game.to_json(include_states=True)
         try:
             url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()

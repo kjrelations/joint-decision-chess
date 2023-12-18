@@ -38,6 +38,7 @@ class Game:
             self._sync = True
             self._move_index = -1
             self._latest = True
+            self._state_update = {}
         else:
             self.current_turn = custom_params["current_turn"]
             self.board = custom_params["board"]
@@ -47,11 +48,19 @@ class Game:
             self.current_position = custom_params["current_position"]
             self.previous_position = custom_params["previous_position"]
             self.board_states = {}
-            for inserted_dict in custom_params["board_states"]:
-                key = ()
-                for item in inserted_dict["key"]:
-                    key = key + (tuple(item),)
-                self.board_states[key] = inserted_dict["value"]
+            self._state_update = {}
+            if "board_states" in custom_params:
+                for state in custom_params["board_states"]:
+                    key = ()
+                    for item in state["key"]:
+                        key = key + (tuple(item),)
+                    self.board_states[key] = state["value"]
+            elif "_state_update" in custom_params:
+                for state in custom_params["_state_update"]:
+                    key = ()
+                    for item in state["key"]:
+                        key = key + (tuple(item),)
+                    self._state_update[key] = state["value"]
             self.max_states = custom_params["max_states"]
             self.end_position = custom_params["end_position"]
             self.forced_end = custom_params["forced_end"]
@@ -70,13 +79,19 @@ class Game:
         self.castle_attributes = new_game.castle_attributes
         self.current_position = new_game.current_position
         self.previous_position = new_game.previous_position
-        self.board_states = new_game.board_states
+        if new_game._state_update:
+            for state, update in new_game._state_update.items():
+                if update is None:
+                    del self.board_states[state]
+                else:
+                    self.board_states.update({state: update})
         self.end_position = new_game.end_position
         self.forced_end = new_game.forced_end
         self._move_undone = False
         self._sync = True
         self._move_index = new_game._move_index
         self._latest = True
+        self._state_update = {}
 
     def validate_moves(self, row, col):
         piece = self.board[row][col]
@@ -198,8 +213,10 @@ class Game:
                 
                 if _current_board_state in self.board_states:
                     self.board_states[_current_board_state] += 1
+                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
                 else:
                     self.board_states[_current_board_state] = 1
+                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
                     if len(self.board_states) > self.max_states:
                         # Find and remove the least accessed board state, this also happens to be the oldest 
                         # least accessed state based on Python 3.7+ storing dictionary items by insertion order
@@ -341,8 +358,10 @@ class Game:
             
             if _current_board_state in self.board_states:
                 self.board_states[_current_board_state] += 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
             else:
                 self.board_states[_current_board_state] = 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
                 if len(self.board_states) > self.max_states:
                     # Find and remove the least accessed board state, this also happens to be the oldest 
                     # least accessed state based on Python 3.7+ storing dictionary items by insertion order
@@ -377,8 +396,10 @@ class Game:
                 
                 if self.board_states[_current_board_state] == 1:
                     del self.board_states[_current_board_state]
+                    self._state_update[_current_board_state] = None
                 else:
                     self.board_states[_current_board_state] -= 1
+                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
             
             self._move_index -= 1
             move = self.moves[-1]
@@ -529,13 +550,17 @@ class Game:
             self.current_position = None
             self.previous_position = None
 
-    def to_json(self):
-        return json.dumps(self, cls=GameEncoder)
+    def to_json(self, include_states=False):
+        return json.dumps(self, cls=GameEncoder, include_states=include_states)
 
 class GameEncoder(json.JSONEncoder):
+    def __init__(self, include_states=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.include_states = include_states
+
     def default(self, obj):
         if isinstance(obj, Game):
-            return {
+            data = {
                 "current_turn": obj.current_turn,
                 "board": obj.board,
                 "moves": obj.moves,
@@ -543,13 +568,20 @@ class GameEncoder(json.JSONEncoder):
                 "castle_attributes": obj.castle_attributes,
                 "current_position": obj.current_position,
                 "previous_position": obj.previous_position,
-                "board_states": [{"key": k, "value": v} for k, v in obj.board_states.items()],
                 "max_states": obj.max_states,
                 "end_position": obj.end_position,
                 "forced_end": obj.forced_end,
                 "_debug": obj._debug,
                 "_starting_player": obj._starting_player,
                 "_move_undone": obj._move_undone,
-                "_sync": obj._sync
+                "_sync": obj._sync,
+                "_state_update": [{"key": k, "value": v} for k, v in obj._state_update.items()]
             }
+            if self.include_states:
+                data["board_states"] = [{"key": k, "value": v} for k, v in obj.board_states.items()]
+                del data["_state_update"]
+            elif obj._state_update == []:
+                del data["_state_update"]
+
+            return data
         return super().default(obj)
