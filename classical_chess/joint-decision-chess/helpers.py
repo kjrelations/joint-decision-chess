@@ -993,7 +993,7 @@ class Pawn_Button:
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEMOTION:
-                self.check_hover(event.pos)
+            self.check_hover(event.pos)
 
 # Helper function for creating promotion buttons at the right locations 
 def display_promotion_options(theme,row, col):
