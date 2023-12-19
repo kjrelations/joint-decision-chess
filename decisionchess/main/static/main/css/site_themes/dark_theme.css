@@ -34,14 +34,14 @@
     --new-game-background: #2f3133;
     --new-game-text-hover: #7685d8;
     --new-game-background-hover: #34383c;
-    --quick-pair-outline: #828282;
+    --quick-pair-outline: white;
     --quick-pair-text: white;
     --quick-pair-background: #2f3133;
     --quick-pair-text-hover: #f2a708;
     --quick-pair-background-hover: #917843;
     --lobby-text: white;
     --lobby-background: #2f3133;
-    --lobby-outline: #828282;
+    --lobby-outline: white;
     --lobby-header-background: #2f3133;
     --lobby-row-border: #778498;
     --lobby-row-text: rgba(179, 179, 179, 0.8);
@@ -55,8 +55,8 @@
     --lobby-row-empty-background: rgba(32, 32, 32, 0.7);
     --highlights-text: white;
     --highlights-background: #2f3133;
-    --highlights-outline: #828282;
-    --highlights-focus-outline: #828282;
+    --highlights-outline: white;
+    --highlights-focus-outline: white;
     --highlights-hover-text: #f2a708;
     --highlights-hover-background: #917843;
     --home-body-1: #000000;

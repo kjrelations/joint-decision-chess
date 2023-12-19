@@ -152,14 +152,28 @@ body {
     z-index: 3;
 }
 
-.profile-content a {
+.profile-content a,
+#profile-logout button {
     color: var(--profile-content-a-text);
     padding: 12px 16px;
     text-decoration: none;
     display: block;
 }
 
-.profile-content a:hover {
+#profile-logout {
+    display: inline;
+}
+
+#profile-logout button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+.profile-content a:hover,
+#profile-logout button:hover {
     background-color: var(--profile-content-a-hover-background);
 }
 

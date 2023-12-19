@@ -76,7 +76,10 @@
 			</div>
 			<div class="profile-content" id="profileDropdownContent">
 				<a href="/profile/{{ user.username }}">Profile</a>
-				<a href="/logout">Logout</a>
+				<form id="profile-logout" method="post" action="{% url 'admin:logout' %}">
+					{% csrf_token %}
+					<button type="submit">Logout</button>
+				</form>
 			</div>
 
 			<div class="col-12 col-hb-12 col-md-11">
