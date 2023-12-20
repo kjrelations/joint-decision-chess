@@ -116,7 +116,7 @@ def ai_handle_piece_move(game, selected_piece, row, col, special = False, promot
 
 def get_best_move(game, pos):
     pos["position_count"] = 0
-    depth = 2
+    depth = 3
     start = time.time()
     best_piece, best_move, best_promotion, special = minimax_root(depth, game, True, pos)
     end = time.time()

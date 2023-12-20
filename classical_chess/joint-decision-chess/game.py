@@ -101,8 +101,6 @@ class Game:
         for move in valid_moves.copy():
             # Before making the move, create a copy of the board where the piece has moved
             temp_board = [rank[:] for rank in self.board]  
-            temp_moves = self.moves.copy()
-            temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]]))
             temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
             temp_board[selected_piece[0]][selected_piece[1]] = ' '
             
@@ -111,7 +109,7 @@ class Game:
                 valid_moves.remove(move)
                 if move in valid_captures:
                     valid_captures.remove(move)
-            elif is_check(temp_board, is_white, temp_moves):
+            elif is_check(temp_board, is_white):
                 valid_moves.remove(move)
                 if move in valid_captures:
                     valid_captures.remove(move)
@@ -120,13 +118,11 @@ class Game:
             # Castling moves are already validated in calculate moves, this is only for enpassant
             if (move[0], move[1]) not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
                 temp_board = [rank[:] for rank in self.board]  
-                temp_moves = self.moves.copy()
-                temp_moves.append(output_move(piece, selected_piece, move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
                 temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
                 temp_board[selected_piece[0]][selected_piece[1]] = ' '
                 capture_row = 4 if move[0] == 3 else 5
                 temp_board[capture_row][move[1]] = ' '
-                if is_check(temp_board, is_white, temp_moves):
+                if is_check(temp_board, is_white):
                     valid_specials.remove(move)
         return valid_moves, valid_captures, valid_specials
 
@@ -278,8 +274,6 @@ class Game:
 
         # We haven't moved yet so temp board for state check
         temp_board = [rank[:] for rank in self.board]  
-        temp_moves = self.moves.copy()
-        temp_moves.append(output_move(piece, selected_piece, new_row, new_col, potential_capture))
         temp_board[new_row][new_col] = temp_board[selected_piece[0]][selected_piece[1]]
         temp_board[selected_piece[0]][selected_piece[1]] = ' '
         
@@ -288,7 +282,7 @@ class Game:
             temp_board[capture_row][new_col] = ' '
         if is_checkmate_or_stalemate(temp_board, not is_white, self.moves)[0]:
             alg_move += '#'
-        elif is_check(temp_board, not is_white, temp_moves):
+        elif is_check(temp_board, not is_white):
             alg_move += '+'
 
         return alg_move
@@ -335,7 +329,7 @@ class Game:
         
         if is_checkmate_or_stalemate(self.board, not is_white, self.moves)[0]:
             self.alg_moves[-1] += '#'
-        elif is_check(self.board, not is_white, self.moves):
+        elif is_check(self.board, not is_white):
             self.alg_moves[-1] += '+'
         
         # Change turns after pawn promotion

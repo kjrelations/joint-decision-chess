@@ -169,50 +169,50 @@ def pawn_moves(board, row, col, is_white):
     moves = []
     captures = []
 
-    # Pawn moves one square forward
-    if is_white:
-        if row > 0 and board[row - 1][col] == ' ':
-            moves.append((row - 1, col))
-    else:
-        if row < 7 and board[row + 1][col] == ' ':
-            moves.append((row + 1, col))
+    forwards = -1 if is_white else 1
 
-    # Pawn's initial double move
-    if is_white:
-        if row == 6 and board[row - 1][col] == ' ' \
-                    and board[row - 2][col] == ' ':
-            moves.append((row - 2, col))
-    else:
-        if row == 1 and board[row + 1][col] == ' ' \
-                    and board[row + 2][col] == ' ':
-            moves.append((row + 2, col))
+    # Pawn moves one square forward
+    if board[row + forwards][col] == ' ':
+        moves.append((row + forwards, col))
+
+        # Pawn's initial double move
+        if (row == 6 and is_white) or (row == 1 and not is_white):
+            if board[row + 2 * forwards][col] == ' ':
+                moves.append((row + 2 * forwards, col))
 
     # No captures possible when pawns reach the end, otherwise list index out of range
     if is_white and row == 0 or not is_white and row == 7:
         return moves, captures
-
-    # Pawn captures diagonally
-    forwards = -1 if is_white else 1 # The forward direction for white is counting down rows
-    if row > 0 and col > 0 and board[row + forwards][col - 1] != ' ' and \
-        board[row + forwards][col - 1].islower() == is_white:
-        moves.append((row + forwards, col - 1))
-        captures.append((row + forwards, col - 1))
-    if row > 0 and col < 7 and board[row + forwards][col + 1] != ' ' \
-        and board[row + forwards][col + 1].islower() == is_white:
-        moves.append((row + forwards, col + 1))
-        captures.append((row + forwards, col + 1))
     
-    # Edge case diagonal captures
-    if row > 0 and col == 7 and board[row + forwards][col - 1] != ' ' \
-        and board[row + forwards][col - 1].islower() == is_white:
-        moves.append((row + forwards, col - 1))
-        captures.append((row + forwards, col - 1))
-    if row > 0 and col == 0 and board[row + forwards][col + 1] != ' ' \
-        and board[row + forwards][col + 1].islower() == is_white:
-        moves.append((row + forwards, col + 1))
-        captures.append((row + forwards, col + 1))
-
+    # Loop over neighboring columns for captures
+    for c in [-1, 1]:
+        new_col = col + c
+        if 0 <= new_col <= 7:
+            piece = board[row + forwards][new_col]
+            if piece != ' ' and piece.islower() == is_white:
+                moves.append((row + forwards, new_col))
+                captures.append((row + forwards, new_col))
+    
     return moves, captures
+
+# Helper to calculate if the pawn can capture the opposite king
+def pawn_captures_king(board, row, col, is_white):
+    forwards = -1 if is_white else 1
+    opposite_king = 'k' if is_white else 'K'
+
+    # No captures possible when pawns reach the end, otherwise list index out of range
+    if is_white and row == 0 or not is_white and row == 7:
+        return False
+    
+    # Loop over neighboring columns for captures
+    for c in [-1, 1]:
+        new_col = col + c
+        if 0 <= new_col <= 7:
+            piece = board[row + forwards][new_col]
+            if piece == opposite_king:
+                return True
+    
+    return False
 
 # Helper function to calculate moves for a rook
 def rook_moves(board, row, col, is_white):
@@ -259,6 +259,46 @@ def rook_moves(board, row, col, is_white):
 
     return moves, captures
 
+# Helper to calculate if the rook can capture the opposite king
+def rook_captures_king(board, row, col, is_white):
+    opposite_king = 'k' if is_white else 'K'
+
+    # Rook moves horizontally
+    for i in range(col + 1, 8):
+        if board[row][i] == ' ':
+            continue
+        elif board[row][i] == opposite_king:
+            return True
+        else:
+            break
+
+    for i in range(col - 1, -1, -1):
+        if board[row][i] == ' ':
+            continue
+        elif board[row][i] == opposite_king:
+            return True
+        else:
+            break
+
+    # Rook moves vertically
+    for i in range(row + 1, 8):
+        if board[i][col] == ' ':
+            continue
+        elif board[i][col] == opposite_king:
+            return True
+        else:
+            break
+
+    for i in range(row - 1, -1, -1):
+        if board[i][col] == ' ':
+            continue
+        elif board[i][col] == opposite_king:
+            return True
+        else:
+            break
+
+    return False
+
 # Helper function to calculate moves for a knight
 def knight_moves(board, row, col, is_white):
     moves = []
@@ -280,61 +320,62 @@ def knight_moves(board, row, col, is_white):
 
     return moves, captures
 
+# Helper to calculate if the knight can capture the opposite king
+def knight_captures_king(board, row, col, is_white):
+    opposite_king = 'k' if is_white else 'K'
+    knight_moves = [(row - 2, col - 1), (row - 2, col + 1), (row - 1, col - 2), (row - 1, col + 2),
+                    (row + 1, col - 2), (row + 1, col + 2), (row + 2, col - 1), (row + 2, col + 1)]
+
+    valid_knight_moves = [(move[0], move[1]) for move in knight_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
+
+    for move_row, move_col in valid_knight_moves:
+        if board[move_row][move_col] == opposite_king:
+            return True
+
+    return False
+
 # Helper function to calculate moves for a bishop
 def bishop_moves(board, row, col, is_white):
     moves = []
     captures = []
+    directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
 
-    # Bishop moves diagonally
-    for i in range(1, 8):
-        # Top-left diagonal
-        if row - i >= 0 and col - i >= 0:
-            if board[row - i][col - i] == ' ': # Vacant spaces
-                moves.append((row - i, col - i))
-            elif board[row - i][col - i].islower() == is_white: # Opposite pieces
-                moves.append((row - i, col - i))
-                captures.append((row - i, col - i))
-                break
-            else: # Allied pieces encountered
-                break
-
-    for i in range(1, 8):
-        # Top-right diagonal
-        if row - i >= 0 and col + i < 8:
-            if board[row - i][col + i] == ' ':
-                moves.append((row - i, col + i))
-            elif board[row - i][col + i].islower() == is_white:
-                moves.append((row - i, col + i))
-                captures.append((row - i, col + i))
-                break
-            else:
-                break
-
-    for i in range(1, 8):
-        # Bottom-left diagonal
-        if row + i < 8 and col - i >= 0:
-            if board[row + i][col - i] == ' ':
-                moves.append((row + i, col - i))
-            elif board[row + i][col - i].islower() == is_white:
-                moves.append((row + i, col - i))
-                captures.append((row + i, col - i))
-                break
-            else:
-                break
-
-    for i in range(1, 8):
-        # Bottom-right diagonal
-        if row + i < 8 and col + i < 8:
-            if board[row + i][col + i] == ' ':
-                moves.append((row + i, col + i))
-            elif board[row + i][col + i].islower() == is_white:
-                moves.append((row + i, col + i))
-                captures.append((row + i, col + i))
-                break
+    for dr, dc in directions:
+        for i in range(1, 8):
+            new_row, new_col = row + dr * i, col + dc * i
+            if 0 <= new_row < 8 and 0 <= new_col < 8:
+                if board[new_row][new_col] == ' ':
+                    moves.append((new_row, new_col))
+                elif board[new_row][new_col].islower() == is_white:
+                    moves.append((new_row, new_col))
+                    captures.append((new_row, new_col))
+                    break
+                else:
+                    break
             else:
                 break
 
     return moves, captures
+
+# Helper to calculate if the bishop can capture the opposite king
+def bishop_captures_king(board, row, col, is_white):
+    opposite_king = 'k' if is_white else 'K'
+    directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
+
+    for dr, dc in directions:
+        for i in range(1, 8):
+            new_row, new_col = row + dr * i, col + dc * i
+            if 0 <= new_row < 8 and 0 <= new_col < 8:
+                if board[new_row][new_col] == ' ':
+                    continue
+                elif board[new_row][new_col] == opposite_king:
+                    return True
+                else:
+                    break
+            else:
+                break
+
+    return False
 
 # Helper function to calculate moves for a queen
 def queen_moves(board, row, col, is_white):
@@ -352,6 +393,18 @@ def queen_moves(board, row, col, is_white):
     captures.extend(r_captures)
 
     return moves, captures
+
+# Helper to calculate if the queen can capture the opposite king
+def queen_captures_king(board, row, col, is_white):
+    # Bishop-like moves
+    if bishop_captures_king(board, row, col, is_white):
+        return True
+
+    # Rook-like moves
+    if rook_captures_king(board, row, col, is_white):
+        return True
+
+    return False
 
 # Helper function to calculate moves for a king
 def king_moves(board, row, col, is_white):
@@ -376,176 +429,207 @@ def king_moves(board, row, col, is_white):
 
     return moves, captures
 
+# Helper to calculate if the king can capture the opposite king
+def king_captures_king(board, row, col, is_white):
+    opposite_king = 'k' if is_white else 'K'
+
+    king_moves = [
+        (row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
+        (row, col - 1),                     (row, col + 1),
+        (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)
+    ]
+
+    # Remove moves that are out of bounds
+    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
+
+    for move_row, move_col in valid_king_moves:
+        if board[move_row][move_col] == opposite_king:
+            return True
+
+    return False
+
 # Helper function to return moves for the selected piece
 def calculate_moves(board, row, col, game_history, castle_attributes=None, only_specials=False):
     # only_specials input for only calculating special moves, this is used when updating the dictionary of board states
     # of the game class. Special available moves are one attribute of a unique state
     piece = board[row][col]
+    piece_type = piece.lower()
     moves = []
     captures = []
     special_moves = []
 
     is_white = piece.isupper()
 
-    if piece.lower() == 'p':
-        if not only_specials:
+    if not only_specials:
+        if piece_type == 'p':
             p_moves, p_captures = pawn_moves(board, row, col, is_white)
             moves.extend(p_moves)
             captures.extend(p_captures)
-        
-        if game_history is not None and len(game_history) != 0:
-            previous_turn = game_history[-1]
-            
-            add_enpassant = False
-            if is_white and row == 3:
-                previous_pawn, previous_start_row, previous_end_row, destination_row = 'p', '1', '3', 2
-                add_enpassant = True
-            elif not is_white and row == 4:
-                previous_pawn, previous_start_row, previous_end_row, destination_row = 'P', '6', '4', 5
-                add_enpassant = True
-            if add_enpassant:
-                start, end = list(previous_turn[0]), list(previous_turn[1])
-                # En-passant condition: A pawn moves twice onto a square with an adjacent pawn in the same rank
-                if start[0] == previous_pawn and end[0] == previous_pawn and start[1] == previous_start_row and end[1] == previous_end_row \
-                    and abs(col - int(end[2])) == 1:
-                    special_moves.append((destination_row, int(end[2])))
 
-    elif piece.lower() == 'r':
-        if not only_specials:
+        elif piece_type == 'r':
             r_moves, r_captures = rook_moves(board, row, col, is_white)
             moves.extend(r_moves)
             captures.extend(r_captures)
 
-    elif piece.lower() == 'n':
-        if not only_specials:
+        elif piece_type == 'n':
             n_moves, n_captures = knight_moves(board, row, col, is_white)
             moves.extend(n_moves)
             captures.extend(n_captures)
 
-    elif piece.lower() == 'b':
-        if not only_specials:
+        elif piece_type == 'b':
             b_moves, b_captures = bishop_moves(board, row, col, is_white)
             moves.extend(b_moves)
             captures.extend(b_captures)
 
-    elif piece.lower() == 'q':
-        if not only_specials:
+        elif piece_type == 'q':
             q_moves, q_captures = queen_moves(board, row, col, is_white)
             moves.extend(q_moves)
             captures.extend(q_captures)
 
-    elif piece.lower() == 'k':
-        if not only_specials:
+        elif piece_type == 'k':
             k_moves, k_captures = king_moves(board, row, col, is_white)
             moves.extend(k_moves)
             captures.extend(k_captures)
         
-        # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
-        # and instead use a temp board
-        if castle_attributes is not None:
-            queen_castle = True
-            king_castle = True
-            if is_white:
-                moved_king = castle_attributes['white_king_moved']
-                left_rook_moved = castle_attributes['left_white_rook_moved']
-                right_rook_moved = castle_attributes['right_white_rook_moved']
-                king_row = 7
-                king_piece = 'K'
-            else:
-                moved_king = castle_attributes['black_king_moved']
-                left_rook_moved = castle_attributes['left_black_rook_moved']
-                right_rook_moved = castle_attributes['right_black_rook_moved']
-                king_row = 0
-                king_piece = 'k'
+        elif piece == ' ':
+            return [], [], []
+        else:
+            return ValueError
+        
+    # Special moves
+    if piece_type == 'p' and game_history is not None and len(game_history) != 0:
+        previous_turn = game_history[-1]
+        
+        pawn_data = {
+            'white': ('p', '1', '3', 2),
+            'black': ('P', '6', '4', 5)
+        }
+        
+        if is_white and row == 3 or not is_white and row == 4:
+            previous_pawn, previous_start_row, previous_end_row, destination_row = pawn_data['white' if is_white else 'black']
+            add_enpassant = True
+        else:
+            add_enpassant = False
+        
+        if add_enpassant:
+            start, end = list(previous_turn[0]), list(previous_turn[1])
+            # En-passant condition: A pawn moves twice onto a square with an adjacent pawn in the same rank
+            if (
+                start[0] == previous_pawn and end[0] == previous_pawn and
+                start[1] == previous_start_row and end[1] == previous_end_row and
+                abs(col - int(end[2])) == 1
+            ):
+                special_moves.append((destination_row, int(end[2])))
 
-            if not moved_king:
-                if not left_rook_moved:
-                    # Empty squares between king and rook
-                    if not all(element == ' ' for element in board[king_row][1:4]):
-                        queen_castle = False
-                    else:
-                        # Not moving through/into check and not currently under check
-                        temp_boards_and_moves = []
-                        for placement_col in [4, 3, 2]:
-                            temp_board = [rank[:] for rank in board]
-                            temp_moves = game_history.copy()
-                            temp_moves.append(output_move(piece, (king_row, 4), king_row, placement_col, ' '))
-                            temp_board[king_row][4] = ' '
-                            temp_board[king_row][placement_col] = king_piece
-                            temp_boards_and_moves.append([temp_board, temp_moves])
-                        clear_checks = all(not is_check(temp[0], is_white, temp[1]) for temp in temp_boards_and_moves)
-                        if not clear_checks:
-                            queen_castle = False
-                else:
-                    queen_castle = False
-                if not right_rook_moved:
-                    # Empty squares between king and rook
-                    if not all(element == ' ' for element in board[king_row][5:7]):
-                        king_castle = False
-                    else:
-                        # Not moving through/into check and not currently under check
-                        temp_boards_and_moves = []
-                        for placement_col in [4, 5, 6]:
-                            temp_board = [rank[:] for rank in board]
-                            temp_moves = game_history.copy()
-                            temp_moves.append(output_move(piece, (king_row, 4), king_row, placement_col, ' '))
-                            temp_board[king_row][4] = ' '
-                            temp_board[king_row][placement_col] = king_piece
-                            temp_boards_and_moves.append([temp_board, temp_moves])
-                        clear_checks = all(not is_check(temp[0], is_white, temp[1]) for temp in temp_boards_and_moves)
-                        if not clear_checks:
-                            king_castle = False
-                else:
-                    king_castle = False
-            else:
-                queen_castle = False
-                king_castle = False
+    # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
+    # and instead use a temp board
+    if piece_type == 'k' and castle_attributes is not None:
+        if is_white:
+            moved_king = castle_attributes['white_king_moved']
+            left_rook_moved = castle_attributes['left_white_rook_moved']
+            right_rook_moved = castle_attributes['right_white_rook_moved']
+            king_row = 7
+            king_piece = 'K'
+        else:
+            moved_king = castle_attributes['black_king_moved']
+            left_rook_moved = castle_attributes['left_black_rook_moved']
+            right_rook_moved = castle_attributes['right_black_rook_moved']
+            king_row = 0
+            king_piece = 'k'
 
-            if queen_castle:
-                king_pos = (7, 2) if is_white else (0, 2) 
-                special_moves.append(king_pos)
-            if king_castle:
-                king_pos = (7, 6) if is_white else (0, 6) 
-                special_moves.append(king_pos)
-    elif piece == ' ':
-        return [], [], []
-    else:
-        return ValueError
-    
+        temp_board = [rank[:] for rank in board]
+        if not moved_king:
+            if not left_rook_moved:
+                # Empty squares between king and rook
+                if all(element == ' ' for element in board[king_row][1:4]):
+                    # Not moving through/into check and not currently under check
+                    temp_boards = []
+                    for placement_col in [4, 3, 2]:
+                        temp_board[king_row][4] = ' '
+                        temp_board[king_row][placement_col] = king_piece
+                        temp_boards.append(temp_board)
+                        # Undo
+                        temp_board[king_row][4] = king_piece
+                        temp_board[king_row][placement_col] = ' '
+                    # Empty squares are clear of checks
+                    if all(not is_check(temp, is_white) for temp in temp_boards):
+                        special_moves.append((king_row, 2))
+            if not right_rook_moved:
+                # Empty squares between king and rook
+                if all(element == ' ' for element in board[king_row][5:7]):
+                    # Not moving through/into check and not currently under check
+                    temp_boards = []
+                    for placement_col in [4, 5, 6]:
+                        temp_board[king_row][4] = ' '
+                        temp_board[king_row][placement_col] = king_piece
+                        temp_boards.append(temp_board)
+                        # Undo
+                        temp_board[king_row][4] = king_piece
+                        temp_board[king_row][placement_col] = ' '
+                    # Empty squares are clear of checks
+                    if all(not is_check(temp, is_white) for temp in temp_boards):
+                        special_moves.append((king_row, 6))
+
     return moves, captures, special_moves
 
+# Helper function to check if the opposite king can be captured
+def king_is_captured(board, row, col, piece, piece_type):
+    is_white = piece.isupper()
+
+    if piece_type == 'p':
+        if pawn_captures_king(board, row, col, is_white):
+            return True
+
+    elif piece_type == 'r':
+        if rook_captures_king(board, row, col, is_white):
+            return True
+
+    elif piece_type == 'n':
+        if knight_captures_king(board, row, col, is_white):
+            return True
+
+    elif piece_type == 'b':
+        if bishop_captures_king(board, row, col, is_white):
+            return True
+
+    elif piece_type == 'q':
+        if queen_captures_king(board, row, col, is_white):
+            return True
+
+    elif piece_type == 'k':
+        if king_captures_king(board, row, col, is_white):
+            return True
+        
+    elif piece_type == ' ':
+        return False
+    else:
+        return ValueError
+
 ## Board State Check Logic
-# Helper function to calculate if a board does not have a king
+# Helper function to calculate if a board does not have a colored king
 def is_invalid_capture(board, is_color):
     # Find the king's position
     king = 'K' if is_color else 'k'
     king_position = None
-    for row in range(8):
-        for col in range(8):
-            if board[row][col] == king:
-                king_position = (row, col)
-                break
+    for row_index, row in enumerate(board):
+        if king in row:
+            col = row.index(king)
+            king_position = (row_index, col)
+            break
     if king_position is None:
         return True # Illegal move that is not allowed, likely in debug mode
     else:
         return False
 
 # Helper function to search for checks
-def is_check(board, is_color, moves):
-    # Find the king's position
-    king = 'K' if is_color else 'k'
-    for row in range(8):
-        for col in range(8):
-            if board[row][col] == king:
-                king_position = (row, col)
-                break
-    # Check if any opponent's pieces can attack the king
+def is_check(board, is_color):
+    # Check if any of the opponent's pieces can attack the king
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
-            if piece.islower() == is_color and piece != ' ':
-                _, captures, _ = calculate_moves(board, row, col, moves)
-                if king_position in captures:
+            if piece != ' ' and piece.islower() == is_color:
+                king_captured = king_is_captured(board, row, col, piece, piece.lower())
+                if king_captured:
                     return True
     return False
 
@@ -553,53 +637,59 @@ def is_check(board, is_color, moves):
 def is_checkmate_or_stalemate(board, is_color, moves):
     possible_moves = 0
     # Consider this as a potential checkmate if under check
-    checkmate = is_check(board, is_color, moves)
+    checkmate = is_check(board, is_color)
     
+    temp_board = [rank[:] for rank in board]  
     # Iterate through all the player's pieces
     for row in range(8):
         for col in range(8):
+            if not checkmate and possible_moves != 0:
+                break
             piece = board[row][col]
-            if piece.isupper() == is_color and piece != ' ':
+            if piece != ' ' and piece.isupper() == is_color:
                 other_moves, _, other_specials = calculate_moves(board, row, col, moves)
                 for move in other_moves:
                     # Try each move and see if it removes the check
                     # Before making the move, create a copy of the board where the piece has moved
-                    temp_board = [rank[:] for rank in board]  
-                    temp_moves = moves.copy()
-                    temp_moves.append(output_move(piece, (row, col), move[0], move[1], temp_board[move[0]][move[1]]))
+                    old_position = board[move[0]][move[1]]
                     temp_board[move[0]][move[1]] = temp_board[row][col]
                     temp_board[row][col] = ' '
-                    if not is_check(temp_board, is_color, temp_moves):
+                    if not is_check(temp_board, is_color):
                         possible_moves += 1
                         checkmate = False
                 
-                # Could implement an if checkmate == True check here for efficiency to skip the next portion 
-                # but it's probably best to accurately update possible_moves
+                    # Revert changes
+                    temp_board[row][col] = temp_board[move[0]][move[1]]
+                    temp_board[move[0]][move[1]] = old_position
+
                 # En-passants can remove checks
                 for move in other_specials:
                     # We never have to try castling moves because you can never castle under check
                     if move not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-                        temp_board = [rank[:] for rank in board]  
-                        temp_moves = moves.copy()
-                        temp_moves.append(output_move(piece, (row, col), move[0], move[1], temp_board[move[0]][move[1]], 'enpassant'))
                         temp_board[move[0]][move[1]] = temp_board[row][col]
                         temp_board[row][col] = ' '
                         capture_row = 4 if move[0] == 3 else 5
+                        old_pawn = temp_board[capture_row][move[1]]
                         temp_board[capture_row][move[1]] = ' '
-                        if not is_check(temp_board, is_color, temp_moves):
+                        if not is_check(temp_board, is_color):
                             possible_moves += 1
                             checkmate = False
+
+                        # Revert changes
+                        temp_board[row][col] = temp_board[move[0]][move[1]]
+                        temp_board[move[0]][move[1]] = ' '
+                        temp_board[capture_row][move[1]] = old_pawn
 
     return checkmate, possible_moves
 
 # Set check or checkmate draw flags
 def set_check_or_checkmate_settings(drawing_settings, client_game):
-    drawing_settings["check_white"] = is_check(client_game.board, True, client_game.moves)
+    drawing_settings["check_white"] = is_check(client_game.board, True)
     if drawing_settings["check_white"]:
         drawing_settings["checkmate_white"] = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)[0]
         return
     else:
-        drawing_settings["check_black"] = is_check(client_game.board, False, client_game.moves)
+        drawing_settings["check_black"] = is_check(client_game.board, False)
         if drawing_settings["check_black"]:
             drawing_settings["checkmate_black"] = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)[0]
             return

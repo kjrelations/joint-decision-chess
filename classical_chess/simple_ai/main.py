@@ -63,13 +63,11 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
     is_white = piece.isupper()
 
     temp_board = [rank[:] for rank in game.board]  
-    temp_moves = game.moves.copy()
-    temp_moves.append(output_move(piece, selected_piece, row, col, temp_board[row][col]))
     temp_board[row][col] = temp_board[selected_piece[0]][selected_piece[1]]
     temp_board[selected_piece[0]][selected_piece[1]] = ' '
 
     # Move the piece if the king does not enter check
-    if not is_check(temp_board, is_white, temp_moves):
+    if not is_check(temp_board, is_white):
         game.update_state(row, col, selected_piece)
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print("ALG_MOVES:", game.alg_moves)

@@ -166,7 +166,7 @@ function updateCommandCenter() {
             }
             const scoreCompare = color === 'white' ? score > 0 : score < 0;
             const scoreElement = document.createElement('div')
-            scoreElement.textContent = '+' + score;
+            scoreElement.textContent = '+' + Math.abs(score);
             if (scoreCompare) {
                 playerPieces.appendChild(scoreElement);
             } else if (score !== 0) {
