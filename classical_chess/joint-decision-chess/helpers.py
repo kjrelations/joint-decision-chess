@@ -97,6 +97,13 @@ def king_outlines(king_image):
     checkmate_surface = blur_surface(checkmate_surface)
     return [check_surface, checkmate_surface]
 
+# Helper for showing debug print statements
+def print_d(*args, debug=False, **kwargs):
+    if debug:
+        print(*args, **kwargs)
+    else:
+        return
+
 # Helper function for generating bespoke Game moves
 def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
     return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]

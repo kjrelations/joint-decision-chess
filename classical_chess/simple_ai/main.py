@@ -35,6 +35,8 @@ for color in ['w', 'b']:
 
 outlines = king_outlines(transparent_pieces['k'])
 
+debug_prints = True
+
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
@@ -70,7 +72,7 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
     if not is_check(temp_board, is_white):
         game.update_state(row, col, selected_piece)
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
-            print("ALG_MOVES:", game.alg_moves)
+            print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
         if (row, col) in valid_captures:
             capture_sound.play()
@@ -111,7 +113,7 @@ def handle_piece_special_move(game, selected_piece, row, col):
 
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
-    print("ALG_MOVES:", game.alg_moves)
+    print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
     if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
         move_sound.play()
     else:
@@ -258,7 +260,8 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
                         client_game.promote_to_piece(row, col, button.piece)
-                        promotion_required = False  # Exit promotion state condition
+                        print_d("ALG_MOVES:", client_game.alg_moves, debug=debug_prints)
+                        promotion_required = False
                         promoted = True
 
         game_window.fill((0, 0, 0))

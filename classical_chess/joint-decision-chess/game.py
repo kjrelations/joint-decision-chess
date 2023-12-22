@@ -376,8 +376,6 @@ class Game:
                     # least accessed state based on Python 3.7+ storing dictionary items by insertion order
                     least_accessed = min(self.board_states, key=self.board_states.get)
                     del self.board_states[least_accessed]
-            
-        print("ALG_MOVES:", self.alg_moves)
 
     def threefold_check(self):
         for count in self.board_states.values():
