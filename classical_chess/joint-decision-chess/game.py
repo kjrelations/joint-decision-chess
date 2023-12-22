@@ -13,19 +13,20 @@ class Game:
             self.moves = []
             self.alg_moves = []
             self.castle_attributes = {
-                'white_king_moved' : False,
-                'left_white_rook_moved' : False,
-                'right_white_rook_moved' : False,
-                'black_king_moved' : False,
-                'left_black_rook_moved' : False,
-                'right_black_rook_moved' : False
+                'white_king_moved' : [False, None],
+                'left_white_rook_moved' : [False, None],
+                'right_white_rook_moved' : [False, None],
+                'black_king_moved' : [False, None],
+                'left_black_rook_moved' : [False, None],
+                'right_black_rook_moved' : [False, None]
             }
             self.current_position = None
             self.previous_position = None
             # Appending an empty set of special states and initialised castling states to rows of board row tuples
             _current_board_state = tuple(tuple(row) for row in board)
             _current_board_state = _current_board_state + ((),) # Empty set of specials
-            _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
             self.board_states = { _current_board_state: 1}
             # Apparently highest move count for a legal game so far is like 269 moves, not sure if only for one player or not
             # hence 500 is reasonable
@@ -174,18 +175,30 @@ class Game:
         self.alg_moves.append(algebraic_move)
         self._move_index += 1
 
-        if piece == 'K' and selected_piece == (7, 4) and not self.castle_attributes['white_king_moved']:
-            self.castle_attributes['white_king_moved'] = True
-        elif piece == 'k' and selected_piece == (0, 4) and not self.castle_attributes['black_king_moved']:
-            self.castle_attributes['black_king_moved'] = True
-        elif piece == 'R' and selected_piece == (7, 0) and not self.castle_attributes['left_white_rook_moved']:
-            self.castle_attributes['left_white_rook_moved'] = True
-        elif piece == 'R' and selected_piece == (7, 7) and not self.castle_attributes['right_white_rook_moved']:
-            self.castle_attributes['right_white_rook_moved'] = True
-        elif piece == 'r' and selected_piece == (0, 0) and not self.castle_attributes['left_black_rook_moved']:
-            self.castle_attributes['left_black_rook_moved'] = True
-        elif piece == 'r' and selected_piece == (0, 7) and not self.castle_attributes['right_black_rook_moved']:
-            self.castle_attributes['right_black_rook_moved'] = True
+        if piece == 'K' and selected_piece == (7, 4) and not self.castle_attributes['white_king_moved'][0]:
+            self.castle_attributes['white_king_moved'] = [True, self._move_index]
+
+            if special_string == 'castle' and (new_row, new_col) == (7, 2):
+                self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
+            elif special_string == 'castle' and (new_row, new_col) == (7, 6):
+                self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
+        
+        elif piece == 'k' and selected_piece == (0, 4) and not self.castle_attributes['black_king_moved'][0]:
+            self.castle_attributes['black_king_moved'] = [True, self._move_index]
+
+            if special_string == 'castle' and (new_row, new_col) == (0, 2):
+                self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
+            elif special_string == 'castle' and (new_row, new_col) == (0, 6):
+                self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
+        
+        elif piece == 'R' and selected_piece == (7, 0) and not self.castle_attributes['left_white_rook_moved'][0]:
+            self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
+        elif piece == 'R' and selected_piece == (7, 7) and not self.castle_attributes['right_white_rook_moved'][0]:
+            self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
+        elif piece == 'r' and selected_piece == (0, 0) and not self.castle_attributes['left_black_rook_moved'][0]:
+            self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
+        elif piece == 'r' and selected_piece == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
+            self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
 
         if not self._debug:
             # Change turns once a standard move is played, not during a pawn promotion
@@ -205,7 +218,8 @@ class Game:
                 _current_board_state = tuple(tuple(r) for r in self.board)
                 special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
                 _current_board_state = _current_board_state + special_tuple
-                _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+                flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+                _current_board_state = _current_board_state + (tuple(flat_castle_values),)
                 
                 if _current_board_state in self.board_states:
                     self.board_states[_current_board_state] += 1
@@ -348,7 +362,8 @@ class Game:
             _current_board_state = tuple(tuple(r) for r in self.board)
             special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
             _current_board_state = _current_board_state + special_tuple
-            _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
             
             if _current_board_state in self.board_states:
                 self.board_states[_current_board_state] += 1
@@ -386,7 +401,8 @@ class Game:
                 _current_board_state = tuple(tuple(r) for r in self.board)
                 special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
                 _current_board_state = _current_board_state + special_tuple
-                _current_board_state = _current_board_state + (tuple(self.castle_attributes.values()),)
+                flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+                _current_board_state = _current_board_state + (tuple(flat_castle_values),)
                 
                 if self.board_states[_current_board_state] == 1:
                     del self.board_states[_current_board_state]
@@ -395,7 +411,6 @@ class Game:
                     self.board_states[_current_board_state] -= 1
                     self._state_update[_current_board_state] = self.board_states[_current_board_state]
             
-            self._move_index -= 1
             move = self.moves[-1]
 
             prev_pos = list(move[0])
@@ -417,32 +432,32 @@ class Game:
                 if (curr_row, curr_col) == (7, 2):
                     self.board[7][0] = 'R'
                     self.board[7][3] = ' '
-                    self.castle_attributes['white_king_moved'] = False
-                    self.castle_attributes['left_white_rook_moved'] = False
+                    self.castle_attributes['white_king_moved'] = [False, None]
+                    self.castle_attributes['left_white_rook_moved'] = [False, None]
                 elif (curr_row, curr_col) == (7, 6):
                     self.board[7][7] = 'R'
                     self.board[7][5] = ' '
-                    self.castle_attributes['white_king_moved'] = False
-                    self.castle_attributes['right_white_rook_moved'] = False
+                    self.castle_attributes['white_king_moved'] = [False, None]
+                    self.castle_attributes['right_white_rook_moved'] = [False, None]
                 elif (curr_row, curr_col) == (0, 2):
                     self.board[0][0] = 'r'
                     self.board[0][3] = ' '
-                    self.castle_attributes['black_king_moved'] = False
-                    self.castle_attributes['left_black_rook_moved'] = False
+                    self.castle_attributes['black_king_moved'] = [False, None]
+                    self.castle_attributes['left_black_rook_moved'] = [False, None]
                 elif (curr_row, curr_col) == (0, 6):
                     self.board[0][7] = 'r'
                     self.board[0][5] = ' '
-                    self.castle_attributes['black_king_moved'] = False
-                    self.castle_attributes['right_black_rook_moved'] = False
-            
-            # TODO Need to handle this better later but this will do.
-            last_state = list(self.board_states.keys())[-1]
-            last_castle_attributes = last_state[-1]
-            for i, key in enumerate(self.castle_attributes.keys()):
-                self.castle_attributes[key] = last_castle_attributes[i]
+                    self.castle_attributes['black_king_moved'] = [False, None]
+                    self.castle_attributes['right_black_rook_moved'] = [False, None]
+            elif special == '':
+                for move_name, moved_attributes in self.castle_attributes.items():
+                    moved_index = moved_attributes[1]
+                    if moved_index is not None and moved_index == self._move_index:
+                            self.castle_attributes[move_name] = [False, None]
 
             del self.moves[-1]
             del self.alg_moves[-1]
+            self._move_index -= 1
             self._move_undone = True
             self._sync = False
 
@@ -478,7 +493,8 @@ class Game:
             move_index_offset = 1 # We always apply the next move
             target_index = move_index
         while self._move_index != target_index:
-            move = self.moves[self._move_index + move_index_offset]
+            current_move_index = self._move_index + move_index_offset
+            move = self.moves[current_move_index]
 
             prev_pos = list(move[0])
             curr_pos = list(move[1])
@@ -509,16 +525,38 @@ class Game:
                 if (curr_row, curr_col) == (7, 2):
                     self.board[7][0] = rook_old_pos
                     self.board[7][3] = rook_future_pos
+                    self.castle_attributes['white_king_moved'] = [False, None] if increment < 0 else [True, current_move_index]
+                    self.castle_attributes['left_white_rook_moved'] = [False, None] if increment < 0 else [True, current_move_index]
                 elif (curr_row, curr_col) == (7, 6):
                     self.board[7][7] = rook_old_pos
                     self.board[7][5] = rook_future_pos
+                    self.castle_attributes['white_king_moved'] = [False, None] if increment < 0 else [True, current_move_index]
+                    self.castle_attributes['right_white_rook_moved'] = [False, None] if increment < 0 else [True, current_move_index]
                 elif (curr_row, curr_col) == (0, 2):
                     self.board[0][0] = rook_old_pos
                     self.board[0][3] = rook_future_pos
+                    self.castle_attributes['black_king_moved'] = [False, None] if increment < 0 else [True, current_move_index]
+                    self.castle_attributes['left_black_rook_moved'] = [False, None] if increment < 0 else [True, current_move_index]
                 elif (curr_row, curr_col) == (0, 6):
                     self.board[0][7] = rook_old_pos
                     self.board[0][5] = rook_future_pos
-            
+                    self.castle_attributes['black_king_moved'] = [False, None] if increment < 0 else [True, current_move_index]
+                    self.castle_attributes['right_black_rook_moved'] = [False, None] if increment < 0 else [True, current_move_index]
+            else:
+                for move_name, moved_attributes in self.castle_attributes.items():
+                    moved_index = moved_attributes[1]
+                    if increment > 0 and moved_index is None:
+                        if (prev_row, prev_col) in [(7, 0), (7, 7)] and piece == 'R':
+                            self.castle_attributes[move_name] = [True, current_move_index]
+                        elif (prev_row, prev_col) in [(0, 0), (0, 7)] and piece == 'r':
+                            self.castle_attributes[move_name] = [True, current_move_index]
+                        elif (prev_row, prev_col) == (7, 4) and piece == 'K':
+                            self.castle_attributes[move_name] = [True, current_move_index]
+                        elif (prev_row, prev_col) == (0, 4) and piece == 'k':
+                            self.castle_attributes[move_name] = [True, current_move_index]
+                    elif increment < 0 and moved_index is not None and moved_index == current_move_index:
+                            self.castle_attributes[move_name] = [False, None]
+
             self._move_index += increment
             # TODO This is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
             # self.current_turn = not self.current_turn

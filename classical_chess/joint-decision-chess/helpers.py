@@ -129,13 +129,32 @@ def load_historic_game(json_game):
     current_position = (curr_row, curr_col)
 
     _castle_attributes = {
-        'white_king_moved' : False,
-        'left_white_rook_moved' : False,
-        'right_white_rook_moved' : False,
-        'black_king_moved' : False,
-        'left_black_rook_moved' : False,
-        'right_black_rook_moved' : False
+        'white_king_moved' : [False, None],
+        'left_white_rook_moved' : [False, None],
+        'right_white_rook_moved' : [False, None],
+        'black_king_moved' : [False, None],
+        'left_black_rook_moved' : [False, None],
+        'right_black_rook_moved' : [False, None]
     }
+
+    for move_index, comp_move in enumerate(json_game["comp_moves"]):
+        piece = comp_move[0][0]
+        prev_pos = (int(comp_move[0][1]), int(comp_move[0][2]))
+        if comp_move[3] == 'castle':
+            side = 'left' if comp_move[1][2] == '2' else 'right'
+            _castle_attributes['white_king_moved' if piece == 'K' else 'black_king_moved'] = [True, move_index]
+            if side == 'left':
+                _castle_attributes['left_white_rook_moved' if piece == 'K' else 'left_black_rook_moved'] = [True, move_index]
+            else:
+                _castle_attributes['right_white_rook_moved' if piece == 'K' else 'right_black_rook_moved'] = [True, move_index]
+        if piece == 'K' and not _castle_attributes['white_king_moved'][0]:
+            _castle_attributes['white_king_moved'] = [True, move_index]
+        elif piece == 'k' and not _castle_attributes['black_king_moved'][0]:
+            _castle_attributes['black_king_moved'] = [True, move_index]
+        elif piece == 'R' and prev_pos in [(7, 0), (7, 7)]:
+            _castle_attributes['left_black_rook_moved' if prev_pos == (7, 0) else 'right_black_rook_moved'] = [True, move_index]
+        elif piece == 'r' and prev_pos in [(0, 0), (0, 7)]:
+            _castle_attributes['left_white_rook_moved' if prev_pos == (0, 0) else 'right_white_rook_moved'] = [True, move_index]
 
     game_param_dict = {
         "current_turn": current_turn,
@@ -525,15 +544,15 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     # and instead use a temp board
     if piece_type == 'k' and castle_attributes is not None:
         if is_white:
-            moved_king = castle_attributes['white_king_moved']
-            left_rook_moved = castle_attributes['left_white_rook_moved']
-            right_rook_moved = castle_attributes['right_white_rook_moved']
+            moved_king = castle_attributes['white_king_moved'][0]
+            left_rook_moved = castle_attributes['left_white_rook_moved'][0]
+            right_rook_moved = castle_attributes['right_white_rook_moved'][0]
             king_row = 7
             king_piece = 'K'
         else:
-            moved_king = castle_attributes['black_king_moved']
-            left_rook_moved = castle_attributes['left_black_rook_moved']
-            right_rook_moved = castle_attributes['right_black_rook_moved']
+            moved_king = castle_attributes['black_king_moved'][0]
+            left_rook_moved = castle_attributes['left_black_rook_moved'][0]
+            right_rook_moved = castle_attributes['right_black_rook_moved'][0]
             king_row = 0
             king_piece = 'k'
 
