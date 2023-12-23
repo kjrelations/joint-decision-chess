@@ -758,6 +758,10 @@ def generate_coordinate_surface(theme):
     theme.GRID_SIZE, theme.FONT_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT, \
     theme.INVERSE_PLAYER_VIEW, theme.TEXT_OFFSET
 
+    # Pygbag cuts off the bottom by some pixels and cuts off some letters
+    # TODO try fixing this in pygbag's source code and replacing this workaround
+    pygbag_cutoff_shift = 3
+
     font = pygame.font.Font(None, FONT_SIZE) # default font is called freesansbold
     COORDINATES = ['a','b','c','d','e','f','g','h']
     NUMBERS = ['1','2','3','4','5','6','7','8']
@@ -775,7 +779,7 @@ def generate_coordinate_surface(theme):
     coordinate_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     if not INVERSE_PLAYER_VIEW:
         for i, letter in enumerate(white_letter_surfaces):
-            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET - pygbag_cutoff_shift
             square_x = (1 + i) * GRID_SIZE - FONT_SIZE // 2
             coordinate_surface.blit(letter, (square_x, square_y))
 
@@ -785,7 +789,7 @@ def generate_coordinate_surface(theme):
             coordinate_surface.blit(number, (square_x, square_y))
     else:
         for i, letter in enumerate(black_letter_surfaces[::-1]):
-            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET
+            square_y = 8 * GRID_SIZE - FONT_SIZE // 2 - TEXT_OFFSET - pygbag_cutoff_shift
             square_x = i * GRID_SIZE + 5
             coordinate_surface.blit(letter, (square_x, square_y))
 
