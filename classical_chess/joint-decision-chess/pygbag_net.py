@@ -228,7 +228,7 @@ class Node:
                             # emscripten does not honor PEEK
                             # peek = sock.socket.recv(1, socket.MSG_PEEK |socket.MSG_DONTWAIT)
                             one = sock.socket.recv(1, socket.MSG_DONTWAIT)
-                            if one:
+                            if one and not self.offline:
                                 if self.reconnecting:
                                     self.reconnecting = False
                                 self.peek.append(one)

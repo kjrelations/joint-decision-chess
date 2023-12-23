@@ -271,8 +271,18 @@ async def main():
                 try:
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=historic'
                     handler = fetch.RequestHandler()
-                    response = await handler.get(url)
-                    data = json.loads(response)
+                    while not init["config_retrieved"]:
+                        try:
+                            response = await asyncio.wait_for(handler.get(url), timeout = 5)
+                            data = json.loads(response)
+                            init["config_retrieved"] = True
+                        except:
+                            err = 'Game config retreival failed. Reattempting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
+                    if data.get("status") and data["status"] == "error":
+                        raise Exception(f'Request failed {data}')
                     if data["message"]["theme_names"]:
                         theme_names = data["message"]["theme_names"]
                         global themes

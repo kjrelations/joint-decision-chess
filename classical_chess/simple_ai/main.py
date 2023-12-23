@@ -415,7 +415,6 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
             data = json.loads(response)
             if data.get("status") and data["status"] == "error":
                 raise Exception(f'Request failed {data}')
-            # # no response handling?
         except Exception as e:
             js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
             window.eval(js_code)
@@ -434,7 +433,6 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
                 response_token = data["token"]
             else:
                 raise Exception('Request failed')
-            # # no response handling?
             secret_key = access_keys["updatekey"] + game_id
             js_code = """
                 function decodeToken(token, secret) {
@@ -591,14 +589,20 @@ async def main():
             if not init["config_retrieved"] and not init["local_debug"]:
                 access_keys = load_keys("secrets.txt")
                 try:
-                    # TODO add Retry loop on disconnect
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
-                    response = await handler.get(url)
-                    data = json.loads(response)
+                    while not init["config_retrieved"]:
+                        try:
+                            response = await asyncio.wait_for(handler.get(url), timeout = 5)
+                            data = json.loads(response)
+                            init["config_retrieved"] = True
+                        except:
+                            err = 'Game config retreival failed. Reattempting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
                     if data.get("status") and data["status"] == "error":
                         raise Exception(f'Request failed {data}')
-                    init["config_retrieved"] = True
                     if data["message"]["starting_side"] == "white":
                         init["starting_player"] = True 
                     elif data["message"]["starting_side"] == "black":
@@ -1128,7 +1132,7 @@ async def main():
         try:
             if not init["sent"] and not init["final_updates"]:
                 if not init["local_debug"]:
-                    await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 10)
+                    await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
                 init["sent"] = 1
         except:
             init["reloaded"] = False

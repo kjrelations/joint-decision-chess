@@ -443,7 +443,13 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                         elif not game._sync and not client_game._sync and not init["desync"]:
                             confirmed_state = None
                             if not init["local_debug"]:
-                                confirmed_state = await get_or_update_game(init["game_id"], init["access_keys"])
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                except:
+                                    err = 'Confirmed state retrieval failed. Quitting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
                             if confirmed_state is not None:
                                 confirmed_state = json.loads(confirmed_state)
                                 confirmed_state["_starting_player"] = init["starting_player"]
@@ -515,7 +521,13 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
-                        confirmed_state = await get_or_update_game(init["game_id"], init["access_keys"])
+                        try:
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                        except:
+                            err = 'Confirmed state retrieval failed. Quitting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
                     if confirmed_state is not None:
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
@@ -584,7 +596,13 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                         elif not game._sync and not client_game._sync and not init["desync"]:
                             confirmed_state = None
                             if not init["local_debug"]:
-                                confirmed_state = await get_or_update_game(init["game_id"], init["access_keys"])
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                except:
+                                    err = 'Confirmed state retrieval failed. Quitting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
                             if confirmed_state is not None:
                                 confirmed_state = json.loads(confirmed_state)
                                 confirmed_state["_starting_player"] = init["starting_player"]
@@ -668,7 +686,13 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
-                        confirmed_state = await get_or_update_game(init["game_id"], init["access_keys"])
+                        try:
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                        except:
+                            err = 'Confirmed state retrieval failed. Quitting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
                     if confirmed_state is not None:
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
@@ -775,7 +799,16 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     if not init["reloaded"]:
                         confirmed_state = None
                         if not init["local_debug"]:
-                            confirmed_state = await get_or_update_game(init["game_id"], init["access_keys"])
+                            retrieved = False
+                            while not retrieved:
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                    retrieved = True
+                                except:
+                                    err = 'Game State retreival Failed. Reattempting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
                         if confirmed_state is not None:
                             confirmed_state = json.loads(confirmed_state)
                             confirmed_state["_starting_player"] = init["starting_player"]
@@ -1017,7 +1050,6 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
             data = json.loads(response)
             if data.get("status") and data["status"] == "error":
                 raise Exception(f'Request failed {data}')
-            # # no response handling?
         except Exception as e:
             js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
             window.eval(js_code)
@@ -1036,7 +1068,6 @@ async def get_or_update_game(game_id, access_keys, client_game = "", post = Fals
                 response_token = data["token"]
             else:
                 raise Exception('Request failed')
-            # # no response handling?
             secret_key = access_keys["updatekey"] + game_id
             js_code = """
                 function decodeToken(token, secret) {
@@ -1237,11 +1268,18 @@ async def main():
                 try:
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
-                    response = await handler.get(url)
-                    data = json.loads(response)
+                    while not init["config_retrieved"]:
+                        try:
+                            response = await asyncio.wait_for(handler.get(url), timeout = 5)
+                            data = json.loads(response)
+                            init["config_retrieved"] = True
+                        except:
+                            err = 'Game config retreival failed. Reattempting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
                     if data.get("status") and data["status"] == "error":
                         raise Exception(f'Request failed {data}')
-                    init["config_retrieved"] = True
                     if data["message"]["starting_side"] == "white":
                         init["starting_player"] = True 
                     elif data["message"]["starting_side"] == "black":
@@ -1269,7 +1307,16 @@ async def main():
                 window.sessionStorage.setItem("color", "white")
                 window.sessionStorage.setItem("muted", "false")
             else:
-                retrieved_state = await get_or_update_game(game_id, access_keys)
+                retrieved = False
+                while not retrieved:
+                    try:
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+                        retrieved = True
+                    except:
+                        err = 'Game State retreival Failed. Reattempting...'
+                        js_code = f"console.log('{err}')"
+                        window.eval(js_code)
+                        print(err)
             
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
@@ -1811,13 +1858,19 @@ async def main():
                 for potential_request in ["draw", "undo"]:
                     reset_request(potential_request, init, node, client_state_actions)
                 if not init["sent"]:
-                    node.tx(txdata)
                     if not init["local_debug"]:
-                        await get_or_update_game(game_id, access_keys, client_game, post = True)
+                        await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                    node.tx(txdata)
                     init["sent"] = 1
         except Exception as err:
-            # maybe reloaded or offline here?
-            print("Could not send/get games... ", err)
+            node.offline = True
+            init["reloaded"] = False
+            init["sent"] = 1
+            err = 'Could not send game... Reconnecting...'
+            js_code = f"console.log('{err}')"
+            window.eval(js_code)
+            print(err)
+            continue
 
         if client_game.end_position and not init["final_updates"] and init["reloaded"]:
             try:
@@ -1829,10 +1882,20 @@ async def main():
                 txdata = {node.CMD: f"{init['player']}_update"}
                 send_game = client_game.to_json()
                 txdata.update({"game": send_game})
-                node.tx(txdata)
-                if not init["local_debug"]:
-                    await get_or_update_game(game_id, access_keys, client_game, post = True)
-                
+                try:
+                    if not init["local_debug"]:
+                        await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                    node.tx(txdata)
+                except:
+                    node.offline = True
+                    init["reloaded"] = False
+                    init["sent"] = 1
+                    err = 'Could not send game... Reconnecting...'
+                    js_code = f"console.log('{err}')"
+                    window.eval(js_code)
+                    print(err)
+                    continue
+                    
                 web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
                 web_game_metadata_dict = json.loads(web_game_metadata)
@@ -1852,7 +1915,8 @@ async def main():
                 node.quit()
                 init["final_updates"] = True
             except Exception as err:
-                print("Could not send endgame position... ", err) # This would keep trying to resend on error which could be fine
+                print("Could not execute final updates... ", err)
+                continue
 
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
