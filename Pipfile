@@ -21,6 +21,7 @@ requests = "*"
 pyjwt = "*"
 channels-redis = "*"
 twisted = {extras = ["http2", "tls"], version = "*"}
+django-debug-toolbar = "*"
 
 [dev-packages]
 pytest = "*"

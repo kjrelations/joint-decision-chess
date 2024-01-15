@@ -1010,6 +1010,7 @@ def reset_request(request, init, node, client_state_actions):
         client_state_actions[request_sent] = False
 
 # TODO Move to helpers later on refactor
+# TODO Consider having timeout handling here instead
 async def get_or_update_game(game_id, access_keys, client_game = "", post = False):
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
@@ -1265,6 +1266,7 @@ async def main():
             if not init["config_retrieved"] and not init["local_debug"]:
                 access_keys = load_keys("secrets.txt")
                 init["access_keys"] = access_keys
+                # TODO Consider whether to merge with retreival
                 try:
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()

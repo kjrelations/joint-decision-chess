@@ -49,14 +49,17 @@ INSTALLED_APPS = [
     'register.apps.RegisterConfig',
     'middleware',
     'django_countries',
-    'corsheaders'
+    'corsheaders',
+    'debug_toolbar'
 ]
 
+# Order matters here
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'middleware.middleware.GuestSessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,6 +72,12 @@ if DEBUG:
     CORS_ALLOWED_ORIGINS = [
         'http://127.0.0.1:8585',
         # 'http://<ip>:8000'
+    ]
+
+# For the debug toolbar on debug mode only, toggle here or edit SHOW_TOOLBAR_CALLBACK
+if True:
+    INTERNAL_IPS = [
+        '127.0.0.1',
     ]
 
 CSRF_TRUSTED_ORIGINS = ['https://decisionchess.com', 'http://decisionchess.com']
