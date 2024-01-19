@@ -1275,11 +1275,11 @@ async def main():
                             response = await asyncio.wait_for(handler.get(url), timeout = 5)
                             data = json.loads(response)
                             init["config_retrieved"] = True
-                        except:
+                        except Exception as e:
                             err = 'Game config retreival failed. Reattempting...'
                             js_code = f"console.log('{err}')"
                             window.eval(js_code)
-                            print(err)
+                            print(err, e)
                     if data.get("status") and data["status"] == "error":
                         raise Exception(f'Request failed {data}')
                     if data["message"]["starting_side"] == "white":

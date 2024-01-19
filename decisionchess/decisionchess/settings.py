@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'middleware',
     'django_countries',
     'corsheaders',
-    'debug_toolbar'
+    'debug_toolbar',
+    'livereload'
 ]
 
 # Order matters here
@@ -66,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'livereload.middleware.LiveReloadScript', # at end
 ]
 
 if DEBUG:
@@ -146,6 +148,7 @@ DATABASES = {
 SECRET_KEY = config('SECRET_KEY')
 SIGNING_KEY = config('SIGNING_KEY')
 STATE_UPDATE_KEY = config('STATE_UPDATE_KEY')
+EMAIL_KEY = config('EMAIL_KEY')
 
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')

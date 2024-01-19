@@ -57,7 +57,7 @@
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
-	<button class="theme-toggle" id="theme-toggle-button">Toggle Theme</button>
+	<button class="theme-toggle" id="theme-toggle-button" style="margin-top: 80px;">Toggle Theme</button>
 	<div class="container-fluid" style="padding: 0;">
 		<div class="row" style="max-width: 100%;">
 			<div id="header-column" class="col-12 col-hb-12 col-md-1">
@@ -76,7 +76,7 @@
 			</div>
 			<div class="profile-content" id="profileDropdownContent">
 				<a href="/profile/{{ user.username }}">Profile</a>
-				<form id="profile-logout" method="post" action="{% url 'admin:logout' %}">
+				<form id="profile-logout" method="post" action="{% url 'logout' %}">
 					{% csrf_token %}
 					<button type="submit">Logout</button>
 				</form>
