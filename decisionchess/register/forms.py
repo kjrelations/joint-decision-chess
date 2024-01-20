@@ -7,10 +7,14 @@ from main.models import User
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField()
+    agree_to_terms = forms.BooleanField(
+        required=True,
+        initial=False,
+    )
 
     class Meta:
         model = User
-        fields = ["username", "email", "password1", "password2"]
+        fields = ["username", "email", "password1", "password2", "agree_to_terms"]
 
 class ResendActivationEmailForm(forms.Form):
     email = forms.EmailField(label='Email Address')

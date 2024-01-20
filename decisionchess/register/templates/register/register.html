@@ -1,6 +1,20 @@
 {% extends "main/base.html" %}
 
 {% block style %}
+<style>
+    .nav-link {
+        color: #0056b3;
+    }
+    .nav-link:hover {
+        color: #007bff;
+    }
+    .nav-link.active {
+        color: var(--homebutton-decision);
+    }
+    .asteriskField {
+        display: none;
+    }
+</style>
 {% endblock %}
 
 {% block title %}
@@ -16,11 +30,67 @@ Create an Account
             <div class="col-10 col-md-5">
                 <form method="POST" class="form-group">
                     {% csrf_token %}
-                    {{form|crispy}}
+                    {{ form.username|as_crispy_field }}
+                    {{ form.email|as_crispy_field }}
+                    {{ form.password1|as_crispy_field }}
+                    {{ form.password2|as_crispy_field }}
+                    <div class="form-check" style="margin-bottom: 10px;">
+                        <input class="form-check-input" type="checkbox" id="id_agree_to_terms" name="{{ form.agree_to_terms.name }}" required>
+                        <label class="form-check-label" for="id_agree_to_terms">
+                            I agree to the
+                            <a href="#" data-toggle="modal" data-target="#termsPrivacyModal">Terms of Service and Privacy Policy</a>
+                        </label>
+                    </div>
                     <button type="submit" class="btn btn-success">Register</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="termsPrivacyModal" tabindex="-1" role="dialog" aria-labelledby="termsPrivacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <ul id="modalTabs" class="nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="termsTab" data-toggle="tab" href="#termsContent">
+                            <h5 class="modal-title">Terms of Service</h5>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="privacyTab" data-toggle="tab" href="#privacyContent">
+                            <h5 class="modal-title" >Privacy Policy</h5>
+                        </a>
+                    </li>
+                </ul>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="termsContent">
+                        {% include "main/terms/terms_october_4.html" %}
+                    </div>
+                    <div class="tab-pane fade" id="privacyContent">
+                        {% include "main/privacy_policy/privacy_october_4.html" %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function(){
+        $('#modalTabs a').on('click', function (e) {
+            $('.modal-body').scrollTop(0);
+        });
+    });
+</script>
+
 {% endblock %}
