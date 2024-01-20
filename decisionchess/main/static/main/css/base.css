@@ -22,6 +22,10 @@ body {
     background-color: var(--form-control-background);
 }
 
+.asteriskField {
+    display: none;
+}
+
 .modal-content {
     color: var(--body-text);
     background-color: var(--modal-content-background);
