@@ -71,6 +71,7 @@ def create_new_game(request, optional_uuid = None):
                 new_open_game.initiator_name = request.user.username
             else:
                 user_id = request.session.get('guest_uuid')
+            # TODO Test the removal of all these sets
             if user_id is None:
                 user_id = uuid.uuid4()
                 request.session["guest_uuid"] = str(user_id)
