@@ -358,9 +358,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        # DEV logs to console
-        # web_game_metadata_dict['console_messages'] = console_log_messages
-
         # TODO Can just put this into an asynchronous loop if I wanted or needed
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
@@ -919,8 +916,7 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "flip_board": {
                     "execute": False,
                     "update_executed": False
-                },
-                "console_messages": []
+                }
             }
         else:
             raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
@@ -1212,8 +1208,6 @@ async def main():
             ("flip_board", "flip", "flip_executed")
         ]
     )
-
-    console_log_messages = []
 
     selected_piece = None
     hovered_square = None
@@ -1811,9 +1805,6 @@ async def main():
         web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
-
-        # DEV logs to console
-        # web_game_metadata_dict[game_tab_id]['console_messages'] = console_log_messages
         
         # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
         # Undo move, resign, draw offer, cycle theme, flip command handle

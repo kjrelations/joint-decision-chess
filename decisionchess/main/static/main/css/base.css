@@ -195,13 +195,20 @@ body {
     padding-bottom: 20px;
 }
 
+@media (min-width: 1345px) {
+    .sidenav {
+        width: 160px;
+    }
+}
+
 @media (min-width: 768px) {
     .homeblock {
         width: 160px;
         height: 50px;
     }
     .sidenav {
-        width: 160px;
+        /* Linear scale with a min width of 95px, max of 160px, adjust speed with scaling factor */
+        width: calc(min(160px, max(95px, 160px - 10 * ( calc( 1345px - 100vw ) / 65 ) )));
         height: calc(100% - 50px);
     }
 }

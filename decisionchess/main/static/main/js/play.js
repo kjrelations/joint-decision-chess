@@ -1083,16 +1083,3 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
         handleWebtoGameAction(buttonId, localStorageObjectName);
     };
 }
-
-// // Logging Debug python console messages; Only for development hence keep it commented. Maybe add a global dev flag too
-// function pythonDebugLogger() {
-//     var logs = webGameMetadata.console_messages
-//     for (var i = 0; i < logs.length; i++) {
-//         console.log(logs[i])
-//     }
-// }
-
-// window.addEventListener('load', pythonDebugLogger);
-
-// // Set up an interval to log debug print statements
-// setInterval(pythonDebugLogger, 1000);

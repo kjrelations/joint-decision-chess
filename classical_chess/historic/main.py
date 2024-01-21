@@ -226,8 +226,6 @@ async def main():
         ("flip_board", "flip", "flip_executed")
     ]
 
-    console_log_messages = []
-
     selected_piece = None
     hovered_square = None
     current_right_clicked_square = None
@@ -496,9 +494,6 @@ async def main():
         web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
-
-        # DEV logs to console
-        # web_game_metadata_dict[game_tab_id]['console_messages'] = console_log_messages
         
         # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
         # Step, cycle theme, flip command handle
