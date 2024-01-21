@@ -18,6 +18,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse
 from django.urls import reverse
 from base64 import binascii
+from datetime import datetime, timedelta
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm
 from .user_settings import default_themes
@@ -663,11 +664,14 @@ def change_email(request):
                 token = default_token_generator.make_token(request.user)
 
                 # Create a confirmation link with the user's ID, email, and token
-                # TODO only use hash for uuid this is too easily decoded
-                uid = urlsafe_base64_encode(force_bytes(request.user.pk))
-                new_email_encoded = urlsafe_base64_encode(force_bytes(new_email))
+                payload = {
+                    'user_id': str(request.user.pk),
+                    'email': new_email,
+                    'exp': datetime.utcnow() + timedelta(days=1)
+                }
+                payload_token = jwt.encode(payload, settings.EMAIL_KEY, algorithm='HS256')
                 protocol = 'https' if request.is_secure() else 'http'
-                confirmation_link = f"{protocol}://{get_current_site(request)}/account/confirm/{uid}/{token}/?new_email={new_email_encoded}"
+                confirmation_link = f"{protocol}://{get_current_site(request)}/account/confirm/{payload_token}/{token}/"
 
                 # Send an email with the confirmation link to the user
                 subject = "Confirm Email - Decision Chess"
@@ -691,51 +695,50 @@ def change_email(request):
     return render(request, "main/settings/change_email.html", {"form": form })
 
 @login_required
-def confirm_email(request, uidb64, token):
+def confirm_email(request, uidtoken, token):
+    target_url = reverse('change_email')
+    absolute_url = request.build_absolute_uri(target_url)
     try:
-        # Decode the user ID and get the user TODO hash it and compare to db also simply retrieve new emails from sessions
-        uid = urlsafe_base64_decode(uidb64).decode()
+        # Decode the user ID and get the new user email
+        decoded_payload = jwt.decode(uidtoken, settings.EMAIL_KEY, algorithms=['HS256'])
+        uid = decoded_payload['user_id']
+        expired = datetime.utcfromtimestamp(decoded_payload['exp'])
+        if expired < datetime.utcnow():
+            messages.error(request, 'Token is invalid or expired')
+            return redirect(absolute_url)
+        
         user = User.objects.get(pk=uid)
-        new_email_encoded = request.GET.get('new_email')
-        if new_email_encoded:
-            # This a security issue and is only for basic testing
-            new_email = urlsafe_base64_decode(new_email_encoded).decode()
-
+        uid = decoded_payload['user_id']
+        new_email = decoded_payload['email']
+        if new_email:
             # Check if the token is valid
             if default_token_generator.check_token(user, token):
                 user.email = new_email
                 user.email_reference = new_email
                 user.save()
 
-                form = ChangeEmailForm(user) 
                 messages.success(request, 'Your email has been updated')
-
-                return render(request, "main/settings/change_email.html", {"form": form })
+                return redirect(absolute_url)
+            
             else:
                 messages.error(request, 'Token is invalid or expired')
-                form = ChangeEmailForm(user) 
-                
-                return render(request, "main/settings/change_email.html", {"form": form })
+                return redirect(absolute_url)
+            
         else:
             messages.error(request, 'Token is invalid or expired')
-            form = ChangeEmailForm(user) 
-            
-            return render(request, "main/settings/change_email.html", {"form": form })
+            return redirect(absolute_url)
+        
     except (TypeError, ValueError, OverflowError, binascii.Error):
         messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        return redirect(absolute_url)
+    
     except IntegrityError:
         messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        return redirect(absolute_url)
+    
     except Exception:
-        messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        messages.error(request, 'An error occurred')        
+        return redirect(absolute_url)
     
 @login_required
 def change_password(request):
