@@ -147,7 +147,7 @@
                             <div class="d-flex align-items-center">
                                 {% for field in form.starting_theme %}
                                     {% if field.data.value|compare:theme.0 %}
-                                        <label for="{{ field.data.attrs.id }}" style="margin-bottom: 0px;">
+                                        <label for="{{ field.data.attrs.id }}" style="margin-bottom: 3px;">
                                             {{ field.tag }}
                                             {{ field.errors }}
                                         </label>
