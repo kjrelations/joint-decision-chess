@@ -98,12 +98,11 @@ html {
     outline-width: thin;
     outline-color: var(--quick-pair-outline);
     color: var(--quick-pair-text);
-    min-width: 50%;
-    max-width: 50%;
+    min-width: 30%;
+    max-width: 30%;
     background-color: var(--quick-pair-background);
     transition: background-color 0.3s ease;
     font-size: large;
-    padding: 5em none;
 }
 
 .quick-pair:focus {
@@ -197,6 +196,30 @@ html {
 
 .lobby-row.empty:hover {
     color: var(--lobby-row-empty-text);
+    background-color: var(--lobby-row-empty-background);
+}
+
+.quick-pair-button {
+    display: flex;
+    border: none;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: var(--lobby-outline);
+    color: var(--lobby-row-text);
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    transition: color 0.1s ease;
+    padding: 5px;
+    margin: 10px;
+}
+
+.quick-pair-button:focus {
+    outline-style: solid;
+    outline-width: thin;
+}
+
+.quick-pair-button:hover {
+    color: var(--lobby-row-hover-text);
     background-color: var(--lobby-row-empty-background);
 }
 

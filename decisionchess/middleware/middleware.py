@@ -21,7 +21,8 @@ class GuestSessionMiddleware:
                 request.session.save()
         else:
             # If user is authenticated after logging in remove guest_uuid
-            if 'guest_uuid' in request.session:
+            if 'guest_uuid' in request.session and \
+                (hasattr(request, 'user') and request.user.is_authenticated):
                 del request.session['guest_uuid']
 
                 request.session.modified = True

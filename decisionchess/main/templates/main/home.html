@@ -24,11 +24,13 @@ Decision Chess
             </div>
             <!-- Join column: Quick Pair, Lobby, games in play section -->
             <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
-                <!-- <img src="{% static 'main/images/coming-soon-landing.PNG' %}" alt="Join Section" style="max-width: 100%;"> -->
-                <button id="quick-pair" class="quick-pair">Quick Pair</button>
+              <nav class="nav">
+                <button class="quick-pair" data-toggle="tab" href="#quickPairContent">Quick Pair</button>
+                <button class="active quick-pair" data-toggle="tab" href="#lobbyContent">Lobby</button>
                 <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;">
                     <i class="fa-solid fa-gear"></i>
                 </button>
+              </nav>  
                 <div class="modal fade" id="LobbyFilterMenu" tabindex="-1" role="dialog" aria-labelledby="LobbyFilterLabel" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-centered" role="document">
                     <div class="modal-content">
@@ -59,12 +61,19 @@ Decision Chess
                 </div>
                 <div class="lobby" style="max-width: 100%;">
                     <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
-                        <div class="lobby-header">
-                            <div style="text-align: center; width: 10%; overflow: hidden;"></div>
-                            <div style="text-align: center; width: 50%; overflow: hidden;">User</div>
-                            <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                        <div class="tab-content">
+                          <div class="tab-pane fade show active" id="lobbyContent">
+                            <div class="lobby-header">
+                                <div style="text-align: center; width: 10%; overflow: hidden;"></div>
+                                <div style="text-align: center; width: 50%; overflow: hidden;">User</div>
+                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                            </div>
+                            <div id="lobby-content"></div>
+                          </div>
+                          <div class="tab-pane fade" id="quickPairContent">
+                            <button id="quick-pair" class="quick-pair-button">Join <br> Game</button>
+                          </div>
                         </div>
-                        <div id="lobby-content"></div>
                     </div>
                 </div>
                 <div class="d-flex justify-content-between w-100 top-margin">
