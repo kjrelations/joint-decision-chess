@@ -253,6 +253,26 @@ html {
     margin-top: 9px;
 }
 
+.donate {
+    display: block;
+    text-align: center;
+    border: none;
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: var(--donate-highlight);
+    color: var(--donate-highlight);
+    background-color: var(--sidenav-background);
+    transition: color 0.3s ease, outline-color 0.3s ease, background-color 0.3s ease;
+    font-size: large;
+    padding: 2em;
+}
+
+.donate:hover {
+    text-decoration: none;
+    color: var(--block-text);
+    outline-color: var(--block-text);
+}
+
 body {
     background: linear-gradient(-45deg, var(--home-body-1), var(--home-body-2), var(--home-body-3), var(--home-body-4));
     background-size: 400% 400% !important;

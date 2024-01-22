@@ -98,6 +98,9 @@ body {
     z-index: 2;
     bottom: 0;
     left: 0;
+    border-right: 2px solid;
+    border-image: linear-gradient(to bottom, var(--homebutton-decision) 50%, transparent 100%);
+    border-image-slice: 1;
     background-color: var(--sidenav-background);
     /* Overflow shouldn't be an issue */
     overflow: hidden;
@@ -227,6 +230,10 @@ body {
     .sidenav {
         display: flex;
         height: 40px;
+        border-bottom: 2px solid;
+        border-image: linear-gradient(to right, var(--homebutton-decision) 50%, transparent 100%);
+        border-image-slice: 1;
+        border-right: none;
         width: calc(100% - 150px);
         top: 0;
         right: 0;
