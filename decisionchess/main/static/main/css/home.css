@@ -92,7 +92,7 @@ html {
     background-color: var(--new-game-background-hover);
 }
 
-.quick-pair {
+.lobby-tab {
     border: none;
     outline-style: solid;
     outline-width: thin;
@@ -105,13 +105,13 @@ html {
     font-size: large;
 }
 
-.quick-pair:focus {
+.lobby-tab:focus {
     outline-style: solid;
     outline-width: thin;
     outline-color: var(--quick-pair-outline);
 }
 
-.quick-pair:hover {
+.lobby-tab:hover {
     color: var(--quick-pair-text-hover);
     background-color: var(--quick-pair-background-hover);
 }

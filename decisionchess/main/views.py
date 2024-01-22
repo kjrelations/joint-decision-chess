@@ -33,6 +33,47 @@ def index(request):
 def home(request):
     recent_blogs = BlogPosts.objects.all().order_by('-timestamp')[:2]
     context = {"blogs": recent_blogs}
+    if request.user and request.user.id is not None:
+        user_id = request.user.id
+    else:
+        user_id = request.session.get('guest_uuid')
+
+    # Active games with the same id, where there is a disconnect via the lobby column, and it matches the lobby game id
+    user_games = ActiveGames.objects.filter(
+        Q(white_id=user_id) | Q(black_id=user_id)
+    )
+
+    lobby_ids = ChessLobby.objects.filter(
+        Q(opponent_connected=False) | Q(initiator_connected=False),
+        lobby_id__in=user_games.values('active_game_id')
+    ).values_list('lobby_id', flat=True)
+
+    games_in_play = user_games.filter(
+        active_game_id__in=lobby_ids
+    ).order_by('-start_time')
+
+    context["has_games_in_play"] = bool(games_in_play)
+    context["games_in_play"] = games_in_play
+    sides, opponents = [], []
+    for game in games_in_play:
+        if game.white_id == user_id:
+            sides.append('white')
+            try:
+                opponent_username = User.objects.get(id=game.black_id)
+                opponent_username = opponent_username.username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+            opponents.append(opponent_username)
+        else:
+            sides.append('black')
+            try:
+                opponent_username = User.objects.get(id=game.white_id)
+                opponent_username = opponent_username.username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+            opponents.append(opponent_username)
+    context['sides'] = sides
+    context['opponents'] = opponents
     return render(request, "main/home.html", context)
 
 def quick_pair(request):

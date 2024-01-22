@@ -1,6 +1,7 @@
 {% extends 'main/base.html' %}
 
 {% load static %}
+{% load custom_filters %}
 
 {% block style %} 
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/home.css' %}">
@@ -25,8 +26,11 @@ Decision Chess
             <!-- Join column: Quick Pair, Lobby, games in play section -->
             <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
               <nav class="nav">
-                <button class="quick-pair" data-toggle="tab" href="#quickPairContent">Quick Pair</button>
-                <button class="active quick-pair" data-toggle="tab" href="#lobbyContent">Lobby</button>
+                <button class="lobby-tab" data-toggle="tab" href="#quickPairContent">Quick Pair</button>
+                <button class="active lobby-tab" data-toggle="tab" href="#lobbyContent">Lobby</button>
+                {% if has_games_in_play %}
+                  <button class="lobby-tab" data-toggle="tab" href="#inPlayContent">In Play</button>
+                {% endif %}
                 <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;">
                     <i class="fa-solid fa-gear"></i>
                 </button>
@@ -73,6 +77,26 @@ Decision Chess
                           <div class="tab-pane fade" id="quickPairContent">
                             <button id="quick-pair" class="quick-pair-button">Join <br> Game</button>
                           </div>
+                          {% if has_games_in_play %}
+                            <div class="tab-pane fade" id="inPlayContent">
+                              <div class="lobby-header">
+                                <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">Side</div>
+                                <div style="text-align: left; width: 30%; overflow: hidden;">Opponent</div>
+                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Start Time</div>
+                              </div>
+                              {% for game in games_in_play %}
+                                <div class="d-flex">
+                                  <a class="lobby-a" href="/play/{{ game.active_game_id }}" style="width: 100%;" onclick="checkGameAvailability('{{ game.active_game_id }}', this.parentNode.querySelector('.lobby-row'))">
+                                    <button id="{{ game.active_game_id }}" class="lobby-row">
+                                      <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">{{ sides|index:forloop.counter0 }}</div>
+                                      <div style="text-align: left; width: 30%; overflow: hidden;">{{ opponents|index:forloop.counter0 }}</div>
+                                      <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">{{ game.start_time|time:"H:i:s" }}</div>
+                                    </button>
+                                  </a>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
                         </div>
                     </div>
                 </div>
