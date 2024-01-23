@@ -40,7 +40,7 @@ Play
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
         <div class="col-10 col-md-5">
             <div id="iframe-container">
-                <iframe id="embedded-iframe" src="{% static 'main/html/minimax.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
+                <iframe id="embedded-iframe" src="{% if computer_game %}{% static 'main/html/minimax.html' %}{% else %}{% static 'main/html/solo.html' %}{% endif %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
             </div>
         </div>
         <!-- Optional blank column for command center alignment on smaller screens -->
@@ -49,7 +49,17 @@ Play
         <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start">
             <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
             <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
-                <div id="topPlayer" class="userblock">{{ opponent }}</div>
+                <div id="topPlayer" class="userblock">
+                    {% if computer_game %}
+                        {{ opponent }}
+                    {% else %}
+                        {% if user.is_authenticated %}
+                            {{ user.username }}
+                        {% else %}
+                            Anonymous
+                        {% endif %}
+                    {% endif %}
+                </div>
                 <!-- Content will be dynamically added here -->
                 <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
                     <div id="moves-list" class="scrollable-moves-list mt-auto">
@@ -72,11 +82,13 @@ Play
                         <i class="fa-solid fa-forward-step icon-color"></i>
                     </button>
                 </div>
+                {% if computer_game %}
                 <div class="d-flex justify-content-center">
                     <button id="rematchButton" post-game=true class="action-button confirm hidden">Rematch</button>
                     <button id="rematchAcceptButton" post-game=true class="action-button confirm check hidden mr-2">Accept Rematch</button>
                     <button id="rematchDenyButton" post-game=true class="action-button cancel check hidden">Decline Rematch</button>
                 </div>
+                {% endif %}
                 <div class="d-flex justify-content-center">
                     <button id="undoOfferButton" actions="true" class="action-button confirm hidden mr-2">Undo</button>
                     <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>

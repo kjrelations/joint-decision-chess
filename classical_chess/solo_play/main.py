@@ -8,7 +8,6 @@ import fetch
 from game import *
 from constants import *
 from helpers import *
-from ai import *
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -40,7 +39,7 @@ debug_prints = True
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
-    if game._starting_player == is_white or game._debug:
+    if game.current_turn == is_white or game._debug:
         first_intent = True
         selected_piece = (row, col)
         selected_piece_image = transparent_pieces[piece]
@@ -186,10 +185,8 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
     while promotion_required:
 
         # Web browser actions/commands are received in previous loop iterations
-        # We wish to exit this state after undoing three times to go to our previous turn
+        # We wish to exit this state after undoing once to go to our recent turn
         if client_state_actions["undo"]:
-            client_game.undo_move()
-            client_game.undo_move()
             client_game.undo_move()
             client_state_actions["undo"] = False
             client_state_actions["undo_executed"] = True
@@ -326,7 +323,7 @@ def initialize_game(init, game_id, drawing_settings):
         web_game_metadata_dict[game_tab_id] = {
             "end_state": '',
             "forced_end": '',
-            "player_color": init["player"],
+            "player_color": init["player"], # Not necessary
             "alg_moves": [],
             "comp_moves": [],
             "FEN_final_pos": "",
@@ -476,24 +473,6 @@ def load_keys(file_path):
                 keys[key] = value
     return keys
 
-async def reconnect(game_id, access_keys, init):
-    init["reconnecting"] = True
-    retrieved_state = None
-    try:
-        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
-        if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"])
-        else:
-            retrieved_state = json.loads(retrieved_state)
-            init["retrieved"] = Game(custom_params=retrieved_state)
-        init["sent"] = 1
-    except:
-        err = 'Reconnection Failed. Reattempting...'
-        js_code = f"console.log('{err}')"
-        window.eval(js_code)
-        print(err)
-    init["reconnecting"] = False
-
 # Main loop
 async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
@@ -509,9 +488,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": False,
-        "reloaded": True,
-        "reconnecting": False,
+        "local_debug": True,
         "retrieved": None,
         "final_updates": False
     }
@@ -639,19 +616,6 @@ async def main():
             init["initializing"] = True
             continue
 
-        if not init["reloaded"] and not init["reconnecting"]:
-            if init["retrieved"] is None:
-                asyncio.create_task(reconnect(game_id, access_keys, init))
-            else:
-                client_game = init["retrieved"]
-                init["retrieved"] = None
-                init["reloaded"] = True
-                drawing_settings["recalc_selections"] = True
-                drawing_settings["clear_selections"] = True
-
-        if client_game._latest and not init["final_updates"] and init["reloaded"]:
-            ai_move(client_game, init, drawing_settings)
-
         # Web browser actions/commands are received in previous loop iterations
         if client_state_actions["step"]:
             drawing_settings["recalc_selections"] = True
@@ -664,20 +628,13 @@ async def main():
             client_state_actions["step_executed"] = True
 
         if not client_game.end_position:
-            if not init["reloaded"] and client_state_actions["undo"]:
-                client_state_actions["undo"] = False
-                client_state_actions["undo_executed"] = True
-            if not init["reloaded"] and client_state_actions["resign"]:
-                client_state_actions["resign"] = False
-                client_state_actions["resign_executed"] = True
 
             if client_state_actions["undo"]:
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
-                # We always undo from our turn, so we undo twice
+                # Undo once on solo play
                 client_game.undo_move()
-                client_game.undo_move()
-                # These two are useless in AI mode but we keep a clean state anyway
+                # These two are useless in single player mode but we keep a clean state anyway
                 client_game._sync = True
                 client_game._move_undone = False
                 hovered_square = None
@@ -785,7 +742,7 @@ async def main():
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
                         else:
-                            if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
+                            if client_game._latest:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
@@ -868,7 +825,7 @@ async def main():
                         if first_intent and (row, col) == selected_piece:
                             first_intent = not first_intent
                         
-                        if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
+                        if client_game._latest:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \
@@ -1125,15 +1082,14 @@ async def main():
                     await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
                 init["sent"] = 1
         except:
-            init["reloaded"] = False
             init["sent"] = 1
-            err = 'Could not send game... Reconnecting...'
+            err = 'Could not send game...'
             js_code = f"console.log('{err}')"
             window.eval(js_code)
             print(err)
             continue
 
-        if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+        if client_game.end_position and not init["final_updates"]:
             web_game_metadata = window.localStorage.getItem("web_game_metadata")
 
             web_game_metadata_dict = json.loads(web_game_metadata)

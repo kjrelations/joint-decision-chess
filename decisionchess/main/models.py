@@ -44,9 +44,10 @@ class ChessLobby(models.Model):
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
 	opponent_connected = models.BooleanField(default=False)
+	initiator_color = models.CharField(max_length=5, null=True)
 	private = models.BooleanField(default=False)
 	computer_game = models.BooleanField(default=False)
-	initiator_color = models.CharField(max_length=5, null=True)
+	solo_game = models.BooleanField(default=False)
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:

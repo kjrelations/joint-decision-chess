@@ -7,6 +7,8 @@ classical_chess/historic/*
 classical_chess/simple_ai/*
 !classical_chess/simple_ai/main.py
 !classical_chess/simple_ai/ai.py
+classical_chess/solo_play/*
+!classical_chess/solo_play/main.py
 secrets.txt
 *.pyc
 *.env

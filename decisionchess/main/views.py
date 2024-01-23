@@ -18,7 +18,7 @@ from django.urls import reverse
 from base64 import binascii
 from datetime import datetime, timedelta
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
-from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm
+from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
 import json
@@ -72,6 +72,7 @@ def home(request):
             opponents.append(opponent_username)
     context['sides'] = sides
     context['opponents'] = opponents
+    context['form'] = CreateNewGameForm()
     return render(request, "main/home.html", context)
 
 def quick_pair(request):
@@ -121,6 +122,9 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.computer_game = True
                     new_open_game.private = True
                     new_open_game.opponent_name = "minimax" # Later look up name with more bots
+                if data.get('solo'):
+                    new_open_game.solo_game = True
+                    new_open_game.private = True
                 position = data.get('position')
                 opponent_column_to_fill = "black_id"
                 if position == "white":
@@ -322,7 +326,8 @@ def play(request, game_uuid):
             opponent = game.initiator_name
         sessionVariables.update({'opponent': opponent})
 
-        if game.computer_game and str(user_id) in [str(game.white_id), str(game.black_id)]:
+        if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
+            sessionVariables['computer_game'] = True if game.computer_game else False
             return render(request, "main/play/computer.html", sessionVariables)
         elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
             # This should later redirect spectators to a spectator view if it's an active game, otherwise to home, maybe also to home for private games

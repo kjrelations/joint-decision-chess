@@ -5,6 +5,9 @@ from django_countries.fields import CountryField
 from django.utils.html import escape, mark_safe
 from .models import User
 
+class CreateNewGameForm(forms.Form):
+    solo_play = forms.BooleanField(label="Solo Play", required=False, widget=forms.CheckboxInput(attrs={'id': 'solo-play-checkbox'}))
+
 class ChangeThemesForm(forms.Form):
     def __init__(self, *args, **kwargs):
         themes = [
