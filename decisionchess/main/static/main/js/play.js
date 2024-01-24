@@ -248,7 +248,18 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
-
+            var currentTurn = JSON.parse(webGameMetadata.current_turn);
+            const color = webGameMetadata.player_color;
+            currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
+            var currentIndicator = document.getElementById('playerIndicator');
+            var opponentIndicator = document.getElementById('opponentIndicator');
+            if (currentTurn) {
+                currentIndicator.classList.remove('hidden');
+                opponentIndicator.classList.add('hidden');
+            } else {
+                currentIndicator.classList.add('hidden');
+                opponentIndicator.classList.remove('hidden');
+            }
         }
 
         if (endState === "\u00bd\u2013\u00bd") {
@@ -301,6 +312,8 @@ function updateCommandCenter() {
                 rematch_request = true;
                 document.getElementById("rematchButton").disabled = true;
             }, {once: true});
+            document.getElementById('playerIndicator').remove();
+            document.getElementById('opponentIndicator').remove();
         }
         if (selectedMoveId !== "") {
             var previousMove = document.getElementById(selectedMoveId);

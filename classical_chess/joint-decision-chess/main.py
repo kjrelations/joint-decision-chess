@@ -870,6 +870,7 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "comp_moves": [],
                 "FEN_final_pos": "",
                 "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
+                "current_turn": client_game.current_turn,
                 "step": {
                     "execute": False,
                     "update_executed": False,
@@ -1810,6 +1811,12 @@ async def main():
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+
+        if web_game_metadata_dict[game_tab_id]['current_turn'] != client_game.current_turn:
+            web_game_metadata_dict[game_tab_id]['current_turn'] = client_game.current_turn
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
         net_pieces = net_board(client_game.board)
 

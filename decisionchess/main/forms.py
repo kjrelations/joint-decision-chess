@@ -81,7 +81,7 @@ class ChangeEmailForm(forms.Form):
 
 class EditProfile(forms.Form):
     biography = forms.CharField(widget=forms.Textarea(attrs={'rows': 8}), required=False)
-    # country = forms.CharField(max_length=200,  required=False, widget=forms.Select(choices=[('', 'None')] + CountryField().choices))
+    country = forms.CharField(max_length=200,  required=False, widget=forms.Select(choices=[('', 'None')] + CountryField().choices))
 
     def clean_biography(self):
         biography = self.cleaned_data.get("biography")

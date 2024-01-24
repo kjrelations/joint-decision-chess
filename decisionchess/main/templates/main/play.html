@@ -52,7 +52,10 @@ Play
         <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start">
             <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
             <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
-                <div id="topPlayer" class="userblock">{{ opponent }}</div>
+                <div class="d-flex flex-row" style="max-height: 10%; min-width: 100%;">
+                    <div id="topPlayer" class="userblock">{{ opponent }}</div>
+                    <div id='opponentIndicator' class="hidden indicator">Their Turn</div>
+                </div>
                 <!-- Content will be dynamically added here -->
                 <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
                     <div id="moves-list" class="scrollable-moves-list mt-auto">
@@ -100,7 +103,10 @@ Play
                     <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
                     <button id="flipButton" class="action-button confirm hidden">Flip</button>
                 </div>
-                <div id="bottomPlayer" class="userblock">{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}</div>
+                <div class="d-flex flex-row" style="max-height: 10%; min-width: 100%;">
+                    <div id="bottomPlayer" class="userblock">{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}</div>
+                    <div id='playerIndicator' class="hidden indicator">Your Turn</div>
+                </div>
             </div>
             <div class="d-flex flex-wrap mb-auto" id="bottomPieces" style="height: 25px;"></div>
             <script>
