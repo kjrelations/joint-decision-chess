@@ -1,6 +1,6 @@
-import uuid
-import hashlib
 from django.conf import settings
+import uuid
+import logging
 
 # To ensure sessions are created only on first visit on any page for guests
 class GuestSessionMiddleware:
@@ -29,4 +29,16 @@ class GuestSessionMiddleware:
                 request.session.save()
 
         response = self.get_response(request)
+        return response
+    
+class ExceptionLoggingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = None
+        try:
+            response = self.get_response(request)
+        except Exception as e:
+            logging.error(f"Unhandled exception: {e}", exc_info=True)
         return response
