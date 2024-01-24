@@ -60,6 +60,29 @@ function areEqual(obj1, obj2, type) {
     return true;
 }
 
+function changeFavicon(index) {
+    const favicon = document.getElementById('favicon');
+    const faviconShort = document.getElementById('favicon-short');
+    if (index >= 0 && index < faviconImages.length) {
+        favicon.href = faviconImages[index];
+        faviconShort.href = faviconImages[index];
+    }
+}
+
+let currentIndex = 0;
+var currentTurn = null;
+function faviconInterval() {
+    if (currentTurn !== null && currentTurn) {
+        changeFavicon(currentIndex);
+        currentIndex = (currentIndex + 1) % faviconImages.length;
+    } else {
+        clearInterval(faviconIntervalId);
+        return;
+    }
+}
+
+var faviconIntervalId = setInterval((faviconInterval), 2000);
+
 var gameSaved = false;
 var rematch_accepted = false;
 var savedMoves = [];
@@ -232,15 +255,21 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
-            var currentTurn = JSON.parse(webGameMetadata.current_turn);
+            currentTurn = JSON.parse(webGameMetadata.current_turn);
             const color = webGameMetadata.player_color;
             currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
             var currentIndicator = document.getElementById('playerIndicator');
             var opponentIndicator = document.getElementById('opponentIndicator');
             if (currentTurn) {
+                const title = document.getElementById('title');
+                title.text = "Your Turn"
+                faviconIntervalId = setInterval(faviconInterval, 2000);
                 currentIndicator.classList.remove('hidden');
                 opponentIndicator.classList.add('hidden');
             } else {
+                changeFavicon(0);
+                const title = document.getElementById('title');
+                title.text = "Playing"
                 currentIndicator.classList.add('hidden');
                 opponentIndicator.classList.remove('hidden');
             }
@@ -291,6 +320,10 @@ function updateCommandCenter() {
                 generateRematchURL(playerColor);
                 document.getElementById("rematchButton").disabled = true;
             }, {once: true});
+            const title = document.getElementById('title');
+            currentTurn = null;
+            title.text = "Game Over";
+            changeFavicon(0);
             document.getElementById('playerIndicator').remove();
             document.getElementById('opponentIndicator').remove();
         }
