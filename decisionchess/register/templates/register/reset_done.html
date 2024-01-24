@@ -4,7 +4,7 @@
 {% endblock %}
 
 {% block title %}
-Login Here
+Password Reset
 {% endblock %}
 
 {% load crispy_forms_tags %}
@@ -14,13 +14,14 @@ Login Here
     <div class="container-fluid" style="padding: 0;">
         <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
             <div class="col-10 col-md-5">
-                <form method="post" class="from-group">
-                    {% csrf_token %}
-                    {{form|crispy}}
-                    <p>Don't have an account? Create one <a href="/register">here</a></p>
-                    <p>Forgot your password? <a href="/register/passwd">Reset it here</a></p>
-                    <button type="submit" class="btn btn-success">Login</button>	
-                </form>
+                <h1>Password Reset!</h1>
+                {% if messages %}
+                <ul class="messages">
+                    {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
             </div>
         </div>
     </div>
