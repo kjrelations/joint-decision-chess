@@ -76,7 +76,7 @@ def home(request):
     return render(request, "main/home.html", context)
 
 def custom_404(request, exception):
-    return render(request, '404.html', {'exception': exception}, status=404)
+    return render(request, 'main/404.html', {'exception': exception}, status=404)
 
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
