@@ -49,10 +49,11 @@ INSTALLED_APPS = [
     'register.apps.RegisterConfig',
     'middleware',
     'django_countries',
-    'corsheaders',
-    'debug_toolbar',
-    'livereload'
+    'corsheaders'
 ]
+
+if DEBUG:
+    INSTALLED_APPS.extend(['debug_toolbar', 'livereload'])
 
 # Order matters here
 MIDDLEWARE = [
