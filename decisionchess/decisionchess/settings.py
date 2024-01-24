@@ -68,10 +68,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'livereload.middleware.LiveReloadScript', # at end
+    
 ]
 
 if DEBUG:
+    MIDDLEWARE.extend([
+        'livereload.middleware.LiveReloadScript'# at end
+    ])
     CORS_ALLOWED_ORIGINS = [
         'http://127.0.0.1:8585',
         # 'http://<ip>:8000'
