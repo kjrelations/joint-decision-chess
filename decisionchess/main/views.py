@@ -75,6 +75,9 @@ def home(request):
     context['form'] = CreateNewGameForm()
     return render(request, "main/home.html", context)
 
+def custom_404(request, exception):
+    return render(request, '404.html', {'exception': exception}, status=404)
+
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
     if game is not None:

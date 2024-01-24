@@ -1,0 +1,23 @@
+{% extends "main/base.html" %}
+
+{% block style %}
+{% endblock %}
+
+{% block title %}
+Error
+{% endblock %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div id="content", name="content", class="content">
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+            <div class="col-10 col-md-5">
+                <h1>Error Loading Page</h1>
+                <p>That page is unavailable.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

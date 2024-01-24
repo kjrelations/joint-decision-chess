@@ -214,6 +214,9 @@ body {
         width: calc(min(160px, max(95px, 160px - 10 * ( calc( 1345px - 100vw ) / 65 ) )));
         height: calc(100% - 50px);
     }
+    .profile-content {
+        left: calc(min(160px, max(95px, 160px - 10 * ( calc( 1345px - 100vw ) / 65 ) )));
+    }
 }
 
 @media (max-width: 767px), (max-height: 510px) {
