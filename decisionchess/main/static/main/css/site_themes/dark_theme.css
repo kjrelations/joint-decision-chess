@@ -44,8 +44,8 @@
     --lobby-outline: white;
     --lobby-header-background: #2f3133;
     --lobby-row-border: #778498;
-    --lobby-row-text: rgba(179, 179, 179, 0.8);
-    --lobby-row-hover-text: white;
+    --lobby-row-text: white;
+    --lobby-row-hover-text: rgb(206, 206, 206);
     --lobby-row-hover-background: rgba(151, 128, 83, 0.7);
     --lobby-row-disabled-text: rgba(91, 91, 91, 0.8);
     --lobby-row-disabled-background: rgba(30, 30, 30, 0.7);
@@ -70,6 +70,7 @@
     /* Play */
     --chat-box-text: #b9b9b9;
     --chat-box-background: #405860;
+    --chat-box-log: #35484f;
     --chat-input-border: #1e4d27;
     --chat-input-text: #b9b9b9;
     --chat-input-background: #3b5057;

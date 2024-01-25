@@ -8,6 +8,7 @@ import uuid
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        # TODO Can handle spectator names later with a split on "-spectator" in the room name
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f"chat_{self.room_name}"
 
@@ -19,34 +20,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 		
         user = await self.get_user()
-        if user and user.is_authenticated:
-            # TODO Can handle spectator names later with a split on "-spectator" in the room name
+        guest_id = self.scope.get("session", {}).get("guest_uuid")
+        is_member = await self.is_user_game_member(str(user.id) if user and user.is_authenticated else guest_id, self.room_name)
+        
+        if is_member:
+            username = user.username if user and user.is_authenticated else 'Anonymous'
             
-            is_member = await self.is_user_game_member(str(user.id), self.room_name)
-            
-            if is_member:
-                await self.send(text_data=json.dumps({
-                    'message': {
-                        'log': 'connect',
-                        'user': user.username,
-                        'text': 'You are connected to the chat room.'
-                    }
-                }))
-            else:
-                await self.close()
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                'type': 'chat.message',
+                'message': {
+                    'log': 'connect',
+                    'user': username,
+                    'text': 'You are connected to the chat room.'
+                }
+            })
         else:
-            guest_id = self.scope.get("session", {}).get("guest_uuid")
-            is_member = await self.is_user_game_member(guest_id, self.room_name)
-            if is_member:
-                await self.send(text_data=json.dumps({
-                    'message': {
-                        'log': 'connect',
-                        'user': 'Anonymous',
-                        'text': 'You are connected to the chat room.'
-                    }
-                }))
-            else:
-                await self.close()
+            await self.close()
 			
     @database_sync_to_async
     def get_user(self):
@@ -64,8 +55,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     async def disconnect(self, close_code):
+        user = await self.get_user()
+        if user and user.is_authenticated:
+            username = user.username
+        else:
+            username = "Anonymous"
         message = {
             "log": "disconnect",
+            "user": username,
             "text": "User has left the chat."
         }
         await self.channel_layer.group_send(

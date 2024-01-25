@@ -497,7 +497,12 @@ function sendMessage(message, type = null) {
             }
         };
         if (type !== null) {
-            if (type.includes("rematch") || type === "initialized") {
+            if (
+                type.includes("rematch") || 
+                type === "initialized" ||
+                type === "undo_sent" ||
+                type === "draw_sent"
+            ) {
                 messageObj["message"]["log"] = type;
                 if (type == "initialized") {
                     messageObj["message"]["opponent"] = opponent;
@@ -523,8 +528,19 @@ function handleMessage(data) {
         }
         if (data["log"] === "connect") {
             connect_user = data["user"];
-            // Exclude spectators later
-            // Add highlighted message to chat if opponent is the same
+            // Exclude spectators by
+            // Adding highlighted message to chat if opponent is the same
+            if (connect_user === opponent) {
+                var log = $('<p></p>').text(data["user"] + " connected");
+                log.css({
+                    'background-color': 'var(--chat-box-log)',
+                    'text-align': 'center'
+                });
+                // Don't include initial connect messages
+                if ($(".chat-messages").children().length !== 0) {
+                    $(".chat-messages").append(log);
+                }
+            }
         } else if (data["log"] === "initialized") {
             connect_user = data["sender"];
             player = data["opponent"];
@@ -539,14 +555,24 @@ function handleMessage(data) {
                 }
             }
         } else if (data["log"] === "disconnect") {
-            // Add highlighted message to chat
-            if (rematch_accepted) {
-                fetchUUID(signed_uuid, currentGameID).then(data => {
-                    window.location.href = '/play/' + data.uuid + '/';
+            disconnect_user = data["user"];
+            if (disconnect_user === opponent) {
+                // Add highlighted message to chat
+                var log = $('<p></p>').text(data["user"] + " disconnected...");
+                log.css({
+                    'background-color': 'var(--chat-box-log)',
+                    'text-align': 'center'
                 });
-            }
-            if (rematch_request) {
-                document.getElementById("rematchButton").classList.add("used");
+                $(".chat-messages").append(log);
+
+                if (rematch_accepted) {
+                    fetchUUID(signed_uuid, currentGameID).then(data => {
+                        window.location.href = '/play/' + data.uuid + '/';
+                    });
+                }
+                if (rematch_request) {
+                    document.getElementById("rematchButton").classList.add("used");
+                }
             }
         } else if (data["log"] === "rematch_request" && !rematch_request) {
             rematch_received = true
@@ -568,8 +594,9 @@ function handleMessage(data) {
                 document.getElementById("rematchButton").classList.add("used");
                 sendMessage("", "rematch_declined");
             }, {once: true});
+            appendChatLog("Rematch Received");
         } else if (data["log"] === "rematch_accepted") {
-            $(".chat-messages").append('<p>Rematch Accepted...</p>');
+            appendChatLog("Rematch Accepted");
             rematch_accepted = true;
             if (!rematch_received) {
                 let new_game_id;
@@ -581,13 +608,27 @@ function handleMessage(data) {
             }
         } else if (data["log"] === "rematch_declined") {
             document.getElementById("rematchButton").classList.add("used");
-            $(".chat-messages").append('<p>Declined Rematch</p>');
+            appendChatLog("Rematch Declined");
+        } else if (
+            data["log"] === "undo_sent" || 
+            data["log"] === "draw_sent"
+            ) {
+            appendChatLog(data["text"]);
         }
         return;
     }
     // Prevent XSS script injection attacks by escaping content
     var message = $('<p></p>').text(data["sender"] + ": " + data["text"]);
     $(".chat-messages").append(message);
+}
+
+function appendChatLog(message) {
+    var log = $('<p></p>').text(message);
+    log.css({
+        'background-color': 'var(--chat-box-log)',
+        'text-align': 'center'
+    });
+    $(".chat-messages").append(log);
 }
 
 function generateRematchURL(position, game_id) {
@@ -754,6 +795,14 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
         }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
+        if (localStorageObjectName === "undo_move") {
+            appendChatLog("Undo Offer Sent");
+        }
+
+        if (localStorageObjectName === "draw_offer") {
+            appendChatLog("Draw Offer Sent");
+        }
+
         if (!eventExecutionStatus[localStorageObjectName]) {
             eventExecutionStatus[localStorageObjectName] = { isExecuting: false, timeoutId: null };
         }
@@ -835,6 +884,16 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
         bottomPiecesRow.innerHTML = topPiecesHTML;
 
         flipped = !flipped;
+    } else if (localStorageObjectName === "undo_move_accept") {
+        sendMessage("Undo Offer Accepted", "undo_sent");
+    } else if (localStorageObjectName === "undo_move_deny") {
+        sendMessage("Undo Offer Declined", "undo_sent");
+    } else if (localStorageObjectName === "draw_offer_accept") {
+        sendMessage("Draw Offer Accepted", "draw_sent");
+    } else if (localStorageObjectName === "draw_offer_deny") {
+        sendMessage("Draw Offer Declined", "draw_sent");
+    } else if (localStorageObjectName === "resign") {
+        appendChatLog("Resigned");
     }
     return webGameMetadata;
 }
@@ -1005,6 +1064,14 @@ function showNewOptions(offerQueue) {
     }
 }
 
+function displayChatLog(localStorageObjectName) {
+    if (localStorageObjectName === "undo_move") {
+        appendChatLog("Undo Offer Received");
+    } else if (localStorageObjectName === "draw_offer") {
+        appendChatLog("Draw Offer Received");
+    }
+}
+
 function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
@@ -1022,6 +1089,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             if (Options === "responses") {
                 document.getElementById(buttonId).classList.add("waiting")
                 offerQueue.push({mainId: buttonId, ApproveId: buttonApproveId, AbandonId: buttonAbandonId})
+                displayChatLog(localStorageObjectName);
             }
             otherFollowups.forEach(function(element) {
                 if (element.id !== buttonApproveId && element.id !== buttonAbandonId) {
