@@ -1,6 +1,33 @@
 {% extends 'main/base.html' %}
 
 {% block style %}
+<style>
+    #backToTopBtn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 10px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 15px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+    }
+
+    #backToTopBtn.show {
+        opacity: 1;
+    }
+
+    #backToTopBtn:focus {
+        outline: none;
+    }
+
+    html, body {
+        scroll-behavior: smooth;
+    }
+</style>
 {% endblock %}
 
 {% block title %}
@@ -16,6 +43,25 @@ Terms of Service
         <div class="col-9 col-md-5">
             {% include "./terms/terms_october_4.html" %}
         </div>
+        <button id="backToTopBtn">↑</button>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var backToTopButton = document.getElementById('backToTopBtn');
+
+                window.onscroll = function () {
+                    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                        backToTopButton.classList.add('show');
+                    } else {
+                        backToTopButton.classList.remove('show');
+                    }
+                };
+
+                backToTopButton.addEventListener('click', function () {
+                    document.body.scrollTop = 0; // For Safari
+                    document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE, and Opera
+                });
+            });
+        </script>
     </div>
 </div>
 {% endblock %}
