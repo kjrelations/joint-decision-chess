@@ -27,6 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # # SECURITY WARNING: don't run with debug turned on in production!
 # Need to force it to bool else it reads as string same with others way below
 DEBUG = config('DEBUG', default=False, cast=bool)
+ADMIN_PATH = config('ADMIN_PATH')
 
 ALLOWED_HOSTS = ['*', 'www.decisionchess.com', 'decisionchess.com', '127.0.0.1', 'localhost']
 

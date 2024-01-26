@@ -75,7 +75,6 @@ html {
 .new-game {
     color: var(--new-game-text);
     border: none;
-    outline: none;
     background-color: var(--new-game-background);
     transition: background-color 0.3s ease;
     transition: color 0.1s ease;
@@ -135,7 +134,7 @@ html {
     outline-color: var(--lobby-outline);
     max-width: 100%;
     position: relative;
-    padding-bottom: 63%;
+    padding-bottom: 98.3%;
 }
 
 .lobby-header {
@@ -221,6 +220,32 @@ html {
 .quick-pair-button:hover {
     color: var(--lobby-row-hover-text);
     background-color: var(--lobby-row-empty-background);
+}
+
+.highlights-column {
+    border: none;
+    color: var(--highlights-text);
+    background-color: var(--highlights-background);
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: var(--highlights-outline);
+    aspect-ratio: 1 / 1;
+    width: 60%;
+    min-width: 60%;
+    position: relative;
+    transition: background-color 0.3s ease;
+    padding: 0 3px;
+}
+
+.highlights-column:focus {
+    outline-style: solid;
+    outline-width: thin;
+    outline-color: var(--highlights-focus-outline);
+}
+
+.highlights-column:hover {
+    color: var(--highlights-hover-text);
+    background-color: var(--highlights-hover-background);
 }
 
 .highlights {

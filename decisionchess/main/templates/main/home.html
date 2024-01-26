@@ -23,6 +23,23 @@ Decision Chess
             <!-- Landing Section across 11 columns -->
             <!-- Initial empty column -->
             <div class="col-1 col-hb-1 col-md-3">
+              <div class="d-none d-md-flex flex-column align-items-center w-100">
+                <button class="highlights-column" onclick="scrollToSection('Introduction')">Introduction</button>
+                <button class="highlights-column" onclick="window.location.href = '/news'">
+                    <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                        <div style="font-size: 0.75em;">{{blogs.0.timestamp|date:"M d, Y"}}</div>
+                        <div class="align-self-center" style="font-size: 0.9em;">{{blogs.0.title}}</div>
+                        <div style="font-size: 0.75em;">{{blogs.0.author}}</div>
+                    </div>
+                </button>
+                <button class="highlights-column" onclick="window.location.href = '/news'">
+                    <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                        <div style="font-size: 0.75em;">{{blogs.1.timestamp|date:"M d, Y"}}</div>
+                        <div class="align-self-center" style="font-size: 0.9em;">{{blogs.1.title}}</div>
+                        <div style="font-size: 0.75em;">{{blogs.1.author}}</div>
+                    </div>
+                </button>
+            </div>
             </div>
             <!-- Join column: Quick Pair, Lobby, games in play section -->
             <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
@@ -101,7 +118,7 @@ Decision Chess
                         </div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between w-100 top-margin">
+                <div class="d-flex d-md-none justify-content-between w-100 top-margin">
                     <button class="highlights" onclick="scrollToSection('Introduction')">Introduction</button>
                     <button class="highlights" onclick="window.location.href = '/news'">
                         <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
