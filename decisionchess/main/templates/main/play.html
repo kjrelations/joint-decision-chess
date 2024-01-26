@@ -19,7 +19,7 @@ Play
 
 {% block content %}
 <div id="content" name="content" class="content">
-    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;"> <!-- max width necessary for no horizontal scrolling -->
         <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
         <div class="col-2" style="width: 100%;">
@@ -41,7 +41,7 @@ Play
         </div>
         <!-- Consider if this col-5 should be present for all play views or just the main one-->
         <!-- That is we can embedd the game itself in here as it's own template maybe -->
-        <div class="col-10 col-md-5">
+        <div class="col-10 col-md-5" style="padding-right: 0px;">
             <div id="iframe-container">
                 <iframe id="embedded-iframe" src="{% static 'main/html/game.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
             </div>
@@ -49,7 +49,7 @@ Play
         <!-- Optional blank column for command center alignment on smaller screens -->
         <div class="col-2 d-md-none" style="width: 100%;"></div>
         <!-- 4 columns for command center-->
-        <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start">
+        <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start" style="margin-left: 30px; padding-left: 0px; padding-right: 0px;">
             <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
             <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
                 <div class="d-flex flex-row" style="max-height: 10%; min-width: 100%;">

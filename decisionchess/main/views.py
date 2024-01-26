@@ -15,8 +15,9 @@ from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse
 from django.urls import reverse
+from django.utils.timesince import timesince
 from base64 import binascii
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
@@ -639,7 +640,42 @@ def profile(request, username):
     if profile_user.bot_account:
         return redirect('home')
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
-    return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since})
+    historic_games = GameHistoryTable.objects.filter(Q(white_id=profile_user.id) | Q(black_id=profile_user.id))
+    games_details = []
+    for game in historic_games:
+        if profile_user.id == game.white_id:
+            side = "White"
+            opponent_username = User.objects.get(id=game.black_id).username
+        else:
+            side = "Black"
+            opponent_username = User.objects.get(id=game.white_id).username
+        relative_game_time = timesince(game.end_time, datetime.utcnow().replace(tzinfo=dt_timezone.utc))
+        result = []
+        move_list = game.algebraic_moves.split(',')
+        end_scores = ['0-0', '1-0', '0-1', '½–½']
+        for string in end_scores:
+            if string in move_list:
+                move_list.remove(string)
+        for i in range(0, len(move_list), 2):
+            pair = move_list[i:i+2]
+            pair_string = " ".join(pair)
+            result.append(f"{(i//2) + 1}. {pair_string}")
+        
+        init_index = 2 if len(move_list) > 5 else len(result)
+        formatted_moves_string = " ".join(result[:init_index])
+        if len(move_list) > 5:
+            formatted_moves_string += f" ... {result[-1]}"
+        games_details.append({
+            'game_id': game.historic_game_id,
+            'outcome': game.outcome,
+            'opponent': opponent_username,
+            'game_type': game.gametype.capitalize(),
+            'side': side,
+            'relative_game_time': relative_game_time,
+            'formatted_moves_string': formatted_moves_string
+        })
+        
+    return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since, "games_details": games_details})
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})

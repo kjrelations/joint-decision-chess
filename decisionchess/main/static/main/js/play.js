@@ -470,8 +470,8 @@ function initializeWebSocket() {
     $("#chat-input").prop("disabled", false);
 }
 
-$("#chat-input").keypress(function (e) {
-    if (e.which === 13) {  // 13 is the Enter key code
+$("#chat-input").on('keydown', function (e) {
+    if (e.keyCode === 13 || e.key === 'Enter') {
         e.preventDefault();  // Prevent the Enter key from creating a new line
         var message = $(this).val();
         if (socket && socket.readyState === WebSocket.OPEN) {

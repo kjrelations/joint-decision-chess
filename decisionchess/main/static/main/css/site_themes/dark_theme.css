@@ -94,6 +94,8 @@
     /* Profile */
     --bio-border: rgb(46, 46, 46);
     --bio-background: #090e0f;
+    --history-background-1: #2a3f42;
+    --history-background-2: #0c1011;
     /* Settings */
     --settings-side-nav-a-text: #5c67a3;
     --settings-side-nav-a-text-hover: #e4a03a;
