@@ -444,9 +444,6 @@ function sendMessage(message, type = null) {
 
 function handleMessage(data) {
     if (data.hasOwnProperty('log')) {
-        if (data["log"] === "disconnect") {
-            // Add highlighted message to chat
-        }
         return;
     }
     // Prevent XSS script injection attacks by escaping content

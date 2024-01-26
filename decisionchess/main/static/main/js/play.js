@@ -611,7 +611,8 @@ function handleMessage(data) {
             appendChatLog("Rematch Declined");
         } else if (
             data["log"] === "undo_sent" || 
-            data["log"] === "draw_sent"
+            data["log"] === "draw_sent" ||
+            data["log"] === "spam"
             ) {
             appendChatLog(data["text"]);
         }
