@@ -89,6 +89,12 @@
     .theme-content.hidden {
         display: none !important;
     }
+
+    @media (max-width: 767px) {
+        .theme-title {
+            font-size: 20px;
+        }
+    }
 </style> 
 {% endblock %}
 
@@ -122,7 +128,7 @@
                         </button>
                         <button id="row_{{ theme.0 }}" type="button" class="theme-row d-flex justify-content-center" style="width: 100%;">
                             <label for="id_{{ theme.0 }}" class="flex-grow-1" style="margin-bottom: 0px; padding-bottom: 8px; cursor: pointer;">
-                                <h2 id="title_{{ theme.0 }}" style="text-align: left;">{{ theme.1 }}</h2>
+                                <h2 id="title_{{ theme.0 }}" class="theme-title" style="text-align: left;">{{ theme.1 }}</h2>
                                 <div id="imgs_{{ theme.0 }}" class="theme-content hidden d-flex justify-content-around">
                                     {% for suffix in endings %}
                                         {% with image_name=theme.0|add:'-'|add:suffix %}
@@ -164,6 +170,8 @@
         var default_row = null;
 
         document.addEventListener('DOMContentLoaded', function() {
+        var settingHeader = document.getElementById('change_themes');
+        settingHeader.classList.add('active');
         {% for theme in themes %}
             const checkbox_{{ forloop.counter }} = document.getElementById('id_{{ theme.0 }}');
 

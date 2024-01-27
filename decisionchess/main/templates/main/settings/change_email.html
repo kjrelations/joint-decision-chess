@@ -16,4 +16,10 @@
         {% endfor %}
     </ul>
     {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var settingHeader = document.getElementById('change_email');
+            settingHeader.classList.add('active');
+        });
+    </script>
 {% endblock %}

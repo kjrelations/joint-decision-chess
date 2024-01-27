@@ -31,6 +31,7 @@ transparent_pieces = {}
 for color in ['w', 'b']:
     for piece_lower in ['r', 'n', 'b', 'q', 'k', 'p']:
         piece_key, image_name_key = name_keys(color, piece_lower)
+        # https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
         pieces[piece_key], transparent_pieces[piece_key] = load_piece_image(image_name_key, current_theme.GRID_SIZE)
 
 outlines = king_outlines(transparent_pieces['k'])
