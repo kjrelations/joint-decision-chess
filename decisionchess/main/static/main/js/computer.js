@@ -93,6 +93,17 @@ var selectedMoveId = "";
 var promotion_lock = false;
 var flipped = false;
 
+function movePieceTranslation(move) {
+    var newMove = move
+        .replace('K', '♔')
+        .replace('Q', '♕')
+        .replace('R', '♖')
+        .replace('B', '♗')
+        .replace('N', '♘')
+        .replace('P', '♙');
+    return newMove;
+}
+
 function updateCommandCenter() {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -207,13 +218,14 @@ function updateCommandCenter() {
 
         var j = 1;
         for (var i = 0; i < moves.length; i += 2) {
-            var move1 = moves[i];
+            var move1 = movePieceTranslation(moves[i]);
             var move2 = (
                 (i + 1 < moves.length) && 
                 moves[i + 1] !== '1-0' && 
                 moves[i + 1] !== '0-1' && 
                 moves[i + 1] !== '½–½'
             ) ? moves[i + 1] : '';
+            move2 = movePieceTranslation(move2);
 
             var moveRow = document.createElement('div');
             moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
