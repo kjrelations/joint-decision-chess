@@ -160,6 +160,7 @@ function updateCommandCenter() {
 
         movesListContainer.innerHTML = '';
 
+        var j = 1;
         for (var i = 0; i < moves.length; i += 2) {
             var move1 = moves[i];
             var move2 = (
@@ -172,15 +173,23 @@ function updateCommandCenter() {
             var moveRow = document.createElement('div');
             moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
             
+            var pairNumber = document.createElement('div');
+            pairNumber.style.width = '10%';
+            pairNumber.textContent = j;
+            pairNumber.style.textAlign = 'center'
+            pairNumber.style.backgroundColor = 'var(--command-center-background)';
+            pairNumber.className = 'move-number';
+            pairNumber.id = 'move-number-' + j;
+
             var leftHalf = document.createElement('button');
-            leftHalf.style.width = '50%';
+            leftHalf.style.width = '45%';
             leftHalf.textContent = move1;
             leftHalf.className = 'move-button';
             leftHalf.setAttribute('move-index', i);
             leftHalf.id = 'move-' + i;
 
             var rightHalf = (move2 === "" ? document.createElement('div'): document.createElement('button'));
-            rightHalf.style.width = '50%';
+            rightHalf.style.width = '45%';
             rightHalf.textContent = move2;
             if (move2 !== '') {
                 rightHalf.className = 'move-button';
@@ -191,11 +200,13 @@ function updateCommandCenter() {
             var initialized = sessionStorage.getItem('initialized');
             initialized = (initialized === 'true' ? true : false);
             if (!initialized) {
+                pairNumber.classList.add('hidden');
                 leftHalf.classList.add('hidden');
                 rightHalf.classList.add('hidden');
             }
 
             if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
+                moveRow.appendChild(pairNumber);
                 moveRow.appendChild(leftHalf);
                 moveRow.appendChild(rightHalf);
 
@@ -216,6 +227,7 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
+            j += 1;
         }
 
         if (endState === "\u00bd\u2013\u00bd") {
@@ -296,6 +308,12 @@ function checkInit() {
             idStrings.push(button.id);
         });
         
+        var elementsWithMoveNumber = document.querySelectorAll('.move-number');
+        elementsWithMoveNumber.forEach(element => {
+            console.log(element)
+            idStrings.push(element.id);
+        });
+
         idStrings.forEach(idString => {
             document.getElementById(idString).classList.remove("hidden");
         })
