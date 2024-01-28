@@ -2,6 +2,10 @@ html {
     scroll-behavior: smooth;
 }
 
+.sidenav .nav-new-game {
+    display: block;
+}
+
 .theme-toggle {
     display: block !important;
 }
