@@ -81,12 +81,32 @@ body {
     text-decoration: none;
 }
 
+:root {
+    --theme-toggle-light-text: #000000;
+    --theme-toggle-light-bg: #F84E4E;
+    --theme-toggle-dark-text: #d3cfad;
+    --theme-toggle-dark-bg: #F84E4E;
+    --theme-toggle-hover: rgba(248, 78, 78, 0.5);
+}
+
 .theme-toggle {
     position: absolute;
-    border: none;
+    border: 0.1rem solid var(--theme-toggle-light-bg);
     outline: none;
     z-index: 2;
     right: 0;
+    color: var(--theme-toggle-light-text);
+    background-color: transparent;
+    transition: color 1.5s ease-in-out, background-color 1.5s ease-in-out, border 1.5s ease-in-out;
+    border-radius: 50%;
+    aspect-ratio: 1 / 1;
+    width: 40px;
+    margin-right: 10px;
+    margin-top: 5px;
+}
+
+.theme-toggle:hover {
+    background-color: var(--theme-toggle-hover);
 }
 
 .theme-toggle:focus {
@@ -190,7 +210,7 @@ body {
 
 .main {
     padding-top: 100px;
-    padding-bottom: 20px;
+    /* padding-bottom: 20px; */
 }
 
 .content {
@@ -229,6 +249,13 @@ body {
     }
     .homeblock a {
         font-size: 1.0rem;
+    }
+    .theme-toggle {
+        position: fixed;
+        margin-top: 50px;
+        left: 0;
+        right: auto;
+        bottom: 0;
     }
     .sidenav {
         display: flex;

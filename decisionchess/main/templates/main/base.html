@@ -32,13 +32,30 @@
 		let themePreference = localStorage.getItem('themePreference');
 		const themeLink = document.getElementById('theme-link');
 
+		function updateToggleButton(buttonEl, isDark) {
+			const newCta = isDark ? "<i class='fa-solid fa-sun'></i>": "<i class='fa fa-moon'></i>"
+			const ariaLabel = isDark ? "Enable light theme": "Enable dark theme";
+			buttonEl.style.color = isDark ? 'var(--theme-toggle-dark-text)': 'var(--theme-toggle-light-text)';
+			buttonEl.style.borderColor = isDark ? 'var(--theme-toggle-dark-bg)': 'var(--theme-toggle-light-bg)';
+			buttonEl.setAttribute("aria-label", ariaLabel);
+			buttonEl.innerHTML = newCta;
+		}
+		
 		if (themePreference === 'dark') {
 			if (!themeLink.href.endsWith('dark_theme.css')) {
 				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+				document.addEventListener("DOMContentLoaded", function() {
+					const themeButton = document.getElementById('theme-toggle-button');
+					updateToggleButton(themeButton, true);
+				});
 			}
 		} else {
 			if (!themeLink.href.endsWith('light_theme.css')) { 
 				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+				document.addEventListener("DOMContentLoaded", function() {
+					const themeButton = document.getElementById('theme-toggle-button');
+					updateToggleButton(themeButton, false);
+				});
 			}
 			localStorage.setItem('themePreference', 'light');
 		}
@@ -57,7 +74,7 @@
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
-	<button class="theme-toggle" id="theme-toggle-button" style="margin-top: 80px;">Toggle Theme</button>
+	<button class="theme-toggle" id="theme-toggle-button" aria-label="Enable dark theme"><i class="fa fa-moon"></i></button>
 	<div class="container-fluid" style="padding: 0;">
 		<div class="row" style="max-width: 100%;">
 			<div id="header-column" class="col-12 col-hb-12 col-md-1">
@@ -114,13 +131,16 @@
 		function toggleTheme() {
 			const themeLink = document.getElementById('theme-link');
 			document.body.classList.add('disable-all-transitions');
+			const themeButton = document.getElementById('theme-toggle-button')
 
 			if (themeLink.getAttribute('href') === '{% static "main/css/site_themes/light_theme.css" %}') {
 				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
 				localStorage.setItem('themePreference', 'dark');
+				updateToggleButton(themeButton, true);
 			} else {
 				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
 				localStorage.setItem('themePreference', 'light');
+				updateToggleButton(themeButton, false);
 			}
 
 			setTimeout(() => {

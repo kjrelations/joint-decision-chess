@@ -234,7 +234,7 @@ html {
 
 .donate:hover {
     text-decoration: none;
-    color: var(--block-text);
+    color: var(--title-text);
     outline-color: var(--block-text);
 }
 
