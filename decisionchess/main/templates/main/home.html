@@ -21,8 +21,8 @@ Decision Chess
     <div class="container-fluid" style="padding: 0;">
         <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
             <!-- Landing Section across 11 columns -->
-            <!-- Initial empty column -->
-            <div class="col-1 col-hb-1 col-md-3">
+            <!-- Initial highlights column -->
+            <div class="col-1 highlights-section col-md-3 d-none d-md-block">
               <div class="d-none d-md-flex flex-column align-items-center w-100">
                 <button class="highlights-column" onclick="scrollToSection('Introduction')">Introduction</button>
                 <button class="highlights-column" onclick="window.location.href = '/news'">
@@ -42,14 +42,14 @@ Decision Chess
             </div>
             </div>
             <!-- Join column: Quick Pair, Lobby, games in play section -->
-            <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
+            <div class="col-10 lobby-column col-md-5">
               <nav class="nav">
                 <button class="lobby-tab" data-toggle="tab" href="#quickPairContent">Quick Pair</button>
                 <button class="active lobby-tab" data-toggle="tab" href="#lobbyContent">Lobby</button>
                 {% if has_games_in_play %}
                   <button class="lobby-tab" data-toggle="tab" href="#inPlayContent">In Play</button>
                 {% endif %}
-                <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;">
+                <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;" aria-label="Lobby Filter">
                     <i class="fa-solid fa-gear"></i>
                 </button>
               </nav>  
@@ -136,10 +136,8 @@ Decision Chess
                     </button>
                 </div>
             </div>
-            <!-- <div class="col-3 d-md-none" style="width: 0%"></div> -->
             <!-- Game creation, live stats -->
-            <!-- <div class="col-2 d-md-none"></div> -->
-            <div class="col-10 offset-2 col-hb-10-offset-2 col-md-3 offset-md-0 d-flex flex-column justify-content-center">
+            <div class="col-10 game-creation col-md-3 d-flex flex-column justify-content-center">
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewGame" style="min-width: 100%;">Create New Game</button>
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewComputerGame" style="min-width: 100%;">Play With The Computer</button>
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewPrivateGame" style="min-width: 100%;">Play With A Friend</button>
@@ -229,10 +227,10 @@ Decision Chess
             <!-- Top live game, Recent News, donation section to be added here -->
             <!-- Introduction Section across 11 columns -->
             <!-- Initial empty column -->
-            <div class="col-2 col-hb-2 col-md-3" style="width: 100%;">
+            <div class="col-1 col-md-3" style="width: 100%;">
             </div>
             <!-- Introduction -->
-            <div class="col-10 col-hb-10 col-md-5">
+            <div class="col-10 col-md-5 intro">
                 <section id="Introduction">
                     <h2>Introduction</h2>
                     <p>
@@ -282,8 +280,8 @@ Decision Chess
                     </p>
                 </section>
             </div>
-            <!-- Initial empty column -->
-            <div class="col-1 col-hb-1 col-md-3">
+            <!-- Extra links -->
+            <div class="col-3">
               <div class="row justify-content-center" style="padding-bottom: 20px;">
                 <a class="donate rounded align-self-center" href="https://paypal.me/decisionchess" target="_blank" rel="noopener noreferrer">Donate</a>
               </div>

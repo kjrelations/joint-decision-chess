@@ -41,8 +41,8 @@
 {% block content %}
 <div id="content", name="content", class="content">
     <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <div class="col-2"></div>
-        <div class="col-7 block">
+        <div class="col-2 d-none d-md-block"></div>
+        <div class="col-11 col-md-7 block ml-auto">
             <div class="d-flex flex-column" style="overflow: hidden; height: 400px">
                 <h1 style="color: #e4a03a;">{{ profile_user.username|safe }}</h1>
                 {% if profile_user.account_closed %}
@@ -73,7 +73,7 @@
             {% endfor %}
             <div style="padding-bottom: 20px;"></div>
         </div>
-        <div class="col-2"></div>
+        <div class="col-2 d-none d-md-block"></div>
     </div>
 </div>
 {% endblock %}

@@ -23,6 +23,10 @@
         color: var(--homebutton-decision);
         text-decoration: none;
     }
+
+    .no-wrap {
+        white-space: nowrap;
+    }
 </style>
 {% block extrastyle %}
 {% endblock %}
@@ -32,12 +36,21 @@
 <div id="content" name="content" class="main"> <!-- maybe custom class here -->
     <div class="container-fluid" style="padding: 0;">
         <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-            <div class="col-2"></div>
-            <div class="col-7 block">
+            <div class="col-11 ml-auto d-block d-md-none" style="padding-left: 0; padding-right: 0;">
+                <div class="settingssidenav d-flex" style="overflow-x: scroll;">
+                    <a id="change_themes" class="no-wrap" href="/account/themes">Themes</a>
+                    <a id="edit_profile" class="no-wrap" href="/account/profile">Edit Profile</a>
+                    <a id="change_password" class="no-wrap" href="/account/passwd">Change Password</a>
+                    <a id="change_email" class="no-wrap" href="/account/email">Change Email</a>
+                    <a id="close_account" class="no-wrap" href="/account/close_account">Close Account</a>
+                </div>
+            </div>
+            <div class="col-2 d-none d-md-block"></div>
+            <div class="col-11 col-md-7 block ml-auto">
             {% block setting_window %}
             {% endblock %}
             </div>
-            <div class="col-2">
+            <div class="col-2 d-none d-md-block">
                 <div class="settingssidenav">
                     <a id="change_themes" href="/account/themes">Themes</a>
                     <a id="edit_profile" href="/account/profile">Edit Profile</a>

@@ -2,6 +2,10 @@ html {
     scroll-behavior: smooth;
 }
 
+.theme-toggle {
+    display: block !important;
+}
+
 .position-placeholder {
     border: none;
     outline: none;
@@ -229,7 +233,7 @@ html {
     background-color: var(--sidenav-background);
     transition: color 0.3s ease, outline-color 0.3s ease, background-color 0.3s ease;
     font-size: large;
-    padding: 2em;
+    padding: 2em;   
 }
 
 .donate:hover {
@@ -280,39 +284,45 @@ body {
     .main {
         padding-top: 1vh;
     }
-
     .highlights-column {
         display: none;
     }
-
-    .col-10.offset-2.col-md-3 {
+    .game-creation {
         padding-top: 30px;
         padding-bottom: 30px;
-    }
-
-    .col-hb-1.col-md-3, .col-hb-1.col-md-3 {
-        flex: 0 0 8.333333%;
-        max-width: 8.3333333%;
-    }
-    .col-hb-10-offset-1.col-md-5 {
+        flex: 0 0 83.333333%;
+        max-width: 83.333333%;
         margin-left: 8.333333%;
     }
-    .col-hb-10-offset-2.col-md-3 {
-        margin-left: 16.666667%;
+    .lobby-column {
+        margin-left: 8.333333%;
     }
-    .col-hb-2.col-md-3 {
-        flex: 0 0 16.666667%;
-        max-width: 16.666667%;        
-    }
-    .col-hb-10-offset-1.col-md-5, .col-hb-10-offset-2.col-md-3, .col-hb-10.col-md-5 {
+    .lobby-column, .highlights-section, .intro {
         flex: 0 0 83.333333%;
         max-width: 83.333333%;  
     }
 }
 
+
 @media (max-height: 510px) {
     .lobby {
-        padding-bottom: 28%;
+        padding-bottom: 35%;
+    }
+    .intro {
+        margin-left: 8.333333%;
+    }
+}
+
+@media (max-width: 767px) and (max-height: 510px) {
+    .game-creation { 
+        padding-top: 30px;
+        padding-bottom: 30px;
+        flex: 0 0 83.333333%;
+        max-width: 83.333333%;
+        margin-left: 8.333333%;
+    }
+    .intro {
+        margin-left: 0px;
     }
 }
 

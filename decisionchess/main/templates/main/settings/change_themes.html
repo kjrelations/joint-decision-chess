@@ -94,6 +94,17 @@
         .theme-title {
             font-size: 20px;
         }
+
+        .theme-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .image-content {
+            max-width: initial !important;
+            width: 80%;
+            margin-bottom: 10px;
+        }
     }
 </style> 
 {% endblock %}
@@ -132,7 +143,7 @@
                                 <div id="imgs_{{ theme.0 }}" class="theme-content hidden d-flex justify-content-around">
                                     {% for suffix in endings %}
                                         {% with image_name=theme.0|add:'-'|add:suffix %}
-                                            <img src="{% static 'main/images/themes/' %}{{ image_name }}.png" 
+                                            <img class="image-content" src="{% static 'main/images/themes/' %}{{ image_name }}.png" 
                                                 alt="{% if suffix == '1' %}White Selection
                                                      {% elif suffix == '2' %}White Highlights
                                                      {% else %}Black Highlights

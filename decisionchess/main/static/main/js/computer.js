@@ -18,7 +18,10 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
+    document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
 
@@ -28,7 +31,9 @@ window.addEventListener('resize', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
 

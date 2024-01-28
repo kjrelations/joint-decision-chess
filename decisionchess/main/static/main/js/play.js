@@ -18,10 +18,16 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
+    document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 
-    document.getElementById('chat-input').value = '';
+    var inputs = document.getElementsByClassName('chat-input');
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = '';
+    }
 });
 
 window.addEventListener('resize', function() {
@@ -30,7 +36,9 @@ window.addEventListener('resize', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.6) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
 
@@ -494,14 +502,13 @@ function initializeWebSocket() {
     }
 
     socket.onclose = function (event) {
-        // add custom chat highlighted message
-        $("#chat-input").prop("disabled", true);
+        $(".chat-input").prop("disabled", true);
     };
 
-    $("#chat-input").prop("disabled", false);
+    $(".chat-input").prop("disabled", false);
 }
 
-$("#chat-input").on('keydown', function (e) {
+$(".chat-input").on('keydown', function (e) {
     if (e.keyCode === 13 || e.key === 'Enter') {
         e.preventDefault();  // Prevent the Enter key from creating a new line
         var message = $(this).val();
