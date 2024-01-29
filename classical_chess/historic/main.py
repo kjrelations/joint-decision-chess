@@ -40,7 +40,7 @@ debug_prints = True
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
     # Initialize variables based on turn
-    if game.current_turn == is_white or game._debug:
+    if game.whites_turn == is_white or game._debug:
         first_intent = True
         selected_piece = (row, col)
         selected_piece_image = transparent_pieces[piece]

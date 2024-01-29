@@ -201,7 +201,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_game.undo_move()
             client_game._move_undone = False
             client_game._sync = True
-            client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+            client_game.forced_end = "White Resigned" if client_game.whites_turn else "Black Resigned"
             print(client_game.forced_end)
             client_game.end_position = True
             client_game.add_end_game_notation(True)
@@ -311,7 +311,7 @@ def initialize_game(init, game_id, drawing_settings):
         init["sent"] = 1
     else:
         client_game = Game(custom_params=init["starting_position"])
-        init["sent"] = int(client_game._starting_player != client_game.current_turn)
+        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
@@ -332,7 +332,7 @@ def initialize_game(init, game_id, drawing_settings):
             "comp_moves": [],
             "FEN_final_pos": "",
             "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
-            "current_turn": client_game.current_turn,
+            "whites_turn": client_game.whites_turn,
             "step": {
                 "execute": False,
                 "update_executed": False,
@@ -695,7 +695,7 @@ async def main():
             if client_state_actions["resign"]:
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
-                client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+                client_game.forced_end = "White Resigned" if client_game.whites_turn else "Black Resigned"
                 print(client_game.forced_end)
                 client_game.end_position = True
                 client_game.add_end_game_notation(True)
@@ -787,7 +787,7 @@ async def main():
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
                         else:
-                            if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
+                            if client_game.whites_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
@@ -870,7 +870,7 @@ async def main():
                         if first_intent and (row, col) == selected_piece:
                             first_intent = not first_intent
                         
-                        if client_game.current_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
+                        if client_game.whites_turn == client_game._starting_player and client_game._latest and init["reloaded"]:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \
@@ -1059,8 +1059,8 @@ async def main():
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
-        if web_game_metadata_dict[game_tab_id]['current_turn'] != client_game.current_turn:
-            web_game_metadata_dict[game_tab_id]['current_turn'] = client_game.current_turn
+        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)

@@ -3,12 +3,12 @@ import json
 
 class Game:
 
-    def __init__(self, board=None, starting_player=None, current_turn=True, custom_params=None):
+    def __init__(self, board=None, starting_player=None, whites_turn=True, custom_params=None):
         if custom_params is None:
             if board is None or starting_player is None:
                 raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
-            # current_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
-            self.current_turn = current_turn
+            # whites_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
+            self.whites_turn = whites_turn
             self.board = board
             self.moves = []
             self.alg_moves = []
@@ -41,7 +41,7 @@ class Game:
             self._latest = True
             self._state_update = {}
         else:
-            self.current_turn = custom_params["current_turn"]
+            self.whites_turn = custom_params["whites_turn"]
             self.board = custom_params["board"]
             self.moves = custom_params["moves"]
             self.alg_moves = custom_params["alg_moves"]
@@ -73,7 +73,7 @@ class Game:
             self._latest = True # I think this will always default to true for now, could be a custom move in the future
 
     def synchronize(self, new_game):
-        self.current_turn = new_game.current_turn
+        self.whites_turn = new_game.whites_turn
         self.board = new_game.board
         self.moves = new_game.moves
         self.alg_moves = new_game.alg_moves
@@ -203,7 +203,7 @@ class Game:
         if not self._debug:
             # Change turns once a standard move is played, not during a pawn promotion
             if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
-                self.current_turn = not self.current_turn
+                self.whites_turn = not self.whites_turn
                 self._move_undone = False
                 self._sync = True
                 
@@ -322,7 +322,7 @@ class Game:
     def add_end_game_notation(self, checkmate):
         if not self._debug:
             if checkmate:
-                symbol = '0-1' if self.current_turn else '1-0'
+                symbol = '0-1' if self.whites_turn else '1-0'
                 self.alg_moves.append(symbol)
                 print('ALG_MOVES: ', self.alg_moves)
             else:
@@ -348,7 +348,7 @@ class Game:
         
         # Change turns after pawn promotion
         if not self._debug:
-            self.current_turn = not self.current_turn
+            self.whites_turn = not self.whites_turn
             self._move_undone = False
             self._sync = True
             # Update dictionary of board states
@@ -393,7 +393,7 @@ class Game:
                 for row in range(8):
                     for col in range(8):
                         current_piece = self.board[row][col]
-                        if current_piece.islower() != self.current_turn and current_piece != ' ':
+                        if current_piece.islower() != self.whites_turn and current_piece != ' ':
                             _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
                             current_special_moves.extend(specials)
                 _current_board_state = tuple(tuple(r) for r in self.board)
@@ -462,10 +462,10 @@ class Game:
             if not self._debug:
                 # Change turns once a standard move is played, not during a pawn promotion
                 if piece.lower() != 'p' or (piece.lower() == 'p' and (curr_row != 7 and curr_row != 0)):
-                    self.current_turn = not self.current_turn
+                    self.whites_turn = not self.whites_turn
                 # Change turn right after a pawn promotion by checking that the piece type changed
                 elif piece.lower() == 'p' and (curr_row == 7 or curr_row == 0) and curr_pos[0].lower() != piece.lower():
-                    self.current_turn = not self.current_turn
+                    self.whites_turn = not self.whites_turn
 
             if len(self.moves) != 0:
                 new_recent_positions = self.moves[-1]
@@ -557,7 +557,7 @@ class Game:
 
             self._move_index += increment
             # TODO This is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
-            # self.current_turn = not self.current_turn
+            # self.whites_turn = not self.whites_turn
 
         if self._move_index == len(self.moves) - 1:
             self._latest = True
@@ -591,7 +591,7 @@ class GameEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Game):
             data = {
-                "current_turn": obj.current_turn,
+                "whites_turn": obj.whites_turn,
                 "board": obj.board,
                 "moves": obj.moves,
                 "alg_moves": obj.alg_moves,

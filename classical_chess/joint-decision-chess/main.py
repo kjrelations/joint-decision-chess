@@ -186,6 +186,9 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
     window.sessionStorage.setItem("promoting", "true")
 
     while promotion_required:
+        if node.offline:
+            client_game.undo_move()
+            return False
 
         # Web browser actions/commands are received in previous loop iterations
         if client_state_actions["undo"] and not client_state_actions["undo_sent"]:
@@ -228,7 +231,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_game._sync = True
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data)
-            client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+            client_game.forced_end = "White Resigned" if client_game.whites_turn else "Black Resigned"
             print(client_game.forced_end)
             client_game.end_position = True
             client_game.add_end_game_notation(True)
@@ -388,7 +391,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     if node.data.get("starting_position"):
                         init["starting_position"] = json.loads(node.data.pop("starting_position"))
                         init["starting_position"]["_starting_player"] = init["starting_player"]
-                        init["sent"] = int(init["starting_player"] != init["starting_position"]["current_turn"])
+                        init["sent"] = int(init["starting_player"] != init["starting_position"]["whites_turn"])
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                     else:
@@ -413,7 +416,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                                             else:
                                                 handle_play(window, capture_sound)
                                         if client_game.end_position:
-                                            is_white = client_game.current_turn
+                                            is_white = client_game.whites_turn
                                             checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
                                             if checkmate:
                                                 print("CHECKMATE")
@@ -434,7 +437,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             print(f"Syncing {init['player'].capitalize()}...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            your_turn = client_game.current_turn == client_game._starting_player
+                            your_turn = client_game.whites_turn == client_game._starting_player
                             init["sent"] = 0 if your_turn else 1
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
@@ -468,7 +471,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
-                            your_turn = client_game.current_turn == client_game._starting_player
+                            your_turn = client_game.whites_turn == client_game._starting_player
                             init["sent"] = 0 if your_turn else 1
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
@@ -515,7 +518,8 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     print("Lobby/Game:", "Welcome", node.data['nick'])
                     if node.fork: # Need to handle spectators
                         node.fork = 0
-                    node.publish()
+                    if node.data['forked_node'] != node.pid:
+                        node.publish()
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
@@ -530,7 +534,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
                         client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.current_turn)
+                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                         node.tx({node.CMD: "retrieve_sync"})
@@ -587,7 +591,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             print(f"Syncing {init['player'].capitalize()}...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            your_turn = client_game.current_turn == client_game._starting_player
+                            your_turn = client_game.whites_turn == client_game._starting_player
                             init["sent"] = 0 if your_turn else 1
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
@@ -622,7 +626,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
-                            your_turn = client_game.current_turn == client_game._starting_player
+                            your_turn = client_game.whites_turn == client_game._starting_player
                             init["sent"] = 0 if your_turn else 1
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
@@ -680,7 +684,8 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     print("Lobby/Game:", "Welcome", node.data['nick'])
                     if node.fork: # Need to handle spectators by not publishing to them if they live in a different room
                         node.fork = 0
-                    node.publish()
+                    if node.data['forked_node'] != node.pid:
+                        node.publish()
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
@@ -695,7 +700,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
                         client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.current_turn)
+                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                         node.tx({node.CMD: "retrieve_sync"})
@@ -720,12 +725,12 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                 print("Entered channel", node.joined)
                 game_channel = f"{node.lobby}-{init['game_id']}"
                 if node.joined == node.lobby_channel:
-                    node.tx({node.CMD: "join_game", 'nick': node.nick})
+                    node.tx({node.CMD: "join_game", 'nick': node.nick}) # tx() joins the game lobby and sends another JOINED event
                 if node.joined == game_channel and not init["reloaded"]: # This should handle rejoining spectators differently, especially if not present in that code
                     node.pstree[node.pid]["forks"] = []
                     if node.oid in node.pstree and "forks" in node.pstree[node.oid]:
                         node.pstree[node.oid]["forks"] = []
-                    node.tx({node.CMD: "rejoin", node.PID: node.pid, 'nick': node.nick})
+                    node.tx({node.CMD: "rejoin", node.PID: node.pid, 'nick': node.nick, "forked_node": node.fork})
 
             elif ev == node.TOPIC:
                 print(f'[{node.channel}] TOPIC "{node.topics[node.channel]}"')
@@ -811,7 +816,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             confirmed_state = json.loads(confirmed_state)
                             confirmed_state["_starting_player"] = init["starting_player"]
                             client_game = Game(custom_params=confirmed_state)
-                            init["sent"] = int(client_game._starting_player != client_game.current_turn)
+                            init["sent"] = int(client_game._starting_player != client_game.whites_turn)
                             drawing_settings["recalc_selections"] = True
                             drawing_settings["clear_selections"] = True
                         init["reloaded"] = True
@@ -871,7 +876,7 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "comp_moves": [],
                 "FEN_final_pos": "",
                 "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
-                "current_turn": client_game.current_turn,
+                "whites_turn": client_game.whites_turn,
                 "step": {
                     "execute": False,
                     "update_executed": False,
@@ -1329,7 +1334,7 @@ async def main():
                 client_game = Game(custom_params=init["starting_position"])
                 init["player"] = "white" if init["starting_player"] else "black"
                 init["opponent"] = "black" if init["starting_player"] else "white"
-                init["sent"] = int(client_game._starting_player != client_game.current_turn)
+                init["sent"] = int(client_game._starting_player != client_game.whites_turn)
                 init["initializing"] = True
                 init["loaded"] = True
                 continue
@@ -1380,7 +1385,7 @@ async def main():
                     client_game.step_to_move(len(client_game.moves) - 1)
                 offer_data = {node.CMD: "undo_accept"}
                 node.tx(offer_data)
-                your_turn = client_game.current_turn == client_game._starting_player
+                your_turn = client_game.whites_turn == client_game._starting_player
                 client_game.undo_move()
                 if not your_turn:
                     client_game.undo_move()
@@ -1414,7 +1419,7 @@ async def main():
                     client_game.step_to_move(len(client_game.moves) - 1)
                 reset_data = {node.CMD: "reset"}
                 node.tx(reset_data)
-                client_game.forced_end = "White Resigned" if client_game.current_turn else "Black Resigned"
+                client_game.forced_end = "White Resigned" if client_game.whites_turn else "Black Resigned"
                 print(client_game.forced_end)
                 client_game.end_position = True
                 client_game.add_end_game_notation(True)
@@ -1540,7 +1545,7 @@ async def main():
                                 
                         else:
                             # Allow moves only on current turn, if up to date, and synchronized
-                            if client_game.current_turn == client_game._starting_player and client_game._latest and client_game._sync \
+                            if client_game.whites_turn == client_game._starting_player and client_game._latest and client_game._sync \
                                  and not node.offline and init["reloaded"]:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
@@ -1623,7 +1628,7 @@ async def main():
                             first_intent = not first_intent
                         
                         # Allow moves only on current turn, if up to date, and synchronized
-                        if client_game.current_turn == client_game._starting_player and client_game._latest and client_game._sync \
+                        if client_game.whites_turn == client_game._starting_player and client_game._latest and client_game._sync \
                             and not node.offline and init["reloaded"]:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
@@ -1813,8 +1818,8 @@ async def main():
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
 
-        if web_game_metadata_dict[game_tab_id]['current_turn'] != client_game.current_turn:
-            web_game_metadata_dict[game_tab_id]['current_turn'] = client_game.current_turn
+        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
             window.localStorage.setItem("web_game_metadata", web_game_metadata)
@@ -1850,7 +1855,7 @@ async def main():
         
         # TODO Maybe move this section to after draw now and above?
         try:
-            if (client_game.current_turn != client_game._starting_player or not client_game._sync) and not client_game.end_position:
+            if (client_game.whites_turn != client_game._starting_player or not client_game._sync) and not client_game.end_position:
                 txdata = {node.CMD: f"{init['player']}_update"}
                 if not client_game._sync:
                     txdata[node.CMD] += "_req_sync"

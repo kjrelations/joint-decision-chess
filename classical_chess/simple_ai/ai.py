@@ -5,7 +5,7 @@ from game import *
 global_pos = {"position_count": 0}
 
 def ai_move(game, init, drawing_settings):
-    if game._starting_player == game.current_turn:
+    if game._starting_player == game.whites_turn:
         return
     
     opponent_positions = []
@@ -13,7 +13,7 @@ def ai_move(game, init, drawing_settings):
         for col in range(8):
             piece = game.board[row][col]
             is_white = piece.isupper()
-            if piece != ' ' and game.current_turn != is_white:
+            if piece != ' ' and game.whites_turn != is_white:
                 opponent_positions.append((row, col))
 
     selected_piece, best_move, promotion_piece, special = get_best_move(game, global_pos)
@@ -42,7 +42,7 @@ def ai_move(game, init, drawing_settings):
             else:
                 capture_sound.play()
         if game.end_position:
-            is_white = game.current_turn
+            is_white = game.whites_turn
             checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, is_white, game.moves)
             if checkmate:
                 print("CHECKMATE")
@@ -62,7 +62,7 @@ def new_game_board_moves(game):
         for col in range(8):
             piece = game.board[row][col]
             is_white = piece.isupper()
-            if piece != ' ' and game.current_turn == is_white:
+            if piece != ' ' and game.whites_turn == is_white:
                 valid_moves, _, valid_specials = game.validate_moves(row, col)
                 if valid_moves != []:
                     if piece.lower() == 'p':

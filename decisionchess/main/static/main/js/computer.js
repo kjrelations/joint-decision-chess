@@ -20,7 +20,7 @@ window.addEventListener('load', function() {
     document.getElementById('chat-box').style.height = width + 'px';
     document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
@@ -32,7 +32,7 @@ window.addEventListener('resize', function() {
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
@@ -75,18 +75,13 @@ function changeFavicon(index) {
 }
 
 let currentIndex = 0;
-var currentTurn = null;
+var alternatingFavicon = false;
 function faviconInterval() {
-    if (currentTurn !== null && currentTurn) {
-        changeFavicon(currentIndex);
-        currentIndex = (currentIndex + 1) % faviconImages.length;
-    } else {
-        clearInterval(faviconIntervalId);
-        return;
-    }
+    changeFavicon(currentIndex);
+    currentIndex = (currentIndex + 1) % faviconImages.length;
 }
 
-var faviconIntervalId = setInterval((faviconInterval), 2000);
+var faviconIntervalId;
 
 var gameSaved = false;
 var rematch_accepted = false;
@@ -290,23 +285,26 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
-            currentTurn = JSON.parse(webGameMetadata.current_turn);
+            var currentTurn = JSON.parse(webGameMetadata.whites_turn);
             const color = webGameMetadata.player_color;
             currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
             var currentIndicator = document.getElementById('playerIndicator');
             var opponentIndicator = document.getElementById('opponentIndicator');
-            if (currentTurn) {
+            if (currentTurn && !alternatingFavicon) {
                 const title = document.getElementById('title');
-                title.text = "Your Turn"
+                title.text = "Your Turn";
                 faviconIntervalId = setInterval(faviconInterval, 2000);
                 currentIndicator.classList.remove('hidden');
                 opponentIndicator.classList.add('hidden');
-            } else {
+                alternatingFavicon = true;
+            } else if (!currentTurn && alternatingFavicon) {
+                clearInterval(faviconIntervalId);
                 changeFavicon(0);
                 const title = document.getElementById('title');
                 title.text = "Playing"
                 currentIndicator.classList.add('hidden');
                 opponentIndicator.classList.remove('hidden');
+                alternatingFavicon = false;
             }
             j += 1;
         }
@@ -607,8 +605,6 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
-var eventExecutionStatus = {};
-
 function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null) {
     var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -643,10 +639,6 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
             webGameMetadata[localStorageObjectName].index = index_number;
         }
         localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-
-        if (!eventExecutionStatus[localStorageObjectName]) {
-            eventExecutionStatus[localStorageObjectName] = { isExecuting: false, timeoutId: null };
-        }
 
         handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
 
@@ -721,7 +713,7 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
     // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     if (!actionCommandStatus.update_executed && !initialDefaults) {
-        eventExecutionStatus[localStorageObjectName].timeoutId = setTimeout(function () {
+        setTimeout(function () {
             // This can be too fast and execute again right before reset is set to false, 
             // hence the default condition check
             handleActionStatus(buttonId, currentGameID, localStorageObjectName);

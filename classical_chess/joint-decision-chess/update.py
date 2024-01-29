@@ -6,7 +6,7 @@ def apply_action(client_state_actions, base_command, client_game, node, action):
             # The sender will sync no need to apply again
             offer_data = {node.CMD: "undo_accept"}
             node.tx(offer_data, shm=True)
-            your_turn = client_game.current_turn == client_game._starting_player
+            your_turn = client_game.whites_turn == client_game._starting_player
             client_game.undo_move()
             if not your_turn:
                 client_game.undo_move()

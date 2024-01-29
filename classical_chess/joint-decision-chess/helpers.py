@@ -126,7 +126,7 @@ def translate_FEN_into_board(FEN):
 def load_historic_game(json_game):
     starting_player = True
     # Would depend on starting for games that start at a different position
-    current_turn = len(json_game["comp_moves"]) % 2 == 0
+    whites_turn = len(json_game["comp_moves"]) % 2 == 0
 
     move = json_game["comp_moves"][-1]
     prev, curr = list(move[0]), list(move[1])
@@ -164,7 +164,7 @@ def load_historic_game(json_game):
             _castle_attributes['left_white_rook_moved' if prev_pos == (0, 0) else 'right_white_rook_moved'] = [True, move_index]
 
     game_param_dict = {
-        "current_turn": current_turn,
+        "whites_turn": whites_turn,
         "board": translate_FEN_into_board(json_game["FEN_final_pos"]),
         "moves": json_game["comp_moves"],
         "alg_moves": json_game["alg_moves"],
