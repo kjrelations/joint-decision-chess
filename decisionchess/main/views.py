@@ -637,7 +637,7 @@ def news(request):
 
 def profile(request, username):
     profile_user = User.objects.get(username=username)
-    if profile_user.bot_account:
+    if profile_user.bot_account and request.user and request.user.username != "kjrelations":
         return redirect('home')
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     historic_games = GameHistoryTable.objects.filter(Q(white_id=profile_user.id) | Q(black_id=profile_user.id))
@@ -645,10 +645,16 @@ def profile(request, username):
     for game in historic_games:
         if profile_user.id == game.white_id:
             side = "White"
-            opponent_username = User.objects.get(id=game.black_id).username
+            try:
+                opponent_username = User.objects.get(id=game.black_id).username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
         else:
             side = "Black"
-            opponent_username = User.objects.get(id=game.white_id).username
+            try:
+                opponent_username = User.objects.get(id=game.white_id).username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
         relative_game_time = timesince(game.end_time, datetime.utcnow().replace(tzinfo=dt_timezone.utc))
         result = []
         move_list = game.algebraic_moves.split(',')
