@@ -10,6 +10,7 @@ import builtins
 from game import *
 from constants import *
 from helpers import *
+from network import *
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -362,7 +363,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        # TODO Can just put this into an asynchronous loop if I wanted or needed
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
@@ -445,7 +445,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             confirmed_state = None
                             if not init["local_debug"]:
                                 try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
                                 except:
                                     err = 'Confirmed state retrieval failed. Quitting...'
                                     js_code = f"console.log('{err}')"
@@ -487,14 +487,14 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     client_state_actions["undo_response_received"] = True
                 elif cmd == "reset":
                     # TODO move this into a function
+                    any_reset = False
                     for offer_states in offers:
                         reset_required = client_state_actions[offer_states[1]]
                         if len(offer_states) == 5:
                             request_state = window.sessionStorage.getItem(offer_states[-1])
                             reset_required = reset_required or (request_state == "true")
+                            any_reset = any_reset or reset_required
                         if reset_required:
-                            # TODO Maybe only set this once at the end
-                            window.sessionStorage.setItem("total_reset", "true")
                             client_state_actions[offer_states[1]] = False 
                             client_state_actions[offer_states[3]] = True 
                             if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -502,6 +502,8 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                                 received_status = offer_states[1] + "_received"
                                 client_state_actions[sent_status] = False
                                 client_state_actions[received_status] = False
+                    if any_reset:
+                            window.sessionStorage.setItem("total_reset", "true")
                 elif "reset" in cmd:
                     for offer_states in offers:
                         reset_required = client_state_actions[offer_states[1]]
@@ -524,7 +526,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     confirmed_state = None
                     if not init["local_debug"]:
                         try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
                         except:
                             err = 'Confirmed state retrieval failed. Quitting...'
                             js_code = f"console.log('{err}')"
@@ -599,7 +601,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             confirmed_state = None
                             if not init["local_debug"]:
                                 try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
                                 except:
                                     err = 'Confirmed state retrieval failed. Quitting...'
                                     js_code = f"console.log('{err}')"
@@ -642,14 +644,14 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     client_state_actions["undo_response_received"] = True
                 elif cmd == "reset":
                     # TODO move this into a function
+                    any_reset = False
                     for offer_states in offers:
                         reset_required = client_state_actions[offer_states[1]]
                         if len(offer_states) == 5:
                             request_state = window.sessionStorage.getItem(offer_states[-1])
                             reset_required = reset_required or (request_state == "true")
+                            any_reset = any_reset or reset_required
                         if reset_required:
-                            # TODO Maybe only set this once at the end
-                            window.sessionStorage.setItem("total_reset", "true")
                             client_state_actions[offer_states[1]] = False 
                             client_state_actions[offer_states[3]] = True 
                             if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -657,6 +659,8 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                                 received_status = offer_states[1] + "_received"
                                 client_state_actions[sent_status] = False
                                 client_state_actions[received_status] = False
+                    if any_reset:
+                        window.sessionStorage.setItem("total_reset", "true")
                 elif "reset" in cmd:
                     for offer_states in offers:
                         reset_required = client_state_actions[offer_states[1]]
@@ -690,7 +694,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                     confirmed_state = None
                     if not init["local_debug"]:
                         try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
                         except:
                             err = 'Confirmed state retrieval failed. Quitting...'
                             js_code = f"console.log('{err}')"
@@ -743,14 +747,14 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                 if u in node.users:
                     del node.users[u]
                 # TODO move this into a function
+                any_reset = False
                 for offer_states in offers:
                     reset_required = client_state_actions[offer_states[1]]
                     if len(offer_states) == 5:
                         request_state = window.sessionStorage.getItem(offer_states[-1])
                         reset_required = reset_required or (request_state == "true")
+                        any_reset = any_reset or reset_required
                     if reset_required:
-                        # TODO Maybe only set this once at the end
-                        window.sessionStorage.setItem("total_reset", "true")
                         client_state_actions[offer_states[1]] = False 
                         client_state_actions[offer_states[3]] = True 
                         if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -758,6 +762,8 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             received_status = offer_states[1] + "_received"
                             client_state_actions[sent_status] = False
                             client_state_actions[received_status] = False
+                if any_reset:
+                    window.sessionStorage.setItem("total_reset", "true")
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
@@ -805,7 +811,7 @@ async def handle_node_events(node, init, client_game, client_state_actions, offe
                             retrieved = False
                             while not retrieved:
                                 try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(init["game_id"], init["access_keys"]), timeout = 5)
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
                                     retrieved = True
                                 except:
                                     err = 'Game State retreival Failed. Reattempting...'
@@ -1012,113 +1018,6 @@ def reset_request(request, init, node, client_state_actions):
         client_state_actions[offer_reset] = True
         client_state_actions[request_sent] = False
 
-# TODO Move to helpers later on refactor
-# TODO Consider having timeout handling here instead
-async def get_or_update_game(game_id, access_keys, client_game = "", post = False):
-    if post:
-        if isinstance(client_game, str): # could just be not game but we add hinting later
-            raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function generateToken(game_json, secret) {
-                    const oPayload = {game: game_json};
-                    const oHeader = {alg: 'HS256', typ: 'JWT'};
-                    return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.encryptedToken = generateToken('game_string', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.encryptedToken = generateToken('game_string', 'secret_key');
-                };
-            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.encryptedToken is None:
-                await asyncio.sleep(0)
-            encrytedToken = window.encryptedToken
-            window.encryptedToken = None
-            csrf = window.sessionStorage.getItem("csrftoken")
-            response = await handler.post(url, data = {"token": encrytedToken}, headers = {'X-CSRFToken': csrf})# null token handling
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception(f'Request failed {data}')
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-    else:
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            response = await handler.get(url)
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception('Request failed')
-            elif data.get("message") and data["message"] == "DNE":
-                return None
-            elif data.get("token"):
-                response_token = data["token"]
-            else:
-                raise Exception('Request failed')
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function decodeToken(token, secret) {
-                    const isValid = KJUR.jws.JWS.verify(token, secret, ['HS256']);
-                    if (isValid) {
-                        const decoded = KJUR.jws.JWS.parse(token);
-                        return JSON.stringify(decoded.payloadObj);
-                    } else {
-                        return "invalid";
-                    };
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.payload = decodeToken('response_token', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.payload = decodeToken('response_token', 'secret_key');
-                };
-            """.replace("response_token", response_token).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.payload is None: # Keep trying here for now but add timeout later
-                await asyncio.sleep(0)
-            game_payload = window.payload
-            window.payload = None
-            return game_payload
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-
-# TODO Move to helpers later on refactor
-def load_keys(file_path):
-    keys = {}
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            parts = line.strip().split('_')
-            if len(parts) == 2:
-                key, value = parts
-                keys[key] = value
-    return keys
-
 # Main loop
 async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
@@ -1145,6 +1044,8 @@ async def main():
         "network_reset_ready": True,
         "desync": False,
         "reloaded": True,
+        "reconnecting": False,
+        "retrieved": None,
         "final_updates": False
     }
     client_game = None
@@ -1269,7 +1170,7 @@ async def main():
                 init["access_keys"] = access_keys
                 # TODO Consider whether to merge with retreival
                 try:
-                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
+                    url = 'http://192.168.2.25:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
@@ -1313,11 +1214,11 @@ async def main():
                 retrieved = False
                 while not retrieved:
                     try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         retrieved = True
-                    except:
+                    except Exception as e:
                         err = 'Game State retreival Failed. Reattempting...'
-                        js_code = f"console.log('{err}')"
+                        js_code = f"console.log('{err} {e}')"
                         window.eval(js_code)
                         print(err)
             
@@ -1339,20 +1240,31 @@ async def main():
                 init["loaded"] = True
                 continue
 
+
         if init["waiting"]:
             await waiting_screen(init, game_window, client_game, drawing_settings)
             continue
 
+        if not init["reloaded"] and not init["reconnecting"]:
+            if init["retrieved"] is None:
+                asyncio.create_task(reconnect(window, game_id, access_keys, init))
+            else:
+                client_game = init["retrieved"]
+                init["retrieved"] = None
+                init["reloaded"] = True
+                drawing_settings["recalc_selections"] = True
+                drawing_settings["clear_selections"] = True
+
         if node.offline and init["network_reset_ready"]:
             # TODO move this into a function
+            any_reset = False
             for offer_states in offers:
                 reset_required = client_state_actions[offer_states[1]]
+                any_reset = any_reset or reset_required
                 if len(offer_states) == 5:
                     request_state = window.sessionStorage.getItem(offer_states[-1])
                     reset_required = reset_required or (request_state == "true")
                 if reset_required:
-                    # TODO Maybe only set this once at the end
-                    window.sessionStorage.setItem("total_reset", "true")
                     client_state_actions[offer_states[1]] = False 
                     client_state_actions[offer_states[3]] = True 
                     if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
@@ -1360,6 +1272,8 @@ async def main():
                         received_status = offer_states[1] + "_received"
                         client_state_actions[sent_status] = False
                         client_state_actions[received_status] = False
+            if any_reset:
+                window.sessionStorage.setItem("total_reset", "true")
             init["network_reset_ready"] = False
 
         # Web browser actions/commands are received in previous loop iterations
@@ -1808,52 +1722,6 @@ async def main():
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
         
-        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
-
-        web_game_metadata_dict = json.loads(web_game_metadata)
-        
-        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
-        # Undo move, resign, draw offer, cycle theme, flip command handle
-        for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
-
-        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
-            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-        net_pieces = net_board(client_game.board)
-
-        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
-            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            # TODO Maybe a simple range list of the index or move number
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        
-        # TODO Maybe I just set this in a better/DRY way?
-        # The following just sets web information so that we know the playing player side, it might be useless? Can't remember why I implemented this
-        if client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'white':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'white'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        elif not client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'black':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'black'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        
-        # TODO Maybe move this section to after draw now and above?
         try:
             if (client_game.whites_turn != client_game._starting_player or not client_game._sync) and not client_game.end_position:
                 txdata = {node.CMD: f"{init['player']}_update"}
@@ -1865,7 +1733,7 @@ async def main():
                     reset_request(potential_request, init, node, client_state_actions)
                 if not init["sent"]:
                     if not init["local_debug"]:
-                        await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                        await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                     node.tx(txdata)
                     init["sent"] = 1
         except Exception as err:
@@ -1890,7 +1758,7 @@ async def main():
                 txdata.update({"game": send_game})
                 try:
                     if not init["local_debug"]:
-                        await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                        await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                     node.tx(txdata)
                 except:
                     node.offline = True
@@ -1957,6 +1825,44 @@ async def main():
 
         pygame.display.flip()
         await asyncio.sleep(0)
+
+            # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+
+        web_game_metadata_dict = json.loads(web_game_metadata)
+        
+        # Undo move, resign, draw offer, cycle theme, flip command handle
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+
+        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+        net_pieces = net_board(client_game.board)
+
+        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
+            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            # TODO Maybe a simple range list of the index or move number
+            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+        
+        starting_player_color = 'white' if client_game._starting_player else 'black'
+        if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
+            web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()

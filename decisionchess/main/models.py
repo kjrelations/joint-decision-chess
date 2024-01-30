@@ -48,6 +48,7 @@ class ChessLobby(models.Model):
 	private = models.BooleanField(default=False)
 	computer_game = models.BooleanField(default=False)
 	solo_game = models.BooleanField(default=False)
+	status = models.CharField(max_length=50, blank=False, null=False, default="waiting") # "playing" or "completed"
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
@@ -56,8 +57,10 @@ class ChessLobby(models.Model):
 			self.expire = self.timestamp + timezone.timedelta(minutes=10)
 		if self.private:
 			self.is_open = False
+			self.status = "playing"
 		elif self.white_id and self.black_id:
 			self.is_open = False
+			self.status = "playing"
 		elif (self.white_id or self.black_id) and self.initiator_connected:
 			self.is_open = True
 		else:
@@ -73,7 +76,6 @@ class ActiveGames(models.Model):
 	black_id = models.UUIDField(null=False)
 	start_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
-	status = models.CharField(max_length=50, blank=False, null=False, default="") # "playing" or "completed"
 	state = models.TextField(default="")
 
 class GameHistoryTable(models.Model):

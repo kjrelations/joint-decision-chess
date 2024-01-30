@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotFound
 from django.urls import reverse
 from django.utils.timesince import timesince
 from base64 import binascii
@@ -197,7 +197,7 @@ def create_signed_key(request):
             return JsonResponse({"status": "error"}, status=401)
 
 def get_lobby_games(request):
-    expired_games = ChessLobby.objects.filter(expire__lt=timezone.now())
+    expired_games = ChessLobby.objects.filter(expire__lt=timezone.now(), is_open=True)
     expired_games.delete()
 
     lobby_games = ChessLobby.objects.filter(is_open=True)
@@ -350,15 +350,12 @@ def play(request, game_uuid):
                 game.save()
             # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_id) == str(game.black_id):
-                # TODO Write False to both columns
-                if not game.initiator_connected:
-                    game.initiator_connected = True
-                    game.save()
-                elif not game.opponent_connected:
-                    game.opponent_connected = True
-                    game.save()
-                elif game.opponent_connected and game.initiator_connected:
+                if game.opponent_connected and game.initiator_connected:
                     return redirect('home')
+                else:
+                    game.opponent_connected = False
+                    game.initiator_connected = False
+                    game.save()
             elif str(user_id) == str(game.white_id) and game.black_id is not None:
                 if game.initiator_connected and game.opponent_connected:
                     return redirect('home')
@@ -415,7 +412,6 @@ def play(request, game_uuid):
         except:
             return redirect('home')
 
-
 def update_connected(request):
     # Have this handle live disconnects later
     if request.method == 'POST':
@@ -466,7 +462,7 @@ def update_connected(request):
                 is_initiator = True
 
             message = {}
-            save_to_active = False
+            update_and_check = False
             if waiting_game and game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
                 if game.computer_game:
@@ -476,7 +472,7 @@ def update_connected(request):
                         game.black_id = bot_id
                     else:
                         game.white_id = bot_id
-                    save_to_active = True
+                    update_and_check = True
                 game.save()
                 message = {"status": "updated"}
             # Possibly redundant block now
@@ -490,33 +486,35 @@ def update_connected(request):
                     opponent = request.user.username
                 game.opponent_name = opponent
                 game.save()
-                save_to_active = True
+                update_and_check = True
                 message = {"status": "updated"}
             elif not waiting_game:
-                save_to_active = True
+                update_and_check = True
                 message = {"status": "updated"}
-            if save_to_active: # TODO change to update_and_check
+            if update_and_check:
                 # We prefer this first definition that can't be tampered with in live matches,
                 # but need the second for self-play
                 message_sending_player = "white" if str(game.white_id) == str(user_id) else "black"
                 message_sending_player = data["color"] if game.white_id == game.black_id else message_sending_player
-                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
-                if active_game_exists: # TODO Run the following block even if it doesn't exist later, also write to the second column for the same player on disconnect
-                    # A disconnect message means the other player disconnected, not the current player
-                    if game.initiator_color == message_sending_player:
-                        field_to_update = "initiator_connected" if web_connect else "opponent_connected"
-                        setattr(game, field_to_update, web_connect)
-                    else:
-                        field_to_update = "opponent_connected" if web_connect else "initiator_connected"
-                        setattr(game, field_to_update, web_connect)
-                    game.save()
+                # A disconnect message means the other player disconnected, not the current player, but we set both to allow for reconnecting on both sides
+                if game.initiator_color == message_sending_player:
+                    field_to_update = "initiator_connected" if web_connect else "opponent_connected"
+                    setattr(game, field_to_update, web_connect)
+                    if not web_connect:
+                        setattr(game, "initiator_connected", web_connect)
                 else:
+                    field_to_update = "opponent_connected" if web_connect else "initiator_connected"
+                    setattr(game, field_to_update, web_connect)
+                    if not web_connect:
+                        setattr(game, "opponent_connected", web_connect)
+                game.save()
+                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
+                if not active_game_exists:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
                         white_id = game.white_id,
                         black_id = game.black_id,
-                        gametype = "classical",
-                        status = "playing"
+                        gametype = "classical"
                     )
                     active_game.save()
             return JsonResponse(message, status=200)
@@ -638,7 +636,7 @@ def news(request):
 def profile(request, username):
     profile_user = User.objects.get(username=username)
     if profile_user.bot_account and request.user and request.user.username != "kjrelations":
-        return redirect('home')
+        return HttpResponseNotFound(render(request, 'main/404.html', status=404))
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     historic_games = GameHistoryTable.objects.filter(Q(white_id=profile_user.id) | Q(black_id=profile_user.id))
     games_details = []

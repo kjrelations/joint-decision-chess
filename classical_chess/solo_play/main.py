@@ -602,7 +602,7 @@ async def main():
                 retrieved = False
                 while not retrieved:
                     try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         if retrieved_state is not None:
                             init["starting_position"] = json.loads(retrieved_state)
                         retrieved = True
@@ -1087,7 +1087,7 @@ async def main():
         try:
             if not init["sent"] and not init["final_updates"]:
                 if not init["local_debug"]:
-                    await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                    await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                 init["sent"] = 1
         except:
             init["sent"] = 1

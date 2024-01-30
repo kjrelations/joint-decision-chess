@@ -28,6 +28,7 @@ def load_piece_image(piece, GRID_SIZE):
 
     return img, transparent_surface
 
+# Helper function to create a blurred edge surface
 def blur_surface(surface):
     # Create a temporary surface to hold the blurred result
     temp_surface = surface.copy()
@@ -188,6 +189,18 @@ def handle_play(window, sound):
     muted = json.loads(muted)
     if not muted:
         sound.play()
+
+# Helper for reading text file key value pairs
+def load_keys(file_path):
+    keys = {}
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            parts = line.strip().split('_')
+            if len(parts) == 2:
+                key, value = parts
+                keys[key] = value
+    return keys
 
 ## Move logic
 # Helper function to calculate moves for a pawn

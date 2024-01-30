@@ -444,10 +444,19 @@ function initializeWebSocket() {
         handleMessage(chat_data["message"]);
     };
 
-    // socket.onclose = function (event) {
-    //     // add custom chat highlighted message
-    // };
+    socket.onclose = function (event) {
+        appendChatLog("Disconnected...")
+    };
 
+}
+
+function appendChatLog(message) {
+    var log = $('<p></p>').text(message);
+    log.css({
+        'background-color': 'var(--chat-box-log)',
+        'text-align': 'center'
+    });
+    $(".chat-messages").append(log);
 }
 
 function sendMessage(message, type = null) {
@@ -584,6 +593,10 @@ function checkNewConnect() {
         })
         initializeWebSocket();
         initCheck = initialized;
+    } else if (initialized === true && currentConnected === true) {
+        if (typeof socket !== 'undefined' && socket instanceof WebSocket && socket.readyState === WebSocket.CLOSED) {
+            initializeWebSocket();
+        }
     }
 
     previousConnected = currentConnected;

@@ -9,6 +9,7 @@ from game import *
 from constants import *
 from helpers import *
 from ai import *
+from network import *
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -372,130 +373,6 @@ def initialize_game(init, game_id, drawing_settings):
         raise Exception("Failed to set web value")
     return client_game, game_tab_id
 
-# TODO Move to helpers later on refactor
-async def get_or_update_game(game_id, access_keys, client_game = "", post = False):
-    if post:
-        if isinstance(client_game, str): # could just be not game but we add hinting later
-            raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function generateToken(game_json, secret) {
-                    const oPayload = {game: game_json};
-                    const oHeader = {alg: 'HS256', typ: 'JWT'};
-                    return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.encryptedToken = generateToken('game_string', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.encryptedToken = generateToken('game_string', 'secret_key');
-                };
-            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.encryptedToken is None:
-                await asyncio.sleep(0)
-            encrytedToken = window.encryptedToken
-            window.encryptedToken = None
-            csrf = window.sessionStorage.getItem("csrftoken")
-            response = await handler.post(url, data = {"token": encrytedToken}, headers = {'X-CSRFToken': csrf})# null token handling
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception(f'Request failed {data}')
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-    else:
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            response = await handler.get(url)
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception('Request failed')
-            elif data.get("message") and data["message"] == "DNE":
-                return None
-            elif data.get("token"):
-                response_token = data["token"]
-            else:
-                raise Exception('Request failed')
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function decodeToken(token, secret) {
-                    const isValid = KJUR.jws.JWS.verify(token, secret, ['HS256']);
-                    if (isValid) {
-                        const decoded = KJUR.jws.JWS.parse(token);
-                        return JSON.stringify(decoded.payloadObj);
-                    } else {
-                        return "invalid";
-                    };
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.payload = decodeToken('response_token', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.payload = decodeToken('response_token', 'secret_key');
-                };
-            """.replace("response_token", response_token).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.payload is None: # Keep trying here
-                await asyncio.sleep(0)
-            game_payload = window.payload
-            window.payload = None
-            return game_payload
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-
-# TODO Move to helpers later on refactor
-def load_keys(file_path):
-    keys = {}
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            parts = line.strip().split('_')
-            if len(parts) == 2:
-                key, value = parts
-                keys[key] = value
-    return keys
-
-async def reconnect(game_id, access_keys, init):
-    init["reconnecting"] = True
-    retrieved_state = None
-    try:
-        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
-        if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"])
-        else:
-            retrieved_state = json.loads(retrieved_state)
-            init["retrieved"] = Game(custom_params=retrieved_state)
-        init["sent"] = 1
-    except:
-        err = 'Reconnection Failed. Reattempting...'
-        js_code = f"console.log('{err}')"
-        window.eval(js_code)
-        print(err)
-    init["reconnecting"] = False
-
 # Main loop
 async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
@@ -512,6 +389,7 @@ async def main():
         "player": None,
         "opponent": None,
         "local_debug": False,
+        "access_keys": None,
         "reloaded": True,
         "reconnecting": False,
         "retrieved": None,
@@ -583,8 +461,9 @@ async def main():
         elif not init["initialized"] :
             if not init["config_retrieved"] and not init["local_debug"]:
                 access_keys = load_keys("secrets.txt")
+                init["access_keys"] = access_keys
                 try:
-                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
+                    url = 'http://192.168.2.25:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
@@ -625,7 +504,7 @@ async def main():
                 retrieved = False
                 while not retrieved:
                     try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(game_id, access_keys), timeout = 5)
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         if retrieved_state is not None:
                             init["starting_position"] = json.loads(retrieved_state)
                         retrieved = True
@@ -643,7 +522,7 @@ async def main():
 
         if not init["reloaded"] and not init["reconnecting"]:
             if init["retrieved"] is None:
-                asyncio.create_task(reconnect(game_id, access_keys, init))
+                asyncio.create_task(reconnect(window, game_id, access_keys, init))
             else:
                 client_game = init["retrieved"]
                 init["retrieved"] = None
@@ -1049,51 +928,6 @@ async def main():
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
         
-        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
-
-        web_game_metadata_dict = json.loads(web_game_metadata)
-        
-        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
-        # Undo move, resign, draw offer, cycle theme, flip command handle
-        for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
-
-        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
-            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-        net_pieces = net_board(client_game.board)
-
-        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
-            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            # Maybe a simple range list of the index or move number
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        
-        # Maybe I just set this in a better/DRY way?
-        # The following just sets web information so that we know the playing player side, it might be useless? Can't remember why I implemented this
-        if client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'white':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'white'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-        elif not client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'black':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'black'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
-
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
             right_clicked_squares = []
@@ -1130,7 +964,7 @@ async def main():
         try:
             if not init["sent"] and not init["final_updates"]:
                 if not init["local_debug"]:
-                    await asyncio.wait_for(get_or_update_game(game_id, access_keys, client_game, post = True), timeout = 5)
+                    await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                 init["sent"] = 1
         except:
             init["reloaded"] = False
@@ -1158,6 +992,44 @@ async def main():
                 window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
             init["final_updates"] = True
+
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+
+        web_game_metadata_dict = json.loads(web_game_metadata)
+        
+        # Undo move, resign, draw offer, cycle theme, flip command handle
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+
+        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+        net_pieces = net_board(client_game.board)
+
+        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
+            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            # Maybe a simple range list of the index or move number
+            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+        
+        starting_player_color = 'white' if client_game._starting_player else 'black'
+        if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
+            web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.localStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()

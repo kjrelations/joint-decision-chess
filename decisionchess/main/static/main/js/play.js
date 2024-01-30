@@ -960,7 +960,7 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
 
         if (optionalReset === true) {
-            resetButtons(buttonId, localStorageObjectName, Options);
+            resetButtons(buttonId, Options);
             webGameMetadata[localStorageObjectName].reset = false;
         }
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));

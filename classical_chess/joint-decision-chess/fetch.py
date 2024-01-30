@@ -218,9 +218,6 @@ window.Fetch.POST = function * POST (url, data, headers = {})
         content = resp;
    })
    .catch(err => {
-         // handle errors
-         console.log("An Error Occurred:")
-         console.log(err);
     });
     while(content == 'undefined'){
         yield;
@@ -239,9 +236,6 @@ window.Fetch.GET = function * GET (url)
         content = resp;
    })
    .catch(err => {
-         // handle errors
-         console.log("An Error Occurred:");
-         console.log(err);
     });
     while(content == 'undefined'){
         // generator
