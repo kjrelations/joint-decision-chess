@@ -123,7 +123,7 @@ def translate_FEN_into_board(FEN):
         board.append(new_row)
     return board
 
-# Helper function for loading a historic game parameters from localStorage values
+# Helper function for loading a historic game parameters from sessionStorage values
 def load_historic_game(json_game):
     starting_player = True
     # Would depend on starting for games that start at a different position

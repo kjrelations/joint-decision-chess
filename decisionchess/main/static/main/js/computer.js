@@ -115,7 +115,7 @@ function movePieceTranslation(move) {
 }
 
 function updateCommandCenter() {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
@@ -358,12 +358,15 @@ function updateCommandCenter() {
             }
             
             var playerColor = webGameMetadata["player_color"]
-            document.getElementById("rematchButton").classList.remove("hidden");
-            document.getElementById("rematchButton").addEventListener("click", function() {
-                rematch_accepted = true;
-                generateRematchURL(playerColor);
-                document.getElementById("rematchButton").disabled = true;
-            }, {once: true});
+            var computer_game = JSON.parse(computerGame);
+            if (computer_game) {
+                document.getElementById("rematchButton").classList.remove("hidden");
+                document.getElementById("rematchButton").addEventListener("click", function() {
+                    rematch_accepted = true;
+                    generateRematchURL(playerColor);
+                    document.getElementById("rematchButton").disabled = true;
+                }, {once: true});
+            }
             const title = document.getElementById('title');
             currentTurn = null;
             title.text = "Game Over";
@@ -470,7 +473,7 @@ function appendChatLog(message) {
 }
 
 function sendMessage(message, type = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
@@ -539,17 +542,19 @@ function generateRematchURL(position) {
 }
 
 function updateConnectedStatus(status, playerColor) {
+    body_mssg = {
+        game_uuid: game_uuid, 
+        web_connect: status,
+        color: playerColor,
+        computer_game: JSON.parse(computerGame)
+    }
     fetch('/update_connected/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrftoken,
         },
-        body: JSON.stringify({ 
-            game_uuid: game_uuid, 
-            web_connect: status,
-            color: playerColor
-        }),
+        body: JSON.stringify(body_mssg),
     })
     .then(response => response.json())
     .then(data => {
@@ -630,24 +635,24 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
-function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = null) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true;
+        webGameMetadata[sessionStorageObjectName].execute = true;
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        if (localStorageObjectName == "step") {
+        if (sessionStorageObjectName == "step") {
             // Could move this block into it's own function later
             if (
                 move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
                 move_index < 0 && buttonId === "backwardButton"
             ) {
-                webGameMetadata[localStorageObjectName].execute = false;
-                webGameMetadata[localStorageObjectName].index = null;
+                webGameMetadata[sessionStorageObjectName].execute = false;
+                webGameMetadata[sessionStorageObjectName].index = null;
                 existingWebGameMetadata[currentGameID] = webGameMetadata;
-                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                 
                 document.getElementById(buttonId).disabled = false;
                 return;
@@ -661,11 +666,11 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
                 index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
                 index_number = (index_number < move_index ? index_number + 1 : index_number);
             }
-            webGameMetadata[localStorageObjectName].index = index_number;
+            webGameMetadata[sessionStorageObjectName].index = index_number;
         }
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+        handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
 
     } else {
         console.warn("Failed to execute action");
@@ -678,19 +683,19 @@ var actionEventList = [
 ]
 
 var inputList = [
-    { buttonId: "forwardButton", localStorageObjectName: "step"},
-    { buttonId: "backwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipForwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipBackwardButton", localStorageObjectName: "step"},
-    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups"},
-    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
-    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+    { buttonId: "forwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "backwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipForwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipBackwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "undoOfferButton", sessionStorageObjectName: "undo_move", Options: "followups"},
+    { buttonId: "resignButton", sessionStorageObjectName: "resign", Options: "followups"},
+    { buttonId: "cycleThemeButton", sessionStorageObjectName: "cycle_theme"},
+    { buttonId: "flipButton", sessionStorageObjectName: "flip_board"},
 ];
 
-function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
-    if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null;
+function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
+    if (sessionStorageObjectName == "step") {
+        webGameMetadata[sessionStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
             move_index++;
         } else if (buttonId === "backwardButton") {
@@ -710,7 +715,7 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
-    } else if (localStorageObjectName == "flip_board") {
+    } else if (sessionStorageObjectName == "flip_board") {
         topElement = document.getElementById('topPlayer');
         bottomElement = document.getElementById('bottomPlayer');
         topHTML = topElement.innerHTML;
@@ -730,27 +735,27 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
     return webGameMetadata;
 }
 
-function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var webGameMetadata = existingWebGameMetadata[currentGameID];
-    var actionCommandStatus = webGameMetadata[localStorageObjectName];
+    var actionCommandStatus = webGameMetadata[sessionStorageObjectName];
     
-    // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
+    // console.log(sessionStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     if (!actionCommandStatus.update_executed && !initialDefaults) {
         setTimeout(function () {
             // This can be too fast and execute again right before reset is set to false, 
             // hence the default condition check
-            handleActionStatus(buttonId, currentGameID, localStorageObjectName);
+            handleActionStatus(buttonId, currentGameID, sessionStorageObjectName);
         }, 10);
     } else {
-        webGameMetadata[localStorageObjectName].execute = false;
-        webGameMetadata[localStorageObjectName].update_executed = false;
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].update_executed = false;
 
-        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName);
 
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         if (buttonId.includes("move")) {
             return;
@@ -787,7 +792,7 @@ function showOptions(buttonId, buttonApproveId, buttonAbandonId) {
 inputList.forEach(function(input) {
     const optionsValue = (input.hasOwnProperty("Options") ? input.Options: null);
     document.getElementById(input.buttonId).addEventListener("click", function() {
-        handleButton(input.buttonId, input.localStorageObjectName, optionsValue);
+        handleButton(input.buttonId, input.sessionStorageObjectName, optionsValue);
     });
 });
 
@@ -800,7 +805,7 @@ function eventIsExecuting(obj, eventNames) {
     return false;
 }
 
-function handleButton(buttonId, localStorageObjectName, Options = null) {
+function handleButton(buttonId, sessionStorageObjectName, Options = null) {
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
         result = optionStringsHelper(buttonId, Options)
@@ -817,7 +822,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null) {
             }
         });
         var actionbuttons = document.querySelectorAll('[actions="true"]');
-        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var currentGameID = sessionStorage.getItem('current_game_id');
         var webGameMetadata = existingWebGameMetadata[currentGameID];
         
@@ -835,13 +840,13 @@ function handleButton(buttonId, localStorageObjectName, Options = null) {
         });
         document.getElementById(buttonApproveId).addEventListener("click", function() { 
             hideOptions(buttonId, buttonApproveId, buttonAbandonId);
-            handleWebtoGameAction(buttonId, localStorageObjectName, Options);
+            handleWebtoGameAction(buttonId, sessionStorageObjectName, Options);
         }, { once: true });
         document.getElementById(buttonAbandonId).addEventListener("click", function() {
             hideOptions(buttonId, buttonApproveId, buttonAbandonId);
             document.getElementById(buttonId).disabled = false;
         }, { once: true });
     } else {
-        handleWebtoGameAction(buttonId, localStorageObjectName);
+        handleWebtoGameAction(buttonId, sessionStorageObjectName);
     };
 }

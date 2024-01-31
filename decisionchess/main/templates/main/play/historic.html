@@ -9,7 +9,7 @@ Play
 {% block style%}
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
 <script>
-    var existingWebGameMetadata = localStorage.getItem('web_game_metadata');
+    var existingWebGameMetadata = sessionStorage.getItem('web_game_metadata');
     if (existingWebGameMetadata == null || !existingWebGameMetadata.hasOwnProperty(current_game_id)) {
         var current_game_id = "{{ current_game_id }}";
         var comp_str = "{{ comp_moves }}";
@@ -41,7 +41,7 @@ Play
             },
             "console_messages": []
         }
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
     }
 </script>
 {% endblock %}
@@ -134,6 +134,7 @@ Play
             const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";
             const rooksrc = "{% static 'main/images/material/rook_grayscale.svg' %}";
             const queensrc = "{% static 'main/images/material/queen_grayscale.svg' %}";
+            sessionStorage.setItem('init_flip', "{% if init_flip %}true{% else %}false{% endif %}");
         </script>
         <script src="{% static 'main/js/historic.js' %}"></script>
     </div>

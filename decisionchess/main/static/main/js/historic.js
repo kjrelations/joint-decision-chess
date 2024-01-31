@@ -91,7 +91,7 @@ function movePieceTranslation(move) {
 }
 
 function updateCommandCenter() {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
@@ -344,24 +344,24 @@ window.addEventListener('beforeunload', function () {
 
 var initIntervalId = setInterval(checkInit, 1000);
 
-function handleWebtoGameAction(buttonId, localStorageObjectName) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleWebtoGameAction(buttonId, sessionStorageObjectName) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true;
+        webGameMetadata[sessionStorageObjectName].execute = true;
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        if (localStorageObjectName == "step") {
+        if (sessionStorageObjectName == "step") {
             // Could move this block into it's own function later
             if (
                 move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
                 move_index < 0 && buttonId === "backwardButton"
             ) {
-                webGameMetadata[localStorageObjectName].execute = false;
-                webGameMetadata[localStorageObjectName].index = null;
+                webGameMetadata[sessionStorageObjectName].execute = false;
+                webGameMetadata[sessionStorageObjectName].index = null;
                 existingWebGameMetadata[currentGameID] = webGameMetadata;
-                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                 
                 document.getElementById(buttonId).disabled = false;
                 return;
@@ -374,28 +374,28 @@ function handleWebtoGameAction(buttonId, localStorageObjectName) {
                 index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
                 index_number = (index_number < move_index ? index_number + 1 : index_number);
             }
-            webGameMetadata[localStorageObjectName].index = index_number;
+            webGameMetadata[sessionStorageObjectName].index = index_number;
         }
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName);
+        handleActionStatus(buttonId, currentGameID, sessionStorageObjectName);
     } else {
         console.warn("Failed to execute action");
     }
 }
 
 var inputList = [
-    { buttonId: "forwardButton", localStorageObjectName: "step"},
-    { buttonId: "backwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipForwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipBackwardButton", localStorageObjectName: "step"},
-    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+    { buttonId: "forwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "backwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipForwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipBackwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "cycleThemeButton", sessionStorageObjectName: "cycle_theme"},
+    { buttonId: "flipButton", sessionStorageObjectName: "flip_board"},
 ];
 
-function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
-    if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null;
+function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
+    if (sessionStorageObjectName == "step") {
+        webGameMetadata[sessionStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
             move_index++;
         } else if (buttonId === "backwardButton") {
@@ -415,7 +415,7 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
-    } else if (localStorageObjectName == "flip_board") {
+    } else if (sessionStorageObjectName == "flip_board") {
         topElement = document.getElementById('topPlayer');
         bottomElement = document.getElementById('bottomPlayer');
         topHTML = topElement.innerHTML;
@@ -435,25 +435,25 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
     return webGameMetadata;
 }
 
-function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var webGameMetadata = existingWebGameMetadata[currentGameID];
-    var actionCommandStatus = webGameMetadata[localStorageObjectName];
+    var actionCommandStatus = webGameMetadata[sessionStorageObjectName];
     
-    // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
+    // console.log(sessionStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     if (!actionCommandStatus.update_executed && !initialDefaults) {
         setTimeout(function () {
-            handleActionStatus(buttonId, currentGameID, localStorageObjectName);
+            handleActionStatus(buttonId, currentGameID, sessionStorageObjectName);
         }, 0);
     } else {
-        webGameMetadata[localStorageObjectName].execute = false;
-        webGameMetadata[localStorageObjectName].update_executed = false;
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].update_executed = false;
 
-        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName);
 
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         if (buttonId.includes("move")) {
             return;
@@ -464,11 +464,11 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName) {
 
 inputList.forEach(function(input) {
     document.getElementById(input.buttonId).addEventListener("click", function() {
-        handleButton(input.buttonId, input.localStorageObjectName);
+        handleButton(input.buttonId, input.sessionStorageObjectName);
     });
 });
 
-function handleButton(buttonId, localStorageObjectName) {
+function handleButton(buttonId, sessionStorageObjectName) {
     document.getElementById(buttonId).disabled = true;
-    handleWebtoGameAction(buttonId, localStorageObjectName);
+    handleWebtoGameAction(buttonId, sessionStorageObjectName);
 }

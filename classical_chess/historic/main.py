@@ -158,7 +158,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
                 web_metadata_dict[game_tab_id] = status_metadata_dict
                 json_metadata = json.dumps(web_metadata_dict)
                 
-                window.localStorage.setItem(games_metadata_name, json_metadata)
+                window.sessionStorage.setItem(games_metadata_name, json_metadata)
                 client_state_actions[client_action_name] = False
 
         # Handling race conditions assuming speed differences and sychronizing states with this.
@@ -172,12 +172,12 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
             web_metadata_dict[game_tab_id] = status_metadata_dict
             json_metadata = json.dumps(web_metadata_dict)
             
-            window.localStorage.setItem(games_metadata_name, json_metadata)
+            window.sessionStorage.setItem(games_metadata_name, json_metadata)
             client_state_actions[client_reset_name] = False
             client_state_actions[client_action_name] = False
 
 def initialize_game(init, game_id, drawing_settings):
-    web_game_metadata = window.localStorage.getItem("web_game_metadata")
+    web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
     if web_game_metadata is not None:
         web_game_metadata_dict = json.loads(web_game_metadata)
         historic_game = web_game_metadata_dict.get(game_id)
@@ -188,7 +188,8 @@ def initialize_game(init, game_id, drawing_settings):
 
     loaded_params = load_historic_game(historic_game)
     client_game = Game(custom_params=loaded_params)
-    current_theme.INVERSE_PLAYER_VIEW = not client_game._starting_player # Later have initial view depend on player who played
+    initial_flip = window.sessionStorage.getItem('init_flip')
+    current_theme.INVERSE_PLAYER_VIEW = True if initial_flip == "true" else False
     pygame.display.set_caption("Chess - View Game")
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -220,7 +221,7 @@ async def main():
         "flip": False,
         "flip_executed": False,
     }
-    # This holds the command name for the web localstorage object and the associated keys in the above dictionary
+    # This holds the command name for the web sessionStorage object and the associated keys in the above dictionary
     command_status_names = [
         ("step", "step", "step_executed"),
         ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
@@ -311,7 +312,7 @@ async def main():
             drawing_settings["clear_selections"] = False
 
         if client_state_actions["step"]:
-            web_game_metadata = window.localStorage.getItem("web_game_metadata")
+            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
             web_game_metadata_dict = json.loads(web_game_metadata)
             move_index = web_game_metadata_dict[game_id]["step"]["index"]
             client_game.step_to_move(move_index)
@@ -492,7 +493,7 @@ async def main():
         draw_board(draw_board_params)
         
         # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
         
@@ -506,7 +507,7 @@ async def main():
             web_game_metadata_dict[game_id]['net_pieces'] = net_pieces
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
         pygame.display.flip()
         await asyncio.sleep(0)

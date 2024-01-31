@@ -123,7 +123,7 @@ function movePieceTranslation(move) {
 }
 
 function updateCommandCenter() {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
@@ -518,7 +518,7 @@ $(".chat-input").on('keydown', function (e) {
 });
 
 function sendMessage(message, type = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
@@ -553,7 +553,7 @@ function sendMessage(message, type = null) {
 
 function handleMessage(data) {
     if (data.hasOwnProperty('log')) {
-        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var currentGameID = sessionStorage.getItem('current_game_id');
         var playerColor;
         currentGameID = (currentGameID === 'null' ? null : currentGameID);
@@ -800,24 +800,24 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
-function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = null) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true;
+        webGameMetadata[sessionStorageObjectName].execute = true;
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        if (localStorageObjectName == "step") {
+        if (sessionStorageObjectName == "step") {
             // Could move this block into it's own function later
             if (
                 move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
                 move_index < 0 && buttonId === "backwardButton"
             ) {
-                webGameMetadata[localStorageObjectName].execute = false;
-                webGameMetadata[localStorageObjectName].index = null;
+                webGameMetadata[sessionStorageObjectName].execute = false;
+                webGameMetadata[sessionStorageObjectName].index = null;
                 existingWebGameMetadata[currentGameID] = webGameMetadata;
-                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+                sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
                 
                 document.getElementById(buttonId).disabled = false;
                 return;
@@ -831,19 +831,19 @@ function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null)
                 index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
                 index_number = (index_number < move_index ? index_number + 1 : index_number);
             }
-            webGameMetadata[localStorageObjectName].index = index_number;
+            webGameMetadata[sessionStorageObjectName].index = index_number;
         }
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
-        if (localStorageObjectName === "undo_move") {
+        if (sessionStorageObjectName === "undo_move") {
             appendChatLog("Undo Offer Sent");
         }
 
-        if (localStorageObjectName === "draw_offer") {
+        if (sessionStorageObjectName === "draw_offer") {
             appendChatLog("Draw Offer Sent");
         }
 
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+        handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
 
     } else {
         console.warn("Failed to execute action");
@@ -871,20 +871,20 @@ var actionEventList = [
 ]
 
 var inputList = [
-    { buttonId: "forwardButton", localStorageObjectName: "step"},
-    { buttonId: "backwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipForwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipBackwardButton", localStorageObjectName: "step"},
-    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
-    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
-    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
-    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+    { buttonId: "forwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "backwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipForwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipBackwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "undoOfferButton", sessionStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
+    { buttonId: "drawOfferButton", sessionStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
+    { buttonId: "resignButton", sessionStorageObjectName: "resign", Options: "followups"},
+    { buttonId: "cycleThemeButton", sessionStorageObjectName: "cycle_theme"},
+    { buttonId: "flipButton", sessionStorageObjectName: "flip_board"},
 ];
 
-function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
-    if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null;
+function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
+    if (sessionStorageObjectName == "step") {
+        webGameMetadata[sessionStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
             move_index++;
         } else if (buttonId === "backwardButton") {
@@ -904,7 +904,7 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
-    } else if (localStorageObjectName == "flip_board") {
+    } else if (sessionStorageObjectName == "flip_board") {
         topElement = document.getElementById('topPlayer');
         bottomElement = document.getElementById('bottomPlayer');
         topHTML = topElement.innerHTML;
@@ -920,26 +920,26 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
         bottomPiecesRow.innerHTML = topPiecesHTML;
 
         flipped = !flipped;
-    } else if (localStorageObjectName === "undo_move_accept") {
+    } else if (sessionStorageObjectName === "undo_move_accept") {
         sendMessage("Undo Offer Accepted", "undo_sent");
-    } else if (localStorageObjectName === "undo_move_deny") {
+    } else if (sessionStorageObjectName === "undo_move_deny") {
         sendMessage("Undo Offer Declined", "undo_sent");
-    } else if (localStorageObjectName === "draw_offer_accept") {
+    } else if (sessionStorageObjectName === "draw_offer_accept") {
         sendMessage("Draw Offer Accepted", "draw_sent");
-    } else if (localStorageObjectName === "draw_offer_deny") {
+    } else if (sessionStorageObjectName === "draw_offer_deny") {
         sendMessage("Draw Offer Declined", "draw_sent");
-    } else if (localStorageObjectName === "resign") {
+    } else if (sessionStorageObjectName === "resign") {
         appendChatLog("Resigned");
     }
     return webGameMetadata;
 }
 
-function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var webGameMetadata = existingWebGameMetadata[currentGameID];
-    var actionCommandStatus = webGameMetadata[localStorageObjectName];
+    var actionCommandStatus = webGameMetadata[sessionStorageObjectName];
     
-    // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
+    // console.log(sessionStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     var optionalReset = false;
     if (actionCommandStatus.hasOwnProperty("reset")) {
@@ -950,18 +950,18 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         setTimeout(function () {
             // This can be too fast and execute again right before reset is set to false, 
             // hence the default condition check
-            handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+            handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
         }, 10);
     } else {
-        var accept_response_sent = localStorageObjectName.includes("accept") && webGameMetadata[localStorageObjectName].update_executed;
-        webGameMetadata[localStorageObjectName].execute = false;
-        webGameMetadata[localStorageObjectName].update_executed = false;
+        var accept_response_sent = sessionStorageObjectName.includes("accept") && webGameMetadata[sessionStorageObjectName].update_executed;
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].update_executed = false;
         
-        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName);
 
         if (optionalReset === true) {
             resetButtons(buttonId, Options);
-            webGameMetadata[localStorageObjectName].reset = false;
+            webGameMetadata[sessionStorageObjectName].reset = false;
         }
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
         if (totalReset) {
@@ -982,13 +982,13 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         }
         // We don't want to clear the offer queue on follow-ups or simple client actions or deny (individual resets)
         // Only on accepts, main actions accepts, and total resets
-        var offer_accepted_received = offerEventList.some(item => item.eventNames[0] === localStorageObjectName)
+        var offer_accepted_received = offerEventList.some(item => item.eventNames[0] === sessionStorageObjectName)
         if (accept_response_sent || offer_accepted_received || totalReset) {
             offerQueue = [];
         }
 
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         if (buttonId.includes("move")) {
             return;
@@ -1039,7 +1039,7 @@ function resetButtons(mainbuttonId, Options) {
 inputList.forEach(function(input) {
     const optionsValue = (input.hasOwnProperty("Options") ? input.Options: null);
     document.getElementById(input.buttonId).addEventListener("click", function() {
-        handleButton(input.buttonId, input.localStorageObjectName, optionsValue);
+        handleButton(input.buttonId, input.sessionStorageObjectName, optionsValue);
     });
 });
 
@@ -1057,7 +1057,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
     if (currentGameID !== null && initialized === true) {
         const acceptObjectName = baseStorageName + "_accept";
         const denyObjectName = baseStorageName + "_deny";
-        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var acceptReset = existingWebGameMetadata[currentGameID][acceptObjectName].reset;
         var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
@@ -1079,7 +1079,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
 var requestIntervalId = setInterval(function() {
     inputList.forEach(function(request) {
         if (request.hasOwnProperty('action')) {
-            requestDisplay(request.action, request.buttonId, request.localStorageObjectName);
+            requestDisplay(request.action, request.buttonId, request.sessionStorageObjectName);
         }
     });
 }, 100);
@@ -1100,23 +1100,23 @@ function showNewOptions(offerQueue) {
     }
 }
 
-function displayChatLog(localStorageObjectName) {
-    if (localStorageObjectName === "undo_move") {
+function displayChatLog(sessionStorageObjectName) {
+    if (sessionStorageObjectName === "undo_move") {
         appendChatLog("Undo Offer Received");
-    } else if (localStorageObjectName === "draw_offer") {
+    } else if (sessionStorageObjectName === "draw_offer") {
         appendChatLog("Draw Offer Received");
     }
 }
 
-function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
+function handleButton(buttonId, sessionStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
         result = optionStringsHelper(buttonId, Options)
         const buttonApproveId = result.ApproveId;
         const buttonAbandonId = result.AbandonId;
         const abandonString = result.AbandonStr;
-        const acceptObjectName = localStorageObjectName + "_accept";
-        const denyObjectName = localStorageObjectName + "_deny";
+        const acceptObjectName = sessionStorageObjectName + "_accept";
+        const denyObjectName = sessionStorageObjectName + "_deny";
         if (resetDisplay !== true) {
             document.getElementById(buttonId).classList.add("hidden");
             document.getElementById(buttonApproveId).classList.remove("hidden");
@@ -1125,7 +1125,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             if (Options === "responses") {
                 document.getElementById(buttonId).classList.add("waiting")
                 offerQueue.push({mainId: buttonId, ApproveId: buttonApproveId, AbandonId: buttonAbandonId})
-                displayChatLog(localStorageObjectName);
+                displayChatLog(sessionStorageObjectName);
             }
             otherFollowups.forEach(function(element) {
                 if (element.id !== buttonApproveId && element.id !== buttonAbandonId) {
@@ -1133,7 +1133,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 }
             });
             var actionbuttons = document.querySelectorAll('[actions="true"]');
-            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             var currentGameID = sessionStorage.getItem('current_game_id');
             var webGameMetadata = existingWebGameMetadata[currentGameID];
             
@@ -1163,7 +1163,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                     showNewOptions(offerQueue);
                 }
                 
-                var responseName = (Options === "followups" ? localStorageObjectName : acceptObjectName)
+                var responseName = (Options === "followups" ? sessionStorageObjectName : acceptObjectName)
                 
                 handleWebtoGameAction(buttonId, responseName, Options);
             }, { once: true });
@@ -1217,19 +1217,19 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 showNewOptions(offerQueue);
             }
 
-            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             var currentGameID = sessionStorage.getItem('current_game_id');
             var webGameMetadata = existingWebGameMetadata[currentGameID];
-            webGameMetadata[localStorageObjectName].reset = false;
+            webGameMetadata[sessionStorageObjectName].reset = false;
             webGameMetadata[acceptObjectName].reset = false;
             webGameMetadata[denyObjectName].reset = false;
             existingWebGameMetadata[currentGameID] = webGameMetadata;
             
             sessionStorage.setItem(currentAction, 'false');
-            localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
             document.getElementById(buttonId).disabled = false;
         }
     } else {
-        handleWebtoGameAction(buttonId, localStorageObjectName);
+        handleWebtoGameAction(buttonId, sessionStorageObjectName);
     };
 }

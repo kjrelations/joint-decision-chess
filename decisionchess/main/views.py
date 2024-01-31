@@ -178,8 +178,11 @@ def create_signed_key(request):
                 user_id = request.user.id
             else:
                 user_id = uuid.UUID(request.session.get('guest_uuid'))
-            recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
-            if not recent_game or str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
+            try:
+                recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
+            except GameHistoryTable.DoesNotExist:
+                return JsonResponse({"status": "error"}, status=401)
+            if str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             
             try:
@@ -405,7 +408,14 @@ def play(request, game_uuid):
             except User.DoesNotExist:
                 black_user = "Anonymous"
             # Later load historic side in script if logged in and played the game like the live view
-            sessionVariables.update({'player': white_user, 'opponent': black_user})
+            player_side = white_user
+            opponent_side = black_user
+            flip = False
+            if str(historic.black_id) == str(user_id) and str(historic.white_id) != str(user_id):
+                player_side = black_user
+                opponent_side = white_user
+                flip = True
+            sessionVariables.update({'player': player_side, 'opponent': opponent_side, 'init_flip': flip})
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
@@ -416,8 +426,6 @@ def update_connected(request):
     # Have this handle live disconnects later
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
-        # Don't think I can retrieve from server somehow or even if stored in session due to uncertainty of multiple games, 
-        # If I validate that it belongs to session games users can just send another current game of theirs
         # TODO It's best to use a JWT in the python script
         # TODO check that it matches some value in session
         connect_game_uuid = data.get('game_uuid')
@@ -473,20 +481,14 @@ def update_connected(request):
                     else:
                         game.white_id = bot_id
                     update_and_check = True
+                elif data.get('computer_game') == False:
+                    if null_id == "black":
+                        game.black_id = user_id
+                    else:
+                        game.white_id = user_id
+                    game.opponent_name = request.user.username if request.user else "Anonymous"
+                    update_and_check = True
                 game.save()
-                message = {"status": "updated"}
-            # Possibly redundant block now
-            elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
-                if null_id == "black":
-                    game.black_id = user_id
-                else:
-                    game.white_id = user_id
-                opponent = "Anonymous"
-                if request.user.is_authenticated:
-                    opponent = request.user.username
-                game.opponent_name = opponent
-                game.save()
-                update_and_check = True
                 message = {"status": "updated"}
             elif not waiting_game:
                 update_and_check = True
@@ -592,10 +594,10 @@ def save_game(request):
             active_game.delete()
             return JsonResponse({"status": "updated"}, status=200)
         except ActiveGames.DoesNotExist:
-            saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
-            if saved_game:
+            try:
+                saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
                 return JsonResponse({}, status=200)
-            else:
+            except:
                 return JsonResponse({"status": "error", "message": "Game DNE"}, status=400)
 
 @transaction.atomic
@@ -634,7 +636,10 @@ def news(request):
     return render(request, "main/news.html", {"blogs": blogs})
 
 def profile(request, username):
-    profile_user = User.objects.get(username=username)
+    try:
+        profile_user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return HttpResponseNotFound(render(request, 'main/404.html', status=404))
     if profile_user.bot_account and request.user and request.user.username != "kjrelations":
         return HttpResponseNotFound(render(request, 'main/404.html', status=404))
     member_since = profile_user.date_joined.strftime("%b %d, %Y")

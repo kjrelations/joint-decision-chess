@@ -9,10 +9,10 @@ Play
 {% block style%}
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
 <script>
-    var existingWebGameMetadata = localStorage.getItem('web_game_metadata');
+    var existingWebGameMetadata = sessionStorage.getItem('web_game_metadata');
     if (existingWebGameMetadata == null) {
         var webGameMetadata = {};
-        localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
     }
 </script>
 {% endblock %}

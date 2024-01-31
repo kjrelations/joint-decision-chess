@@ -161,7 +161,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
                 web_metadata_dict[game_tab_id] = status_metadata_dict
                 json_metadata = json.dumps(web_metadata_dict)
                 
-                window.localStorage.setItem(games_metadata_name, json_metadata)
+                window.sessionStorage.setItem(games_metadata_name, json_metadata)
                 client_state_actions[client_action_name] = False
 
         # Handling race conditions assuming speed differences and sychronizing states with this.
@@ -175,7 +175,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
             web_metadata_dict[game_tab_id] = status_metadata_dict
             json_metadata = json.dumps(web_metadata_dict)
             
-            window.localStorage.setItem(games_metadata_name, json_metadata)
+            window.sessionStorage.setItem(games_metadata_name, json_metadata)
             client_state_actions[client_reset_name] = False
             client_state_actions[client_action_name] = False
 
@@ -359,7 +359,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                 img_x, img_y = button.scaled_x, button.scaled_y
             game_window.blit(img, (img_x, img_y))
 
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
@@ -394,7 +394,7 @@ def initialize_game(init, game_id, node, drawing_settings):
     window.sessionStorage.setItem("draw_request", "false")
     window.sessionStorage.setItem("undo_request", "false")
     window.sessionStorage.setItem("total_reset", "false")
-    web_game_metadata = window.localStorage.getItem("web_game_metadata")
+    web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
     if web_game_metadata is not None:
         web_game_metadata_dict = json.loads(web_game_metadata)
     else:
@@ -463,9 +463,9 @@ def initialize_game(init, game_id, node, drawing_settings):
         else:
             raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
         web_game_metadata = json.dumps(web_game_metadata_dict)
-        window.localStorage.setItem("web_game_metadata", web_game_metadata)
+        window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
         web_ready = False
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
         if web_game_metadata is not None:
             web_game_metadata_dict = json.loads(web_game_metadata)
             if web_game_metadata_dict.get(game_tab_id) is not None:
@@ -614,7 +614,7 @@ async def main():
         "flip": False,
         "flip_executed": False,
     }
-    # This holds the command name for the web localstorage object and the associated keys in the above dictionary
+    # This holds the command name for the web sessionStorage object and the associated keys in the above dictionary
     command_status_names = [
         ("step", "step", "step_executed"),
         ("undo_move", "undo", "undo_executed", "undo_reset"),
@@ -794,7 +794,7 @@ async def main():
             if client_game._sync: # Preventing stepping while syncing required
                 drawing_settings["recalc_selections"] = True
                 drawing_settings["clear_selections"] = True
-                web_game_metadata = window.localStorage.getItem("web_game_metadata")
+                web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
                 web_game_metadata_dict = json.loads(web_game_metadata)
                 move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
                 client_game.step_to_move(move_index)
@@ -1283,7 +1283,7 @@ async def main():
                     print(err)
                     continue
                     
-                web_game_metadata = window.localStorage.getItem("web_game_metadata")
+                web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
                 web_game_metadata_dict = json.loads(web_game_metadata)
 
@@ -1296,7 +1296,7 @@ async def main():
                     web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
 
                     web_game_metadata = json.dumps(web_game_metadata_dict)
-                    window.localStorage.setItem("web_game_metadata", web_game_metadata)
+                    window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
                 
                 await asyncio.sleep(1)
                 node.quit()
@@ -1340,7 +1340,7 @@ async def main():
         await asyncio.sleep(0)
 
             # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        web_game_metadata = window.localStorage.getItem("web_game_metadata")
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
         web_game_metadata_dict = json.loads(web_game_metadata)
         
@@ -1352,7 +1352,7 @@ async def main():
             web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
         net_pieces = net_board(client_game.board)
 
@@ -1360,7 +1360,7 @@ async def main():
             web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
         if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
             web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
@@ -1368,14 +1368,14 @@ async def main():
             web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
         
         starting_player_color = 'white' if client_game._starting_player else 'black'
         if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
             web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
 
             web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.localStorage.setItem("web_game_metadata", web_game_metadata)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()
