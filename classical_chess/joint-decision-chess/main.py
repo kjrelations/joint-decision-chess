@@ -77,7 +77,7 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
-        if (row, col) in valid_captures:
+        if "x" in game.alg_moves[-1]:
             handle_play(window, capture_sound)
         else:
             handle_play(window, move_sound)
@@ -117,10 +117,10 @@ def handle_piece_special_move(game, selected_piece, row, col):
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
     print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
-    if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        handle_play(window, move_sound)
-    else:
+    if "x" in game.alg_moves[-1]:
         handle_play(window, capture_sound)
+    else:
+        handle_play(window, move_sound)
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -285,7 +285,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             draw_board_params["chessboard"] = drawing_settings["chessboard"]
@@ -304,14 +304,14 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["flip_executed"] = True
         
         if not init["final_updates"]:
-            await handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings)
+            await handle_node_events(node, window, init, client_game, client_state_actions, offers, drawing_settings)
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_t:
                     drawing_settings["theme_index"] += 1
                     drawing_settings["theme_index"] %= len(themes)
-                    current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                    current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                     # Redraw board and coordinates
                     drawing_settings["chessboard"] = generate_chessboard(current_theme)
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -377,476 +377,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 class Node(pygbag_net.Node):
     ...
 
-async def handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings):
-    if node.offline and init["reloaded"]:
-        init["reloaded"] = False
-    # Network events
-    for ev in node.get_events():
-        try:
-            if ev == node.SYNC:
-                print("SYNC:", node.proto, node.data[node.CMD])
-                cmd = node.data[node.CMD]
-                if cmd == "initialize":
-                    init["starting_player"] = node.data.pop("start")
-                    if node.data.get("starting_position"):
-                        init["starting_position"] = json.loads(node.data.pop("starting_position"))
-                        init["starting_position"]["_starting_player"] = init["starting_player"]
-                        init["sent"] = int(init["starting_player"] != init["starting_position"]["whites_turn"])
-                        drawing_settings["recalc_selections"] = True
-                        drawing_settings["clear_selections"] = True
-                    else:
-                        init["sent"] = int(not init["starting_player"])
-                    init["initializing"] = True
-                    init["reloaded"] = True
-                elif cmd == f"{init['opponent']} ready":
-                    init["waiting"] = False
-                elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
-                    if f"{init['opponent']}_update" in cmd:
-                        game = Game(custom_params=json.loads(node.data.pop("game")))
-                        if client_game._sync:
-                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
-                                game.end_position:
-                                    client_game.synchronize(game)
-                                    drawing_settings["recalc_selections"] = True
-                                    init["sent"] = 0
-                                    if client_game.alg_moves != []:
-                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                                            if "x" not in client_game.alg_moves[-1]:
-                                                handle_play(window, move_sound)
-                                            else:
-                                                handle_play(window, capture_sound)
-                                        if client_game.end_position:
-                                            is_white = client_game.whites_turn
-                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                            if checkmate:
-                                                print("CHECKMATE")
-                                            elif remaining_moves == 0:
-                                                print("STALEMATE")
-                                            elif client_game.threefold_check():
-                                                print("DRAW BY THREEFOLD REPETITION")
-                                            elif client_game.forced_end != "":
-                                                print(client_game.forced_end)
-                                            print("ALG_MOVES: ", client_game.alg_moves)
-                                            break
-                                        print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
-                    if "_sync" in cmd:
-                        # Need to set game here if no update cmd is trigerred, else we have an old game we're comparing to
-                        if "game" in node.data:
-                            game = Game(custom_params=json.loads(node.data.pop("game")))
-                        if (game.board == client_game.board and not client_game._sync) or "retrieve_sync" in cmd:
-                            print(f"Syncing {init['player'].capitalize()}...")
-                            client_game._sync = True
-                            client_game._move_undone = False
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
-                            init["desync"] = False if init["desync"] else False
-                        # Handle double desync first to prevent infinite syncs sent back and forth
-                        elif not game._sync and not client_game._sync and not init["desync"]:
-                            confirmed_state = None
-                            if not init["local_debug"]:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                except:
-                                    err = 'Confirmed state retrieval failed. Quitting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
-                            if confirmed_state is not None:
-                                confirmed_state = json.loads(confirmed_state)
-                                confirmed_state["_starting_player"] = init["starting_player"]
-                                client_game = Game(custom_params=confirmed_state)
-                                init["sent"] = 1
-                                drawing_settings["recalc_selections"] = True
-                                drawing_settings["clear_selections"] = True
-                                node.tx({node.CMD: "_retrieve"})
-                                init["desync"] = True
-                                client_game._sync = False
-                            else:
-                                node.tx({node.CMD: "_fail"})
-                                await asyncio.sleep(1)
-                                node.quit()
-                                raise Exception("Desynced")
-                        elif "req_sync" in cmd:
-                            txdata = {node.CMD: "_sync"}
-                            send_game = client_game.to_json()
-                            txdata.update({"game": send_game})
-                            node.tx(txdata)
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
-                elif cmd == "draw_offer":
-                    if not client_state_actions["draw_offer_sent"]:
-                        window.sessionStorage.setItem("draw_request", "true")
-                        client_state_actions["draw_offer_received"] = True
-                elif cmd == "draw_accept":
-                    client_state_actions["draw_response_received"] = True
-                elif cmd == "undo_offer":
-                    if not client_state_actions["undo_sent"]:
-                        window.sessionStorage.setItem("undo_request", "true")
-                        client_state_actions["undo_received"] = True
-                elif cmd == "undo_accept":
-                    client_state_actions["undo_response_received"] = True
-                elif cmd == "reset":
-                    # TODO move this into a function
-                    any_reset = False
-                    for offer_states in offers:
-                        reset_required = client_state_actions[offer_states[1]]
-                        if len(offer_states) == 5:
-                            request_state = window.sessionStorage.getItem(offer_states[-1])
-                            reset_required = reset_required or (request_state == "true")
-                            any_reset = any_reset or reset_required
-                        if reset_required:
-                            client_state_actions[offer_states[1]] = False 
-                            client_state_actions[offer_states[3]] = True 
-                            if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
-                                sent_status = offer_states[1] + "_sent"
-                                received_status = offer_states[1] + "_received"
-                                client_state_actions[sent_status] = False
-                                client_state_actions[received_status] = False
-                    if any_reset:
-                            window.sessionStorage.setItem("total_reset", "true")
-                elif "reset" in cmd:
-                    for offer_states in offers:
-                        reset_required = client_state_actions[offer_states[1]]
-                        if offer_states[-1] != cmd or not reset_required:
-                            continue
-                        client_state_actions[offer_states[1]] = False 
-                        client_state_actions[offer_states[3]] = True
-                        sent_status = offer_states[1] + "_sent"
-                        client_state_actions[sent_status] = False
-
-                elif cmd == "join_game":
-                    print(node.data["nick"], "joined game")
-                elif cmd == "rejoin":
-                    print("Lobby/Game:", "Welcome", node.data['nick'])
-                    if node.fork: # Need to handle spectators
-                        node.fork = 0
-                    if node.data['forked_node'] != node.pid:
-                        node.publish()
-                elif cmd == "_retrieve":
-                    confirmed_state = None
-                    if not init["local_debug"]:
-                        try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                        except:
-                            err = 'Confirmed state retrieval failed. Quitting...'
-                            js_code = f"console.log('{err}')"
-                            window.eval(js_code)
-                            print(err)
-                    if confirmed_state is not None:
-                        confirmed_state = json.loads(confirmed_state)
-                        confirmed_state["_starting_player"] = init["starting_player"]
-                        client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
-                        drawing_settings["recalc_selections"] = True
-                        drawing_settings["clear_selections"] = True
-                        node.tx({node.CMD: "retrieve_sync"})
-                    else:
-                        node.tx({node.CMD: "_fail"})
-                        await asyncio.sleep(1)
-                        node.quit()
-                        raise Exception("Desynced")
-                elif cmd == "_fail":
-                    node.quit()
-                    raise Exception("Desynced")
-
-            elif ev == node.GAME:
-                print("GAME:", node.proto, node.data[node.CMD])
-                cmd = node.data[node.CMD]
-
-                if cmd == f"{init['opponent']} initialized":
-                    node.tx({node.CMD: f"{init['player']} ready"})
-                    init["waiting"] = False
-                elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
-                    if f"{init['opponent']}_update" in cmd:
-                        game = Game(custom_params=json.loads(node.data.pop("game")))
-                        if client_game._sync:
-                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
-                                game.end_position:
-                                    client_game.synchronize(game)
-                                    drawing_settings["recalc_selections"] = True
-                                    init["sent"] = 0
-                                    if client_game.alg_moves != []:
-                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                                            if "x" not in client_game.alg_moves[-1]:
-                                                handle_play(window, move_sound)
-                                            else:
-                                                handle_play(window, capture_sound)
-                                        if client_game.end_position:
-                                            is_white = True
-                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                            if checkmate:
-                                                print("CHECKMATE")
-                                            elif remaining_moves == 0:
-                                                print("STALEMATE")
-                                            elif client_game.threefold_check():
-                                                print("DRAW BY THREEFOLD REPETITION")
-                                            elif client_game.forced_end != "":
-                                                print(client_game.forced_end)
-                                            print("ALG_MOVES: ", client_game.alg_moves)
-                                            break
-                                        print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
-                    if "_sync" in cmd:
-                        # Need to set game here if no update cmd is triggered, else we have an old game
-                        if "game" in node.data:
-                            game = Game(custom_params=json.loads(node.data.pop("game")))
-                        if (game.board == client_game.board and not client_game._sync) or "retrieve_sync" in cmd:
-                            print(f"Syncing {init['player'].capitalize()}...")
-                            client_game._sync = True
-                            client_game._move_undone = False
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
-                            init["desync"] = False if init["desync"] else False
-                        # Handle double desync first to prevent infinite syncs sent back and forth
-                        elif not game._sync and not client_game._sync and not init["desync"]:
-                            confirmed_state = None
-                            if not init["local_debug"]:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                except:
-                                    err = 'Confirmed state retrieval failed. Quitting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
-                            if confirmed_state is not None:
-                                confirmed_state = json.loads(confirmed_state)
-                                confirmed_state["_starting_player"] = init["starting_player"]
-                                client_game = Game(custom_params=confirmed_state)
-                                init["sent"] = 1
-                                drawing_settings["recalc_selections"] = True
-                                drawing_settings["clear_selections"] = True
-                                node.tx({node.CMD: "_retrieve"})
-                                init["desync"] = True
-                                client_game._sync = False
-                            else:
-                                node.tx({node.CMD: "_fail"})
-                                await asyncio.sleep(1)
-                                node.quit()
-                                raise Exception("Desynced")
-                        # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
-                        elif "req_sync" in cmd:
-                            txdata = {node.CMD: "_sync"}
-                            send_game = client_game.to_json()
-                            txdata.update({"game": send_game})
-                            node.tx(txdata)
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
-                elif cmd == "draw_offer":
-                    if not client_state_actions["draw_offer_sent"]:
-                        window.sessionStorage.setItem("draw_request", "true")
-                        client_state_actions["draw_offer_received"] = True
-                elif cmd == "draw_accept":
-                    client_state_actions["draw_response_received"] = True
-                elif cmd == "undo_offer":
-                    if not client_state_actions["undo_sent"]:
-                        window.sessionStorage.setItem("undo_request", "true")
-                        client_state_actions["undo_received"] = True
-                elif cmd == "undo_accept":
-                    client_state_actions["undo_response_received"] = True
-                elif cmd == "reset":
-                    # TODO move this into a function
-                    any_reset = False
-                    for offer_states in offers:
-                        reset_required = client_state_actions[offer_states[1]]
-                        if len(offer_states) == 5:
-                            request_state = window.sessionStorage.getItem(offer_states[-1])
-                            reset_required = reset_required or (request_state == "true")
-                            any_reset = any_reset or reset_required
-                        if reset_required:
-                            client_state_actions[offer_states[1]] = False 
-                            client_state_actions[offer_states[3]] = True 
-                            if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
-                                sent_status = offer_states[1] + "_sent"
-                                received_status = offer_states[1] + "_received"
-                                client_state_actions[sent_status] = False
-                                client_state_actions[received_status] = False
-                    if any_reset:
-                        window.sessionStorage.setItem("total_reset", "true")
-                elif "reset" in cmd:
-                    for offer_states in offers:
-                        reset_required = client_state_actions[offer_states[1]]
-                        if offer_states[-1] != cmd or not reset_required:
-                            continue
-                        client_state_actions[offer_states[1]] = False 
-                        client_state_actions[offer_states[3]] = True
-                        sent_status = offer_states[1] + "_sent"
-                        client_state_actions[sent_status] = False
-                
-                elif cmd == "clone":
-                    # send all history to child
-                    node.checkout_for(node.data)
-                    init_message = {node.CMD: "initialize", "start": not init["starting_player"]}
-                    if init["initialized"]:
-                        init_message.update({"starting_position": client_game.to_json(include_states=True)})
-                    else:
-                        init["sent"] = int(not init["starting_player"])
-                    node.tx(init_message)
-                    if not init["initialized"]:
-                        init["initializing"] = True
-                elif cmd == "join_game":
-                    print(node.data["nick"], "joined game")
-                elif cmd == "rejoin":
-                    print("Lobby/Game:", "Welcome", node.data['nick'])
-                    if node.fork: # Need to handle spectators by not publishing to them if they live in a different room
-                        node.fork = 0
-                    if node.data['forked_node'] != node.pid:
-                        node.publish()
-                elif cmd == "_retrieve":
-                    confirmed_state = None
-                    if not init["local_debug"]:
-                        try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                        except:
-                            err = 'Confirmed state retrieval failed. Quitting...'
-                            js_code = f"console.log('{err}')"
-                            window.eval(js_code)
-                            print(err)
-                    if confirmed_state is not None:
-                        confirmed_state = json.loads(confirmed_state)
-                        confirmed_state["_starting_player"] = init["starting_player"]
-                        client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
-                        drawing_settings["recalc_selections"] = True
-                        drawing_settings["clear_selections"] = True
-                        node.tx({node.CMD: "retrieve_sync"})
-                    else:
-                        node.tx({node.CMD: "_fail"})
-                        await asyncio.sleep(1)
-                        node.quit()
-                        raise Exception("Desynced")
-                elif cmd == "_fail":
-                    node.quit()
-                    raise Exception("Desynced")
-                else:
-                    print("87 ?", node.data)
-
-            elif ev == node.CONNECTED:
-                print(f"CONNECTED as {node.nick}")
-                window.sessionStorage.setItem("connected", "true")
-                if not init["network_reset_ready"]:
-                    init["network_reset_ready"] = True
-
-            elif ev == node.JOINED:
-                print("Entered channel", node.joined)
-                game_channel = f"{node.lobby}-{init['game_id']}"
-                if node.joined == node.lobby_channel:
-                    node.tx({node.CMD: "join_game", 'nick': node.nick}) # tx() joins the game lobby and sends another JOINED event
-                if node.joined == game_channel and not init["reloaded"]: # This should handle rejoining spectators differently, especially if not present in that code
-                    node.pstree[node.pid]["forks"] = []
-                    if node.oid in node.pstree and "forks" in node.pstree[node.oid]:
-                        node.pstree[node.oid]["forks"] = []
-                    node.tx({node.CMD: "rejoin", node.PID: node.pid, 'nick': node.nick, "forked_node": node.fork})
-
-            elif ev == node.TOPIC:
-                print(f'[{node.channel}] TOPIC "{node.topics[node.channel]}"')
-
-            elif ev == node.QUIT:
-                print(f"Quit: {node.proto}, Reason: {node.data}")
-                # Only if it's the other main player here, spectators can have different prefix names
-                window.sessionStorage.setItem("connected", "false")
-                u = node.proto.split("!")[0]
-                if u in node.users:
-                    del node.users[u]
-                # TODO move this into a function
-                any_reset = False
-                for offer_states in offers:
-                    reset_required = client_state_actions[offer_states[1]]
-                    if len(offer_states) == 5:
-                        request_state = window.sessionStorage.getItem(offer_states[-1])
-                        reset_required = reset_required or (request_state == "true")
-                        any_reset = any_reset or reset_required
-                    if reset_required:
-                        client_state_actions[offer_states[1]] = False 
-                        client_state_actions[offer_states[3]] = True 
-                        if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
-                            sent_status = offer_states[1] + "_sent"
-                            received_status = offer_states[1] + "_received"
-                            client_state_actions[sent_status] = False
-                            client_state_actions[received_status] = False
-                if any_reset:
-                    window.sessionStorage.setItem("total_reset", "true")
-
-            elif ev in [node.LOBBY, node.LOBBY_GAME]:
-                cmd, pid, nick, info = node.proto
-
-                if cmd == node.HELLO:
-                    print("Lobby/Game:", "Welcome", nick)
-                    game_status = window.sessionStorage.getItem("connected")
-                    if game_status != "true":
-                        window.sessionStorage.setItem("connected", "true")
-                    # publish if main
-                    if not node.fork:
-                        node.publish()
-
-                elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
-                    if node.fork:
-                        print("cannot fork, already a clone/fork pid=", node.fork)
-                    elif len(node.pstree[node.pid]["forks"]):
-                        print("cannot fork, i'm main for", node.pstree[node.pid]["forks"])
-                    else:
-                        print("forking to game offer", node.hint)
-                        node.clone(pid)
-                        print("cloning", init["player"], pid)
-
-                else:
-                    print(f"\nLOBBY/GAME: {node.fork=} {node.proto=} {node.data=} {node.hint=}")
-
-            elif ev in [node.USERS]:
-                ...
-
-            elif ev in [node.GLOBAL]:
-                print("GLOBAL:", node.data)
-
-            elif ev in [node.SPURIOUS]:
-                print(f"\nRAW: {node.proto=} {node.data=}")
-
-            elif ev in [node.USERLIST]:
-                print(node.proto, node.users)
-                count = sum(1 for key in node.users.keys() if key.startswith("u_"))
-                if count == 1:
-                    if init["starting_position"] is not None:
-                        init["waiting"] = False # Can be dependant on starting position later/game state
-                    if not init["reloaded"]:
-                        confirmed_state = None
-                        if not init["local_debug"]:
-                            retrieved = False
-                            while not retrieved:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                    retrieved = True
-                                except:
-                                    err = 'Game State retreival Failed. Reattempting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
-                        if confirmed_state is not None:
-                            confirmed_state = json.loads(confirmed_state)
-                            confirmed_state["_starting_player"] = init["starting_player"]
-                            client_game = Game(custom_params=confirmed_state)
-                            init["sent"] = int(client_game._starting_player != client_game.whites_turn)
-                            drawing_settings["recalc_selections"] = True
-                            drawing_settings["clear_selections"] = True
-                        init["reloaded"] = True
-
-            elif ev == node.RAW:
-                print("RAW:", node.data)
-
-            elif ev == node.PING:
-                # print("ping", node.data)
-                ...
-            elif ev == node.PONG:
-                # print("pong", node.data)
-                ...
-
-            # promisc mode dumps everything.
-            elif ev == node.RX:
-                ...
-
-            else:
-                print(f"52:{ev=} {node.rxq=}")
-        except Exception as e:
-            print(f"52:{ev=} {node.rxq=} {node.proto=} {node.data=}")
-            sys.print_exception(e)
-
 def initialize_game(init, game_id, node, drawing_settings):
     current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
     if init["starting_player"]:
@@ -871,7 +401,6 @@ def initialize_game(init, game_id, node, drawing_settings):
         web_game_metadata_dict = {}
     game_tab_id =  init["player"] + "-" + game_id
     window.sessionStorage.setItem("current_game_id", game_tab_id)
-    # TODO extend this to load starting defaults for in play and historic games in script or through browser
     if not init["initialized"]:
         if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
             web_game_metadata_dict[game_tab_id] = {
@@ -1023,7 +552,7 @@ async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
     if game_id is None:
         raise Exception("No game id set")
-    # TODO have dev channel/mode
+
     builtins.node = Node(gid=game_id, groupname="Classical Chess", offline="offline" in sys.argv)
     node = builtins.node
     init = {
@@ -1155,9 +684,10 @@ async def main():
     while init["running"]:
         try:
             if not init["final_updates"]:
-                await handle_node_events(node, init, client_game, client_state_actions, offers, drawing_settings)
+                await handle_node_events(node, window, init, client_game, client_state_actions, offers, drawing_settings)
         except Exception as e:
-            js_code = f"console.log('{str(e)}')"
+            exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+            js_code = f"console.log('{exc_str}')"
             window.eval(js_code)
             raise Exception(str(e))
 
@@ -1170,7 +700,7 @@ async def main():
                 init["access_keys"] = access_keys
                 # TODO Consider whether to merge with retreival
                 try:
-                    url = 'http://192.168.2.25:8000/config/' + game_id + '/?type=live'
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
@@ -1181,7 +711,7 @@ async def main():
                             err = 'Game config retreival failed. Reattempting...'
                             js_code = f"console.log('{err}')"
                             window.eval(js_code)
-                            print(err, e)
+                            print(err)
                     if data.get("status") and data["status"] == "error":
                         raise Exception(f'Request failed {data}')
                     if data["message"]["starting_side"] == "white":
@@ -1194,7 +724,7 @@ async def main():
                         theme_names = data["message"]["theme_names"]
                         global themes
                         themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
-                        current_theme.apply_theme(themes[0])
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     else:
@@ -1202,7 +732,7 @@ async def main():
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
+                    js_code = f"console.log('{exc_str}')"
                     window.eval(js_code)
                     raise Exception(str(e))
             retrieved_state = None
@@ -1218,7 +748,7 @@ async def main():
                         retrieved = True
                     except Exception as e:
                         err = 'Game State retreival Failed. Reattempting...'
-                        js_code = f"console.log('{err} {e}')"
+                        js_code = f"console.log('{err}')"
                         window.eval(js_code)
                         print(err)
             
@@ -1256,24 +786,7 @@ async def main():
                 drawing_settings["clear_selections"] = True
 
         if node.offline and init["network_reset_ready"]:
-            # TODO move this into a function
-            any_reset = False
-            for offer_states in offers:
-                reset_required = client_state_actions[offer_states[1]]
-                any_reset = any_reset or reset_required
-                if len(offer_states) == 5:
-                    request_state = window.sessionStorage.getItem(offer_states[-1])
-                    reset_required = reset_required or (request_state == "true")
-                if reset_required:
-                    client_state_actions[offer_states[1]] = False 
-                    client_state_actions[offer_states[3]] = True 
-                    if "accept" not in offer_states[1] and "deny" not in offer_states[1]:
-                        sent_status = offer_states[1] + "_sent"
-                        received_status = offer_states[1] + "_received"
-                        client_state_actions[sent_status] = False
-                        client_state_actions[received_status] = False
-            if any_reset:
-                window.sessionStorage.setItem("total_reset", "true")
+            apply_resets(window, offers, client_state_actions)
             init["network_reset_ready"] = False
 
         # Web browser actions/commands are received in previous loop iterations
@@ -1376,7 +889,7 @@ async def main():
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -1595,7 +1108,7 @@ async def main():
                     if event.key == pygame.K_t:
                         drawing_settings["theme_index"] += 1
                         drawing_settings["theme_index"] %= len(themes)
-                        current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -1652,7 +1165,7 @@ async def main():
                 'hovered_square': hovered_square,
                 'selected_piece_image': selected_piece_image
             }
-            # TODO remove endState
+
             promoted = await promotion_state(
                 promotion_square, 
                 client_game, 
@@ -1871,5 +1384,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        js_code = f"console.log('{str(e)}')"
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')"
         window.eval(js_code)

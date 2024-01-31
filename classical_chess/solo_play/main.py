@@ -8,6 +8,7 @@ import fetch
 from game import *
 from constants import *
 from helpers import *
+from network import *
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -74,10 +75,10 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
-        if (row, col) in valid_captures:
-            capture_sound.play()
+        if "x" in game.alg_moves[-1]:
+            handle_play(window, capture_sound)
         else:
-            move_sound.play()
+            handle_play(window, move_sound)
         
         selected_piece = None
 
@@ -114,10 +115,10 @@ def handle_piece_special_move(game, selected_piece, row, col):
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
     print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
-    if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        move_sound.play()
+    if "x" in game.alg_moves[-1]:
+        handle_play(window, capture_sound)
     else:
-        capture_sound.play()
+        handle_play(window, move_sound)
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -210,7 +211,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             draw_board_params["chessboard"] = drawing_settings["chessboard"]
@@ -233,7 +234,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                 if event.key == pygame.K_t:
                     drawing_settings["theme_index"] += 1
                     drawing_settings["theme_index"] %= len(themes)
-                    current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                    current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                     # Redraw board and coordinates
                     drawing_settings["chessboard"] = generate_chessboard(current_theme)
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -285,7 +286,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        # TODO Can just put this into an asynchronous loop if I wanted or needed
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
@@ -368,112 +368,6 @@ def initialize_game(init, game_id, drawing_settings):
     if not web_ready:
         raise Exception("Failed to set web value")
     return client_game, game_tab_id
-
-# TODO Move to helpers later on refactor
-async def get_or_update_game(game_id, access_keys, client_game = "", post = False):
-    if post:
-        if isinstance(client_game, str): # could just be not game but we add hinting later
-            raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function generateToken(game_json, secret) {
-                    const oPayload = {game: game_json};
-                    const oHeader = {alg: 'HS256', typ: 'JWT'};
-                    return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.encryptedToken = generateToken('game_string', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.encryptedToken = generateToken('game_string', 'secret_key');
-                };
-            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.encryptedToken is None:
-                await asyncio.sleep(0)
-            encrytedToken = window.encryptedToken
-            window.encryptedToken = None
-            csrf = window.sessionStorage.getItem("csrftoken")
-            response = await handler.post(url, data = {"token": encrytedToken}, headers = {'X-CSRFToken': csrf})# null token handling
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception(f'Request failed {data}')
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-    else:
-        try:
-            url = 'http://127.0.0.1:8000/game-state/' + game_id + '/'
-            handler = fetch.RequestHandler()
-            response = await handler.get(url)
-            data = json.loads(response)
-            if data.get("status") and data["status"] == "error":
-                raise Exception('Request failed')
-            elif data.get("message") and data["message"] == "DNE":
-                return None
-            elif data.get("token"):
-                response_token = data["token"]
-            else:
-                raise Exception('Request failed')
-            secret_key = access_keys["updatekey"] + game_id
-            js_code = """
-                function decodeToken(token, secret) {
-                    const isValid = KJUR.jws.JWS.verify(token, secret, ['HS256']);
-                    if (isValid) {
-                        const decoded = KJUR.jws.JWS.parse(token);
-                        return JSON.stringify(decoded.payloadObj);
-                    } else {
-                        return "invalid";
-                    };
-                };
-                const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
-                if (!existingScript) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
-                    script.onload = function() {
-                        window.payload = decodeToken('response_token', 'secret_key');
-                    };
-                    document.head.appendChild(script);
-                } else {
-                    window.payload = decodeToken('response_token', 'secret_key');
-                };
-            """.replace("response_token", response_token).replace("secret_key", secret_key)
-            window.eval(js_code)
-            await asyncio.sleep(0)
-            while window.payload is None: # Keep trying here
-                await asyncio.sleep(0)
-            game_payload = window.payload
-            window.payload = None
-            return game_payload
-        except Exception as e:
-            js_code = f"console.log('{str(e)}')".replace(secret_key, "####")
-            window.eval(js_code)
-            raise Exception(str(e))
-
-# TODO Move to helpers later on refactor
-def load_keys(file_path):
-    keys = {}
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-        for line in lines:
-            parts = line.strip().split('_')
-            if len(parts) == 2:
-                key, value = parts
-                keys[key] = value
-    return keys
 
 # Main loop
 async def main():
@@ -560,6 +454,7 @@ async def main():
         elif not init["initialized"] :
             if not init["config_retrieved"] and not init["local_debug"]:
                 access_keys = load_keys("secrets.txt")
+                init["access_keys"] = access_keys
                 try:
                     url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
@@ -585,13 +480,13 @@ async def main():
                         theme_names = data["message"]["theme_names"]
                         global themes
                         themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
-                        current_theme.apply_theme(themes[0])
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
                     else:
                         raise Exception("Bad request")
-                    window.sessionStorage.setItem("color", data["message"]["starting_side"]) # TODO remove on refactor. Not needed for AI games
+                    window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
+                    js_code = f"console.log('{exc_str}')"
                     window.eval(js_code)
                     raise Exception(str(e))
             retrieved_state = None
@@ -606,8 +501,8 @@ async def main():
                         if retrieved_state is not None:
                             init["starting_position"] = json.loads(retrieved_state)
                         retrieved = True
-                    except:
-                        err = 'Game State retreival Failed. Reattempting...'
+                    except Exception as e:
+                        err = f'Game State retreival Failed. Reattempting... {e}'
                         js_code = f"console.log('{err}')"
                         window.eval(js_code)
                         print(err)
@@ -662,7 +557,7 @@ async def main():
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -881,7 +776,7 @@ async def main():
                     if event.key == pygame.K_t:
                         drawing_settings["theme_index"] += 1
                         drawing_settings["theme_index"] %= len(themes)
-                        current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -1011,7 +906,6 @@ async def main():
 
         web_game_metadata_dict = json.loads(web_game_metadata)
         
-        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
@@ -1122,5 +1016,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        js_code = f"console.log('{str(e)}')"
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')"
         window.eval(js_code)

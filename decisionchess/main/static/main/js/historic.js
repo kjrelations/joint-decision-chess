@@ -327,7 +327,6 @@ function checkInit() {
         
         var elementsWithMoveNumber = document.querySelectorAll('.move-number');
         elementsWithMoveNumber.forEach(element => {
-            console.log(element)
             idStrings.push(element.id);
         });
 

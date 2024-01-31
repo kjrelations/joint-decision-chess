@@ -37,6 +37,16 @@ window.addEventListener('resize', function() {
     adjustFont();
 });
 
+function handleVisibilityChange() {
+    if (document.hidden) {
+      sessionStorage.setItem('muted', 'true');
+    } else {
+      sessionStorage.setItem('muted', 'false');
+  }
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
 function areEqual(obj1, obj2, type) {
     if (type === 'array') {
         if (obj1.length !== obj2.length) {
@@ -475,7 +485,7 @@ function sendMessage(message, type = null) {
             }
         };
         if (type !== null) {
-            if (type.includes("rematch")) {
+            if (type.includes("rematch") || type === "initialized") {
                 messageObj["message"]["log"] = type;
             }
         }
@@ -528,7 +538,7 @@ function generateRematchURL(position) {
     });
 }
 
-function updateConnectedStatus(status) {
+function updateConnectedStatus(status, playerColor) {
     fetch('/update_connected/', {
         method: 'POST',
         headers: {
@@ -537,7 +547,8 @@ function updateConnectedStatus(status) {
         },
         body: JSON.stringify({ 
             game_uuid: game_uuid, 
-            web_connect: status
+            web_connect: status,
+            color: playerColor
         }),
     })
     .then(response => response.json())
@@ -559,9 +570,14 @@ function updateConnectedStatus(status) {
 
 function checkNewConnect() {
     var currentConnected = sessionStorage.getItem('connected');
+    var playerColor = sessionStorage.getItem('color');
     currentConnected = (currentConnected === 'true' ? true : false);
     if (currentConnected === true && previousConnected === false) {
-        updateConnectedStatus(true);
+        if (playerColor !== null && (playerColor === 'white' || playerColor === 'black')) {
+            updateConnectedStatus(true, playerColor);
+        } else {
+            return;
+        }
     }
     
     var initialized = sessionStorage.getItem('initialized');
@@ -593,10 +609,6 @@ function checkNewConnect() {
         })
         initializeWebSocket();
         initCheck = initialized;
-    } else if (initialized === true && currentConnected === true) {
-        if (typeof socket !== 'undefined' && socket instanceof WebSocket && socket.readyState === WebSocket.CLOSED) {
-            initializeWebSocket();
-        }
     }
 
     previousConnected = currentConnected;

@@ -286,12 +286,12 @@ async def main():
                         theme_names = data["message"]["theme_names"]
                         global themes
                         themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
-                        current_theme.apply_theme(themes[0])
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
                     else:
                         raise Exception("Bad request")
                 except Exception as e:
                     exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
+                    js_code = f"console.log('{exc_str}')"
                     window.eval(js_code)
                     raise Exception(str(e))
             if init["local_debug"]:
@@ -321,7 +321,7 @@ async def main():
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -456,7 +456,7 @@ async def main():
                     if event.key == pygame.K_t:
                         drawing_settings["theme_index"] += 1
                         drawing_settings["theme_index"] %= len(themes)
-                        current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -496,7 +496,6 @@ async def main():
 
         web_game_metadata_dict = json.loads(web_game_metadata)
         
-        # TODO Can just put this into an asynchronous loop if I wanted or needed, can also speed up by only executing when there are true values
         # Step, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_id)

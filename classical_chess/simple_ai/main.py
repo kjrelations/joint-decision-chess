@@ -76,10 +76,10 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
-        if (row, col) in valid_captures:
-            capture_sound.play()
+        if "x" in game.alg_moves[-1]:
+            handle_play(window, capture_sound)
         else:
-            move_sound.play()
+            handle_play(window, move_sound)
         
         selected_piece = None
 
@@ -116,10 +116,10 @@ def handle_piece_special_move(game, selected_piece, row, col):
     # Castling and Enpassant moves are already validated, we simply update state
     game.update_state(row, col, selected_piece, special=True)
     print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
-    if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        move_sound.play()
+    if "x" in game.alg_moves[-1]:
+        handle_play(window, capture_sound)
     else:
-        capture_sound.play()
+        handle_play(window, move_sound)
 
     checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
     if checkmate:
@@ -214,7 +214,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             draw_board_params["chessboard"] = drawing_settings["chessboard"]
@@ -237,7 +237,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                 if event.key == pygame.K_t:
                     drawing_settings["theme_index"] += 1
                     drawing_settings["theme_index"] %= len(themes)
-                    current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                    current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                     # Redraw board and coordinates
                     drawing_settings["chessboard"] = generate_chessboard(current_theme)
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -289,7 +289,6 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        # TODO Can just put this into an asynchronous loop if I wanted or needed
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
@@ -463,7 +462,7 @@ async def main():
                 access_keys = load_keys("secrets.txt")
                 init["access_keys"] = access_keys
                 try:
-                    url = 'http://192.168.2.25:8000/config/' + game_id + '/?type=live'
+                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
@@ -487,13 +486,13 @@ async def main():
                         theme_names = data["message"]["theme_names"]
                         global themes
                         themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
-                        current_theme.apply_theme(themes[0])
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
                     else:
                         raise Exception("Bad request")
-                    window.sessionStorage.setItem("color", data["message"]["starting_side"]) # TODO remove on refactor. Not needed for AI games
+                    window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')" # TODO escape quotes in other console logs
+                    js_code = f"console.log('{exc_str}')"
                     window.eval(js_code)
                     raise Exception(str(e))
             retrieved_state = None
@@ -531,7 +530,7 @@ async def main():
                 drawing_settings["clear_selections"] = True
 
         if client_game._latest and not init["final_updates"] and init["reloaded"]:
-            ai_move(client_game, init, drawing_settings)
+            ai_move(client_game, init, window, drawing_settings)
 
         # Web browser actions/commands are received in previous loop iterations
         if client_state_actions["step"]:
@@ -584,7 +583,7 @@ async def main():
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
-            current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
             # Redraw board and coordinates
             drawing_settings["chessboard"] = generate_chessboard(current_theme)
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -803,7 +802,7 @@ async def main():
                     if event.key == pygame.K_t:
                         drawing_settings["theme_index"] += 1
                         drawing_settings["theme_index"] %= len(themes)
-                        current_theme.apply_theme(themes[drawing_settings["theme_index"]])
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
@@ -1038,5 +1037,6 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        js_code = f"console.log('{str(e)}')"
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')"
         window.eval(js_code)

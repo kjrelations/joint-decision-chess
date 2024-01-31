@@ -24,16 +24,6 @@ def ai_move(game, init, drawing_settings):
     if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
         print("ALG_MOVES:", game.alg_moves)
 
-    # Replace following with subsequent version and in other main scripts
-    if special and (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        move_sound.play()
-    elif special:
-        capture_sound.play()
-    elif (row, col) in opponent_positions:
-        capture_sound.play()
-    else:
-        move_sound.play()
-
     drawing_settings["recalc_selections"] = True
     if game.alg_moves != []:
         if not any(symbol in game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound

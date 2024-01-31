@@ -130,6 +130,7 @@ Play
             sessionStorage.setItem('promoting', 'false');
             var csrftoken = "{{ csrf_token|escapejs }}";
             sessionStorage.setItem('csrftoken', csrftoken);
+            sessionStorage.setItem('muted', 'false');
             const pawnsrc = "{% static 'main/images/material/pawn_grayscale.svg' %}";
             const bishopsrc = "{% static 'main/images/material/bishop_grayscale.svg' %}";
             const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";

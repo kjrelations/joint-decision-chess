@@ -1,9 +1,6 @@
 [
     {
         "name": "Standard",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 230, 155],
         "black_square": [140, 215, 230],
         "transparent_circles": [255, 180, 155, 160],
@@ -20,14 +17,10 @@
         "arrow_black": [0, 100, 100, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Dark Wooden",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 240, 200],
         "black_square": [85, 75, 55],
         "transparent_circles": [255, 180, 155, 160],
@@ -44,14 +37,10 @@
         "arrow_black": [135, 125, 100, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Wooden",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [200, 175, 125],
         "black_square": [140, 100, 60],
         "transparent_circles": [255, 180, 155, 160],
@@ -68,14 +57,10 @@
         "arrow_black": [135, 125, 100, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Tournament",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [230, 240, 205],
         "black_square": [120, 150, 85],
         "transparent_circles": [255, 180, 155, 160],
@@ -92,14 +77,10 @@
         "arrow_black": [190, 200, 95, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Royal",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 205, 105],
         "black_square": [110, 145, 190],
         "transparent_circles": [175, 125, 105, 160],
@@ -116,14 +97,10 @@
         "arrow_black": [35, 85, 150, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Adversary",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 205, 105],
         "black_square": [250, 145, 105],
         "transparent_circles": [140, 215, 230, 160],
@@ -140,14 +117,10 @@
         "arrow_black": [195, 120, 60, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Regal",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 205, 105],
         "black_square": [190, 50, 5],
         "transparent_circles": [255, 180, 155, 160],
@@ -164,14 +137,10 @@
         "arrow_black": [70, 20, 0, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Portal",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [255, 190, 100],
         "black_square": [40, 165, 215],
         "transparent_circles": [175, 125, 105, 160],
@@ -188,14 +157,10 @@
         "arrow_black": [0, 100, 100, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     },
     {
         "name": "Bubblegum",
-        "width": 800, 
-        "height": 800,
-        "grid_size": 100,
         "white_square": [250, 195, 175],
         "black_square": [90, 160, 215],
         "transparent_circles": [175, 125, 105, 160],
@@ -212,7 +177,6 @@
         "arrow_black": [0, 100, 100, 150],
         "arrow_body_width": 20,
         "arrow_head_height": 35,
-        "arrow_head_width": 48,
-        "inverse_player_view": false
+        "arrow_head_width": 48
     }
 ]

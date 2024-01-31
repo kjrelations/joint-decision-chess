@@ -25,11 +25,10 @@ class Theme:
         self.ARROW_HEAD_WIDTH = 48
         self.INVERSE_PLAYER_VIEW = False
 
-    def apply_theme(self, theme):
+    def apply_theme(self, theme, inverse_view):
         self.NAME = theme.get("name", self.NAME)
-        self.WIDTH = theme.get("width", self.WIDTH)
-        self.HEIGHT = theme.get("height", self.HEIGHT)
-        self.GRID_SIZE = theme.get("grid_size", self.GRID_SIZE)
+        self.WIDTH, self.HEIGHT = 800, 800
+        self.GRID_SIZE = self.WIDTH // 8
         self.WHITE_SQUARE = theme.get("white_square", self.WHITE_SQUARE)
         self.BLACK_SQUARE = theme.get("black_square", self.BLACK_SQUARE)
         self.TRANSPARENT_CIRCLES = theme.get("transparent_circles", self.TRANSPARENT_CIRCLES)
@@ -47,13 +46,20 @@ class Theme:
         self.ARROW_BODY_WIDTH = theme.get("arrow_body_width", self.ARROW_BODY_WIDTH)
         self.ARROW_HEAD_HEIGHT = theme.get("arrow_head_height", self.ARROW_HEAD_HEIGHT)
         self.ARROW_HEAD_WIDTH = theme.get("arrow_head_width", self.ARROW_HEAD_WIDTH)
-        self.INVERSE_PLAYER_VIEW = theme.get("inverse_player_view", self.INVERSE_PLAYER_VIEW)
+        self.INVERSE_PLAYER_VIEW = inverse_view
 
     def __str__(self):
         return self.NAME
 
 # Initialize Pygame to initialize fonts
 pygame.init()
+
+# Initialize mixer for sounds
+pygame.mixer.init()
+
+# Sound Effects
+move_sound = pygame.mixer.Sound('sounds/move.ogg')
+capture_sound = pygame.mixer.Sound('sounds/capture.ogg')
 
 pygame.quit()
 
