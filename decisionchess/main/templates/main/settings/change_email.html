@@ -18,8 +18,10 @@
     {% endif %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var settingHeader = document.getElementById('change_email');
-            settingHeader.classList.add('active');
+            var settingHeaders = document.getElementsByClassName('change_email');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
         });
     </script>
 {% endblock %}
