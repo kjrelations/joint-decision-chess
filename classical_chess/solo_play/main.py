@@ -10,6 +10,9 @@ from constants import *
 from helpers import *
 from network import *
 
+production = True
+local = "127.0.0.1:8000"
+
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
     from platform import window
@@ -462,7 +465,8 @@ async def main():
                 access_keys = load_keys("secrets.txt")
                 init["access_keys"] = access_keys
                 try:
-                    url = 'http://127.0.0.1:8000/config/' + game_id + '/?type=live'
+                    domain = 'decisionchess.com' if production else local
+                    url = f'http://{domain}/config/' + game_id + '/?type=live'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
