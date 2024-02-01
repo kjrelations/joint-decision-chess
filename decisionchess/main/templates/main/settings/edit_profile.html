@@ -11,8 +11,10 @@
     </form>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var settingHeader = document.getElementById('edit_profile');
-            settingHeader.classList.add('active');
+            var settingHeaders = document.getElementsByClassName('edit_profile');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
         });
     </script>
 {% endblock %}

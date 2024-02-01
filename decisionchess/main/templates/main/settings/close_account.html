@@ -47,8 +47,10 @@
         document.addEventListener("DOMContentLoaded", function() {
             const inputField = document.querySelector("#id_password");
             inputField.classList.add("red-border-glow");
-            var settingHeader = document.getElementById('close_account');
-            settingHeader.classList.add('active');
+            var settingHeaders = document.getElementsByClassName('close_account');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
         });
     </script>
 {% endblock %}
