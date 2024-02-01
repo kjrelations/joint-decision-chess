@@ -8,7 +8,7 @@ from helpers import *
 
 debug_prints = True
 production = True
-local = "127.0.0.1:8000"
+local = "http://127.0.0.1:8000"
 
 ## Network helper logic
 # Helper to get a game state or post a state with a jwt token
@@ -21,8 +21,8 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
         client_game._move_undone = False
         client_game_str = client_game.to_json(include_states=True)
         try:
-            domain = 'decisionchess.com' if production else local
-            url = f'http://{domain}/game-state/' + game_id + '/'
+            domain = 'https://decisionchess.com' if production else local
+            url = f'{domain}/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()
             js_code = """
                 function generateToken(game_json, secret) {
@@ -60,8 +60,8 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             raise Exception(str(e))
     else:
         try:
-            domain = 'decisionchess.com' if production else local
-            url = f'http://{domain}/game-state/' + game_id + '/'
+            domain = 'https://decisionchess.com' if production else local
+            url = f'{domain}/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()
             response = await handler.get(url)
             data = json.loads(response)

@@ -10,7 +10,7 @@ from constants import *
 from helpers import *
 
 production = True
-local = "127.0.0.1:8000"
+local = "http://127.0.0.1:8000"
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -272,8 +272,8 @@ async def main():
                 # I could get state here too instead of browser and set browser like normal
                 # TODO add Retry loop on disconnect
                 try:
-                    domain = 'decisionchess.com' if production else local
-                    url = f'http://{domain}/config/' + game_id + '/?type=historic'
+                    domain = 'https://decisionchess.com' if production else local
+                    url = f'{domain}/config/' + game_id + '/?type=historic'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
