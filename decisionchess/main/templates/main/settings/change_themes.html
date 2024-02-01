@@ -140,6 +140,7 @@
                         <button id="row_{{ theme.0 }}" type="button" class="theme-row d-flex justify-content-center" style="width: 100%;">
                             <label for="id_{{ theme.0 }}" class="flex-grow-1" style="margin-bottom: 0px; padding-bottom: 8px; cursor: pointer;">
                                 <h2 id="title_{{ theme.0 }}" class="theme-title" style="text-align: left;">{{ theme.1 }}</h2>
+                                <!-- TODO tabs for each image -->
                                 <div id="imgs_{{ theme.0 }}" class="theme-content hidden d-flex justify-content-around">
                                     {% for suffix in endings %}
                                         {% with image_name=theme.0|add:'-'|add:suffix %}

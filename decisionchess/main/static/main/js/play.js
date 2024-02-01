@@ -327,6 +327,7 @@ function updateCommandCenter() {
             }
             j += 1;
         }
+        movesListContainer.scrollTop = movesListContainer.scrollHeight;
 
         if (endState === "\u00bd\u2013\u00bd") {
             endState = '½–½';
@@ -564,8 +565,8 @@ function handleMessage(data) {
         }
         if (data["log"] === "connect") {
             connect_user = data["user"];
-            // Exclude spectators by
-            // Adding highlighted message to chat if opponent is the same
+            // Exclude spectators by adding highlighted message
+            // to chat if opponent is the same
             if (connect_user === opponent) {
                 var log = $('<p></p>').text(data["user"] + " connected");
                 log.css({
@@ -582,7 +583,7 @@ function handleMessage(data) {
             player = data["opponent"];
             opponent_color = data["color"];
             if ((connect_user !== opponent || player !== sender) && opponent_color !== playerColor) {
-                // Assuming top is always opponent to start is fine
+                // Assuming top is always opponent to start is fine as no flips occurred preinit
                 opponentContent = document.getElementById('topPlayer');
                 opponent = (connect_user !== "black" && connect_user !== "white") ? connect_user : "Anonymous"; // prevent these two usernames
                 opponentContent.innerHTML = opponent;
@@ -772,6 +773,8 @@ function checkNewConnect() {
             document.getElementById(idString).classList.remove("hidden");
         })
         initializeWebSocket();
+        var movesListContainer = document.getElementById('moves-list');
+        movesListContainer.scrollTop = movesListContainer.scrollHeight;
         initCheck = initialized;
     } else if (initialized === true && currentConnected === true) {
         if (typeof socket !== 'undefined' && socket instanceof WebSocket && socket.readyState === WebSocket.CLOSED) {
@@ -800,6 +803,33 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
+function handlestep(webGameMetadata, sessionStorageObjectName, existingWebGameMetadata, currentGameID, buttonId) {
+    var early_exit = false;
+    if (
+        move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
+        move_index < 0 && buttonId === "backwardButton"
+    ) {
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].index = null;
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        
+        document.getElementById(buttonId).disabled = false;
+        early_exit = true;
+        return {'index_number': null, 'early_exit': early_exit};
+    }
+    if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
+        index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
+
+    } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
+        index_number = (buttonId === "backwardButton" ? move_index : -1);
+    } else {
+        index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
+        index_number = (index_number < move_index ? index_number + 1 : index_number);
+    }
+    return {'index_number': index_number, 'early_exit': early_exit}
+}
+
 function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = null) {
     var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
@@ -809,29 +839,17 @@ function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = nul
         webGameMetadata[sessionStorageObjectName].execute = true;
         existingWebGameMetadata[currentGameID] = webGameMetadata;
         if (sessionStorageObjectName == "step") {
-            // Could move this block into it's own function later
-            if (
-                move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
-                move_index < 0 && buttonId === "backwardButton"
-            ) {
-                webGameMetadata[sessionStorageObjectName].execute = false;
-                webGameMetadata[sessionStorageObjectName].index = null;
-                existingWebGameMetadata[currentGameID] = webGameMetadata;
-                sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-                
-                document.getElementById(buttonId).disabled = false;
+            const stepResults = handlestep(
+                webGameMetadata, 
+                sessionStorageObjectName, 
+                existingWebGameMetadata, 
+                currentGameID, 
+                buttonId
+            );
+            if (stepResults.early_exit) {
                 return;
             }
-            if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
-                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
-
-            } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
-                index_number = (buttonId === "backwardButton" ? move_index : -1);
-            } else {
-                index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
-                index_number = (index_number < move_index ? index_number + 1 : index_number);
-            }
-            webGameMetadata[sessionStorageObjectName].index = index_number;
+            webGameMetadata[sessionStorageObjectName].index = stepResults.index_number;
         }
         sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
@@ -899,11 +917,27 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
         moveId = 'move-' + move_index;
         if (move_index !== -1) {
             document.getElementById(moveId).disabled = true;
+        } else {
+            var movesListContainer = document.getElementById('moves-list');
+            movesListContainer.scrollTop = 0;
         }
         if (selectedMoveId !== "") {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
+        if (selectedMoveId !== "") {
+            var movesListContainer = document.getElementById('moves-list');
+            var selectedMove = document.getElementById(selectedMoveId);
+
+            var containerHeight = movesListContainer.clientHeight;
+            var moveHeight = selectedMove.clientHeight;
+
+            // Don't need to scroll, if the element is already visible
+            if (!(selectedMove.offsetTop - moveHeight >= 0 && selectedMove.offsetTop + moveHeight <= containerHeight)) {
+                movesListContainer.scrollTop = selectedMove.offsetTop - (containerHeight - moveHeight) / 2 - containerHeight;
+            }
+
+        }
     } else if (sessionStorageObjectName == "flip_board") {
         topElement = document.getElementById('topPlayer');
         bottomElement = document.getElementById('bottomPlayer');

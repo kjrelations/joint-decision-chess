@@ -257,7 +257,6 @@ def get_config(request, game_uuid):
     
     theme_names = request.session.get('themes')
     if theme_names is None and request.user and request.user.id is not None:
-        # TODO move this into a function
         user_settings = UserSettings.objects.get(user=request.user)
         user_themes = user_settings.themes
         user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
@@ -407,7 +406,6 @@ def play(request, game_uuid):
                 black_user = black_user.username
             except User.DoesNotExist:
                 black_user = "Anonymous"
-            # Later load historic side in script if logged in and played the game like the live view
             player_side = white_user
             opponent_side = black_user
             flip = False
@@ -450,16 +448,6 @@ def update_connected(request):
             if compare is None:
                 compare = game.black_id
                 null_id = "white"
-            session_game = request.session.get(connect_game_uuid)
-            # This should probably just check if the game is waiting or not in the else case, 
-            # this first condition will likely change later
-            if session_game is not None and "white" in session_game:
-                request.session[connect_game_uuid] = ["white", "black"]
-            else:
-                # This to be altered once sides can be selected, not fully right for now for black
-                filling = "white" if null_id == "black" else "black"
-                request.session[connect_game_uuid] = [filling]
-            # maybe fail if None as a starting condition and add it to session in play view function
             
             waiting_game = game.white_id is None or game.black_id is None
             # This allows the one player to join their own game or different games and 

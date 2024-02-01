@@ -19,8 +19,8 @@ Play
 
 {% block content %}
 <div id="content" name="content" class="content">
-    <div class="row justify-content-center" style="max-width: 100%; margin: auto;"> <!-- max width necessary for no horizontal scrolling -->
-        <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <!-- Given side bar maybe columns should instead be 2 5 4  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
         <div class="col-2 d-none d-md-block" style="width: 100%;">
             <div id="chat-box" class="card chat-box">
@@ -35,8 +35,7 @@ Play
                 </div>
             </div>
         </div>
-        <!-- Consider if this col-5 should be present for all play views or just the main one-->
-        <!-- That is we can embedd the game itself in here as it's own template maybe -->
+        <!-- Embedded Game -->
         <div class="col-10 col-md-5" style="padding-right: 0px;">
             <div id="iframe-container">
                 <iframe id="embedded-iframe" src="{% if computer_game %}{% static 'main/html/minimax.html' %}{% else %}{% static 'main/html/solo.html' %}{% endif %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
@@ -60,7 +59,6 @@ Play
                     </div>
                     <div id='opponentIndicator' class="hidden indicator">Their Turn</div>
                 </div>
-                <!-- Content will be dynamically added here -->
                 <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
                     <div id="moves-list" class="scrollable-moves-list mt-auto">
                         <!-- Content will be dynamically added here -->
@@ -68,7 +66,7 @@ Play
                 </div>
                 <div id="final-score" class="text-white font-weight-bold text-lg"></div>
                 <div id="end-message" class="text-white"></div>
-                <div class="d-flex justify-content-center align-items-center mb-auto" style="background-color: var(--control-section-text); min-width: 100%;"> <!-- fix height -->
+                <div class="d-flex justify-content-center align-items-center mb-auto" style="height: fit-content; background-color: var(--control-section-text); min-width: 100%;"> <!-- fix height -->
                     <button id="skipBackwardButton" post-game="true" class="action-button confirm hidden mr-2">
                         <i class="fa-solid fa-backward-step icon-color"></i>
                     </button>

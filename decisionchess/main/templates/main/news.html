@@ -34,7 +34,7 @@ News
 
 {% block content %}
 <div id="content", name="content", class="content">
-    <div class="row justify-content-center" style="max-width: 100%; margin-bottom: 5px;"> <!-- max width necessary for no horizontal scrolling -->
+    <div class="row justify-content-center" style="max-width: 100%; margin-bottom: 5px;">
         <div class="col-10 col-md-5">
             <h1 style="text-align: center; color: var(--news-title-text);">News</h1>
             <div class="after-border"></div>
@@ -43,9 +43,9 @@ News
     {% for post in blogs.all %}
         <div class="row justify-content-center" style="max-width: 100%;">
             <div class="col-10 col-md-5">
-                <h2 style="color: var(--blog-titles)">{{post.title}}</h2>
+                <h2 style="color: var(--blog-titles);">{{post.title}}</h2>
                 <h3>{{post.timestamp|date:"F d, Y"}}</h3>
-                {{post.author}} <!--small-->
+                <i style="font-size: small;">{{post.author}}</i>
                 <p>{{post.content|safe}}</p>
             </div>
         </div>
