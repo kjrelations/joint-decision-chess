@@ -3,9 +3,18 @@
 {% load crispy_forms_tags %}
 
 {% block setting_window %}
+    <h1 style="color: var(--title-text);">Edit Profile</h1>
     <form method="POST" class="form-group">
         {% csrf_token %}
         {{form|crispy}}
         <button type="submit" class="btn btn-success">Submit</button>
     </form>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var settingHeaders = document.getElementsByClassName('edit_profile');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
+        });
+    </script>
 {% endblock %}

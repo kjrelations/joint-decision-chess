@@ -27,6 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # # SECURITY WARNING: don't run with debug turned on in production!
 # Need to force it to bool else it reads as string same with others way below
 DEBUG = config('DEBUG', default=False, cast=bool)
+ADMIN_PATH = config('ADMIN_PATH')
 
 ALLOWED_HOSTS = ['*', 'www.decisionchess.com', 'decisionchess.com', '127.0.0.1', 'localhost']
 
@@ -52,23 +53,39 @@ INSTALLED_APPS = [
     'corsheaders'
 ]
 
+if DEBUG:
+    INSTALLED_APPS.extend(['debug_toolbar', 'livereload'])
+
+# Order matters here
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'middleware.middleware.GuestSessionMiddleware',
+    'middleware.middleware.ExceptionLoggingMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 if DEBUG:
+    MIDDLEWARE.extend([
+        'livereload.middleware.LiveReloadScript'# at end
+    ])
     CORS_ALLOWED_ORIGINS = [
         'http://127.0.0.1:8585',
         # 'http://<ip>:8000'
+    ]
+
+# For the debug toolbar on debug mode only, toggle here or edit SHOW_TOOLBAR_CALLBACK
+if True:
+    INTERNAL_IPS = [
+        '127.0.0.1',
     ]
 
 CSRF_TRUSTED_ORIGINS = ['https://decisionchess.com', 'http://decisionchess.com']
@@ -106,6 +123,15 @@ if DEBUG:
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                    'hosts': [config('REDIS_URL')],
+                },
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -128,6 +154,7 @@ DATABASES = {
 SECRET_KEY = config('SECRET_KEY')
 SIGNING_KEY = config('SIGNING_KEY')
 STATE_UPDATE_KEY = config('STATE_UPDATE_KEY')
+EMAIL_KEY = config('EMAIL_KEY')
 
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config('EMAIL_HOST')
@@ -184,34 +211,18 @@ STATICFILES_DIRS = [
 # LOGGING = {
 #     'version': 1,
 #     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
-#             'datefmt' : "%d/%b/%Y %H:%M:%S"
-#         },
-#         'simple': {
-#             'format': '%(levelname)s %(message)s'
-#         },
-#     },
 #     'handlers': {
-#         'file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': 'mysite.log',
-#             'formatter': 'verbose'
+#         'console': {
+#             'class': 'logging.StreamHandler',
 #         },
 #     },
 #     'loggers': {
 #         'django': {
-#             'handlers':['file'],
+#             'handlers': ['console'],
+#             'level': 'ERROR',
 #             'propagate': True,
-#             'level':'DEBUG',
 #         },
-#         'MYAPP': {
-#             'handlers': ['file'],
-#             'level': 'DEBUG',
-#         },
-#     }
+#     },
 # }
 
 # Default primary key field type

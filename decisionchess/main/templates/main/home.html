@@ -1,6 +1,8 @@
 {% extends 'main/base.html' %}
 
 {% load static %}
+{% load custom_filters %}
+{% load crispy_forms_tags %}
 
 {% block style %} 
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/home.css' %}">
@@ -17,26 +19,105 @@ Decision Chess
 {% block content %}
 <div id="content" name="content" class="main">
     <div class="container-fluid" style="padding: 0;">
-        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-            <!-- Landing Section across 11 columns -->
-            <!-- Initial empty column -->
-            <div class="col-1 col-hb-1 col-md-3">
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <!-- Initial highlights column -->
+            <div class="col-1 highlights-section col-md-3 d-none d-md-block">
+              <div class="d-none d-md-flex flex-column align-items-center w-100">
+                <button class="highlights-column" onclick="scrollToSection('Introduction')">Introduction</button>
+                <button class="highlights-column" onclick="window.location.href = '/news'">
+                    <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                        <div style="font-size: 0.75em;">{{blogs.0.timestamp|date:"M d, Y"}}</div>
+                        <div class="align-self-center" style="font-size: 0.9em;">{{blogs.0.title}}</div>
+                        <div style="font-size: 0.75em;">{{blogs.0.author}}</div>
+                    </div>
+                </button>
+                <button class="highlights-column" onclick="window.location.href = '/news'">
+                    <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
+                        <div style="font-size: 0.75em;">{{blogs.1.timestamp|date:"M d, Y"}}</div>
+                        <div class="align-self-center" style="font-size: 0.9em;">{{blogs.1.title}}</div>
+                        <div style="font-size: 0.75em;">{{blogs.1.author}}</div>
+                    </div>
+                </button>
+            </div>
             </div>
             <!-- Join column: Quick Pair, Lobby, games in play section -->
-            <div class="col-10 offset-1 col-hb-10-offset-1 col-md-5 offset-md-0">
-                <!-- <img src="{% static 'main/images/coming-soon-landing.PNG' %}" alt="Join Section" style="max-width: 100%;"> -->
-                <button id="quick-pair" class="quick-pair">Quick Pair</button>
+            <div class="col-10 lobby-column col-md-5">
+              <nav class="nav">
+                <button class="lobby-tab" data-toggle="tab" href="#quickPairContent">Quick Pair</button>
+                <button class="active lobby-tab" data-toggle="tab" href="#lobbyContent">Lobby</button>
+                {% if has_games_in_play %}
+                  <button class="lobby-tab" data-toggle="tab" href="#inPlayContent">In Play</button>
+                {% endif %}
+                <button id="lobby-filter-button" class="lobby-filter-button" data-toggle="modal" data-target="#LobbyFilterMenu" style="position: absolute; right: 15px; padding: 5em none;" aria-label="Lobby Filter">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+              </nav>  
+                <div class="modal fade" id="LobbyFilterMenu" tabindex="-1" role="dialog" aria-labelledby="LobbyFilterLabel" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title text-center w-100" id="LobbyFilterLabel">Select Lobby Filters</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        <!-- To recreate within Django eventually -->
+                          <div class="form-group mt-3">
+                              <label for="positionFilter">Position:</label>
+                              <select class="form-control" id="positionFilter">
+                                  <option value="">Select position...</option>
+                                  <option value="white">White</option>
+                                  <option value="black">Black</option>
+                              </select>
+                          </div>
+                          <div class="form-group">
+                              <label for="usernameFilter">Username:</label>
+                              <input type="text" class="form-control" id="usernameFilter" placeholder="Enter username...">
+                          </div>
+                          <button id="updateFilterButton" class="btn btn-primary">Update Filters</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div class="lobby" style="max-width: 100%;">
                     <div id="lobby-list" class="scrollable-lobby-list" style="width: 100%;">
-                        <div class="lobby-header">
-                            <div style="text-align: center; width: 10%; overflow: hidden;"></div>
-                            <div style="text-align: center; width: 50%; overflow: hidden;">User (Anonymous)</div>
-                            <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                        <div class="tab-content">
+                          <div class="tab-pane fade show active" id="lobbyContent">
+                            <div class="lobby-header">
+                                <div style="text-align: center; width: 10%; overflow: hidden;"></div>
+                                <div style="text-align: center; width: 50%; overflow: hidden;">User</div>
+                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                            </div>
+                            <div id="lobby-content"></div>
+                          </div>
+                          <div class="tab-pane fade" id="quickPairContent">
+                            <button id="quick-pair" class="quick-pair-button">Join <br> Game</button>
+                          </div>
+                          {% if has_games_in_play %}
+                            <div class="tab-pane fade" id="inPlayContent">
+                              <div class="lobby-header">
+                                <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">Side</div>
+                                <div style="text-align: left; width: 30%; overflow: hidden;">Opponent</div>
+                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Start Time</div>
+                              </div>
+                              {% for game in games_in_play %}
+                                <div class="d-flex">
+                                  <a class="lobby-a" href="/play/{{ game.active_game_id }}" style="width: 100%;" onclick="checkGameAvailability('{{ game.active_game_id }}', this.parentNode.querySelector('.lobby-row'))">
+                                    <button id="{{ game.active_game_id }}" class="lobby-row">
+                                      <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">{{ sides|index:forloop.counter0 }}</div>
+                                      <div style="text-align: left; width: 30%; overflow: hidden;">{{ opponents|index:forloop.counter0 }}</div>
+                                      <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">{{ game.start_time|time:"H:i:s" }}</div>
+                                    </button>
+                                  </a>
+                                </div>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
                         </div>
-                        <div id="lobby-content"></div>
                     </div>
                 </div>
-                <div class="d-flex justify-content-between w-100 top-margin">
+                <div class="d-flex d-md-none justify-content-between w-100 top-margin">
                     <button class="highlights" onclick="scrollToSection('Introduction')">Introduction</button>
                     <button class="highlights" onclick="window.location.href = '/news'">
                         <div class="d-flex flex-column align-items-end justify-content-between" style="min-height: 100%;">
@@ -54,10 +135,8 @@ Decision Chess
                     </button>
                 </div>
             </div>
-            <!-- <div class="col-3 d-md-none" style="width: 0%"></div> -->
             <!-- Game creation, live stats -->
-            <!-- <div class="col-2 d-md-none"></div> -->
-            <div class="col-10 offset-2 col-hb-10-offset-2 col-md-3 offset-md-0 d-flex flex-column justify-content-center">
+            <div class="col-10 game-creation col-md-3 d-flex flex-column justify-content-center">
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewGame" style="min-width: 100%;">Create New Game</button>
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewComputerGame" style="min-width: 100%;">Play With The Computer</button>
                 <button type="button" class="new-game" data-toggle="modal" data-target="#CreateNewPrivateGame" style="min-width: 100%;">Play With A Friend</button>
@@ -71,16 +150,17 @@ Decision Chess
                           </button>
                         </div>
                         <div class="modal-body">
+                            {{ form.solo_play|as_crispy_field }}
                             <div class="text-center">Choose Starting Side</div>
                             <div class="d-flex justify-content-center align-items-center">
                                 <button class="position-placeholder mr-2" data-position="white" new-game="true">
-                                    <img src="{% static 'main/images/test-white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="random" new-game="true">
-                                    <img src="{% static 'main/images/test.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                                    <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="black" new-game="true">
-                                    <img src="{% static 'main/images/test-black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                             </div>
                         </div>
@@ -100,13 +180,13 @@ Decision Chess
                             <div class="text-center">Choose Starting Side</div>
                             <div class="d-flex justify-content-center align-items-center">
                                 <button class="position-placeholder mr-2" data-position="white" new-computer-game="true">
-                                    <img src="{% static 'main/images/test-white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="random" new-computer-game="true">
-                                    <img src="{% static 'main/images/test.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                                    <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="black" new-computer-game="true">
-                                    <img src="{% static 'main/images/test-black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                             </div>
                         </div>
@@ -127,13 +207,13 @@ Decision Chess
                             <div class="text-center" style="font-size: small;">Once the game is loaded share the url with your opponent.</div>
                             <div class="d-flex justify-content-center align-items-center">
                                 <button class="position-placeholder mr-2" data-position="white" new-private-game="true">
-                                    <img src="{% static 'main/images/test-white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="random" new-private-game="true">
-                                    <img src="{% static 'main/images/test.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                                    <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
                                 </button>
                                 <button class="position-placeholder mr-2" data-position="black" new-private-game="true">
-                                    <img src="{% static 'main/images/test-black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                                    <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
                                 </button>
                             </div>
                         </div>
@@ -143,13 +223,12 @@ Decision Chess
             </div>
         </div>
         <div class="row justify-content-center" style="max-width: 100%;">
-            <!-- Top live game, Recent News, donation section to be added here -->
-            <!-- Introduction Section across 11 columns -->
+            <!-- Top live game -->
             <!-- Initial empty column -->
-            <div class="col-2 col-hb-2 col-md-3" style="width: 100%;">
+            <div class="col-1 col-md-3" style="width: 100%;">
             </div>
             <!-- Introduction -->
-            <div class="col-10 col-hb-10 col-md-5">
+            <div class="col-10 col-md-5 intro">
                 <section id="Introduction">
                     <h2>Introduction</h2>
                     <p>
@@ -160,9 +239,10 @@ Decision Chess
                         The full official name of the variant is thus called <strong><em>Joint</em>-Decision Chess</strong>, but that's less catchy.
                         <br>
                         <br>
-                        Currently, this site only offers the classical standard version of chess while basic functionality is developed and enabled.
-                        It will allow for classical games and decision chess games in the future. The following is a list of some major upcoming features and pages. <br>
-                        Stay tuned...
+                        Currently, this site only offers the classical standard version of chess while after basic functionality was developed and enabled.
+                        Consider joining the <a href="https://discord.gg/YDkYCtsV" target="_blank" rel="noopener noreferrer">discord</a> to interact with the community. This site runs soley off of donations and is developed 
+                        by a one-person team, you can contribute here <a href="https://paypal.me/decisionchess" target="_blank" rel="noopener noreferrer">paypal.me/decisionchess</a>.
+                        It will allow for classical games and decision chess games in the future. The following is a list of some existing major features and pages. <br>
                     </p>
                     <ul>
                         <li>A News Page</li>
@@ -181,7 +261,7 @@ Decision Chess
                     <p>Once this initial site is complete, I will begin to create and implement my variant. The following is a list of features coming with the beta version:</p>
                     <ul>
                         <li>Implementing the new variant itself!</li>
-                        <li>Creating AI and iterating on the design through Generative Adversarial Networks</li>
+                        <li>Creating AI and iterating on the design</li>
                         <li>A personal notes tab alongside the live chat</li>
                         <li>Customizing the variant</li>
                         <li>Mobile compatibility</li>
@@ -197,8 +277,11 @@ Decision Chess
                     </p>
                 </section>
             </div>
-            <!-- Initial empty column -->
-            <div class="col-1 col-hb-1 col-md-3">
+            <!-- Extra links -->
+            <div class="col-3">
+              <div class="row justify-content-center" style="padding-bottom: 20px;">
+                <a class="donate rounded align-self-center" href="https://paypal.me/decisionchess" target="_blank" rel="noopener noreferrer">Donate</a>
+              </div>
             </div>
         </div>
     </div>

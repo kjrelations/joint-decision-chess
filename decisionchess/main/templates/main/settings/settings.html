@@ -10,18 +10,22 @@
         padding: 6px 8px 6px 16px;
         text-decoration: none;
         font-size: 1.1rem;
-        color: #5c67a3;
+        color: var(--settings-side-nav-a-text);
         display: block;
     }
 
     .settingssidenav a:hover{
-        color: #e4a03a;
+        color: var(--settings-side-nav-a-text-hover);
         text-decoration: none;
-    }	
+    }
 
-    .block {
-        color: white;
-        background-color: #435e67;
+    .settingssidenav a.active{
+        color: var(--homebutton-decision);
+        text-decoration: none;
+    }
+
+    .no-wrap {
+        white-space: nowrap;
     }
 </style>
 {% block extrastyle %}
@@ -29,20 +33,30 @@
 {% endblock %}
 
 {% block content %}
-<div id="content" name="content" class="main"> <!-- maybe custom class here -->
+<div id="content" name="content" class="main">
     <div class="container-fluid" style="padding: 0;">
-        <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-            <div class="col-2"></div>
-            <div class="col-7 block">
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <div class="col-11 ml-auto d-block d-md-none" style="padding-left: 0; padding-right: 0;">
+                <div class="settingssidenav d-flex" style="overflow-x: scroll;">
+                    <a class="change_themes no-wrap" href="/account/themes">Themes</a>
+                    <a class="edit_profile no-wrap" href="/account/profile">Edit Profile</a>
+                    <a class="change_password no-wrap" href="/account/passwd">Change Password</a>
+                    <a class="change_email no-wrap" href="/account/email">Change Email</a>
+                    <a class="close_account no-wrap" href="/account/close_account">Close Account</a>
+                </div>
+            </div>
+            <div class="col-2 d-none d-md-block"></div>
+            <div class="col-11 col-md-7 block ml-auto">
             {% block setting_window %}
             {% endblock %}
             </div>
-            <div class="col-2">
+            <div class="col-2 d-none d-md-block">
                 <div class="settingssidenav">
-                    <a href="/account/profile">Edit Profile</a>
-                    <a href="/account/passwd">Change Password</a>
-                    <a href="/account/email">Change Email</a>
-                    <a href="/account/close_account">Close Account</a>
+                    <a class="change_themes" href="/account/themes">Themes</a>
+                    <a class="edit_profile" href="/account/profile">Edit Profile</a>
+                    <a class="change_password" href="/account/passwd">Change Password</a>
+                    <a class="change_email" href="/account/email">Change Email</a>
+                    <a class="close_account" href="/account/close_account">Close Account</a>
                 </div>
             </div>
         </div>

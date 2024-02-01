@@ -1,10 +1,13 @@
-function generateGame(position, private = null, computer_game = null) {
-    body = {"position": position}
+function generateGame(position, private = null, computer_game = null, solo = null) {
+    body = {"position": position};
     if (computer_game) {
-        body["computer_game"] = true
+        body["computer_game"] = true;
     }
-    if (private) {
-        body["private"] = true
+    if (private||solo) {
+        body["private"] = true;
+        if (solo) {
+            body["solo"] = true;
+        }
     }
     fetch('/create_new_game/', {
         method: 'POST',
@@ -35,7 +38,9 @@ const newGameButtons = document.querySelectorAll('[new-game="true"]');
 newGameButtons.forEach(button => {
     button.addEventListener('click', () => {
         const position = button.dataset.position;
-        generateGame(position)
+        var soloPlayCheckbox = document.getElementById('solo-play-checkbox');
+        var soloPlay = soloPlayCheckbox.checked ? true : null;
+        generateGame(position, null, null, soloPlay);
     });
 });
 
@@ -43,7 +48,7 @@ const newComputerGameButtons = document.querySelectorAll('[new-computer-game="tr
 newComputerGameButtons.forEach(button => {
     button.addEventListener('click', () => {
         const position = button.dataset.position;
-        generateGame(position, null, true)
+        generateGame(position, null, true);
     });
 });
 
@@ -51,7 +56,7 @@ const newPrivateGameButtons = document.querySelectorAll('[new-private-game="true
 newPrivateGameButtons.forEach(button => {
     button.addEventListener('click', () => {
         const position = button.dataset.position;
-        generateGame(position, private = true)
+        generateGame(position, private = true);
     });
 });
 
@@ -81,7 +86,19 @@ quickPairButton.addEventListener('click', quickPair)
 function updateLobby() {
     var lobbyListContainer = document.getElementById('lobby-content');
 
-    fetch('/get_lobby_games/')
+    const filters = ['position', 'username'];
+    const queryParams = new URLSearchParams();
+
+    filters.forEach(filter => {
+        const filterValue = document.getElementById(`${filter}Filter`).value;
+        if (filterValue) {
+            queryParams.set(filter, filterValue);
+        }
+    });
+
+    var queryString = queryParams.toString();
+
+    fetch('/get_lobby_games/' + (queryString ? '?' + queryString : ''))
         .then(response => response.json())
         .then(data => {
             lobbyListContainer.innerHTML = ''
@@ -137,6 +154,11 @@ function updateLobby() {
             console.error('Error:', error);
         });
 }
+
+document.getElementById('updateFilterButton').addEventListener('click', function () {
+    $('#LobbyFilterMenu').modal('hide');
+    updateLobby();
+});
 
 function checkGameAvailability(gameId, lobbyRow) {
     fetch('/check_game_availability/', {

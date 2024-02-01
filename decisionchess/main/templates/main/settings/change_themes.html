@@ -1,0 +1,258 @@
+{% extends 'main/settings/settings.html' %}
+
+{% load crispy_forms_tags %}
+
+{% load static %}
+
+{% load custom_filters %}
+
+{% block extrastyle %}
+<style>
+    .theme-row {
+        position: relative;
+        border: none;
+        outline: none;
+        background-image: linear-gradient(to right, transparent, transparent);
+        background-color: transparent;
+        color: var(--theme-row-text);
+        transition: background-image 0.3s ease;
+    }
+
+    .theme-row::after,
+    .before-border {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-image: 
+            linear-gradient(
+                to right, 
+                transparent, 
+                rgb(212, 170, 107), 
+                transparent
+            );
+    }
+
+    .theme-row::after {
+        bottom: 0;
+    }
+
+    .theme-row:focus {
+        outline: none;
+    }
+
+    .theme-row.selected {
+        color: var(--theme-row-selected-text);
+    }
+
+    .theme-row.selected.default {
+        background: linear-gradient(to right, transparent, rgba(134, 180, 137, 0.3), rgba(134, 180, 137, 0.3), transparent) ;
+        color: rgb(80, 180, 87);
+    }
+
+    .theme-row.default {
+        background: linear-gradient(to right, transparent, rgba(211, 113, 51, 0.3), rgba(211, 113, 51, 0.3), transparent) ;
+        color: #e45c3a;
+    }
+
+    .theme-row:hover,
+    .theme-row.selected.default:hover {
+        background-image: linear-gradient(to right, transparent, var(--theme-row-hover), var(--theme-row-hover), transparent);
+    }
+
+    .dropdown-toggle {
+        border: none;
+        outline: none;
+        margin: 2px 0px;
+        background-color: transparent;
+        color: white;
+        transition: background-color 0.3s ease;
+    }
+
+    .dropdown-toggle::after {
+        content: none;
+    }
+
+    .dropdown-toggle:focus {
+        outline: none;
+    }
+
+    .dropdown-toggle:hover {
+        background-color: rgba(47, 66, 72, 0.7);
+    }
+
+    .theme-content {
+        display: block; 
+    }
+
+    .theme-content.hidden {
+        display: none !important;
+    }
+
+    @media (max-width: 767px) {
+        .theme-title {
+            font-size: 20px;
+        }
+
+        .theme-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .image-content {
+            max-width: initial !important;
+            width: 80%;
+            margin-bottom: 10px;
+        }
+    }
+</style> 
+{% endblock %}
+
+{% block setting_window %}
+    <h1 style="color: var(--title-text);">Themes</h1>
+    <div class="container">
+        <div class="row" style="padding-bottom: 20px;">
+            <form method="post" style="width: 100%;">
+                <div style="margin-bottom: 10px;">
+                    <p>Select your themes to load in game and your main starting theme. <br> Expand the rows to see the themes.</p>
+                    <button type="submit" class="btn btn-success" style="align-self: flex-end;">Save</button>
+                </div>
+                {% csrf_token %}
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                        <li{% if message.tags %} class="{{ message.tags }}" style="color: rgb(134, 180, 137);"{% endif %}>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if form.errors %}
+                    <div class="error-message" style="color: rgb(216, 93, 44);">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+                <div class="before-border"></div>
+                {% for theme in themes %}
+                    <div class="d-flex justify-content-center">
+                        <button id="toggle_{{ theme.0 }}" name="{{ theme.0 }}" type="button" class="dropdown-toggle" onclick="toggleDropdown(this)">
+                            <i class="fa fa-caret-down" aria-hidden="true"></i>
+                        </button>
+                        <button id="row_{{ theme.0 }}" type="button" class="theme-row d-flex justify-content-center" style="width: 100%;">
+                            <label for="id_{{ theme.0 }}" class="flex-grow-1" style="margin-bottom: 0px; padding-bottom: 8px; cursor: pointer;">
+                                <h2 id="title_{{ theme.0 }}" class="theme-title" style="text-align: left;">{{ theme.1 }}</h2>
+                                <!-- TODO tabs for each image -->
+                                <div id="imgs_{{ theme.0 }}" class="theme-content hidden d-flex justify-content-around">
+                                    {% for suffix in endings %}
+                                        {% with image_name=theme.0|add:'-'|add:suffix %}
+                                            <img class="image-content" src="{% static 'main/images/themes/' %}{{ image_name }}.png" 
+                                                alt="{% if suffix == '1' %}White Selection
+                                                     {% elif suffix == '2' %}White Highlights
+                                                     {% else %}Black Highlights
+                                                     {% endif %}"
+                                                style="max-width: 32%;">
+                                        {% endwith %}
+                                    {% endfor %}
+                                </div>
+                            </label>
+                            <div class="d-flex align-items-center" style="padding-left: 5px; padding-right: 20px;">
+                                {% for field in form.visible_fields%}
+                                    {% if field.name|compare:theme.0 %}
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="d-flex align-items-center">
+                                {% for field in form.starting_theme %}
+                                    {% if field.data.value|compare:theme.0 %}
+                                        <label for="{{ field.data.attrs.id }}" style="margin-bottom: 3px;">
+                                            {{ field.tag }}
+                                            {{ field.errors }}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </button>
+                    </div>
+                {% endfor %}
+            </form>
+        </div>
+    </div>
+    <script>
+        var default_row = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+        var settingHeaders = document.getElementsByClassName('change_themes');
+        for (var i = 0; i < settingHeaders.length; i++) {
+            settingHeaders[i].classList.add('active');
+        }
+        {% for theme in themes %}
+            const checkbox_{{ forloop.counter }} = document.getElementById('id_{{ theme.0 }}');
+
+            toggleSelected(checkbox_{{ forloop.counter }});
+
+            checkbox_{{ forloop.counter }}.addEventListener('click', function() {
+                toggleSelected(this);
+            });
+
+            const radio_{{ forloop.counter }} = document.querySelector(`input[type="radio"][value="${checkbox_{{ forloop.counter }}.name}"]`);
+
+            toggleDefault(radio_{{ forloop.counter }}, 'row_' + checkbox_{{ forloop.counter }}.id.slice(3));
+
+            radio_{{ forloop.counter }}.addEventListener('click', function() {
+                toggleDefault(this, 'row_' + checkbox_{{ forloop.counter }}.id.slice(3));
+            });
+        {% endfor %}
+        });
+
+        function toggleSelected(checkbox) {
+            const buttonId = 'row_' + checkbox.id.slice(3);
+            const button = document.getElementById(buttonId);
+
+            if (button.classList.contains("selected") && !checkbox.checked) {
+                button.classList.remove("selected");
+            } else if (!button.classList.contains("selected") && checkbox.checked) {
+                button.classList.add("selected");
+            }
+            toggleRadio(checkbox);
+        }
+
+        function toggleRadio(checkbox) {
+            const radio = document.querySelector(`input[type="radio"][value="${checkbox.name}"]`);
+
+            if (radio) {
+                radio.disabled = !checkbox.checked;
+            }
+        }
+
+        function toggleDefault(radio, buttonId) {
+            const button = document.getElementById(buttonId);
+
+            if (radio.checked) {
+                if (default_row) {
+                    const prevDefault = document.getElementById(default_row);
+                    prevDefault.classList.remove("default");
+                }
+                default_row = buttonId;
+            }
+
+            if (button.classList.contains("default") && !radio.checked) {
+                button.classList.remove("default");
+            } else if (!button.classList.contains("default") && radio.checked) {
+                button.classList.add("default");
+            }
+        }
+
+        function toggleDropdown(element) {
+            const dropdownContent = document.getElementById('imgs_' + element.name);
+            dropdownContent.classList.toggle('hidden');
+            const title = document.getElementById('title_' + element.name);
+
+            if (dropdownContent.classList.contains("hidden")) {
+                title.style.textAlign = 'left';
+            } else {
+                title.style.textAlign = 'center';
+            }
+        }
+    </script>
+{% endblock %}

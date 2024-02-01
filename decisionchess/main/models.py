@@ -1,7 +1,9 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
 from django_countries.fields import CountryField
 from django.utils import timezone
+from . import user_settings
 import uuid
 
 class User(AbstractUser):
@@ -16,6 +18,17 @@ class User(AbstractUser):
 	def __str__(self):
 		return self.username
 
+class UserSettings(models.Model):
+	settings_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+	themes = ArrayField(models.TextField(), blank=False, null=False, default=user_settings.default_themes)
+	username = models.CharField(max_length=150, blank=False)
+
+	def save(self, *args, **kwargs):
+		if self.user:
+			self.username = self.user.username
+		super().save(*args, **kwargs)
+
 class BotInformation(models.Model):
 	bot_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	config = models.TextField(blank=False)
@@ -25,14 +38,17 @@ class ChessLobby(models.Model):
 	white_id = models.UUIDField(null=True)
 	black_id = models.UUIDField(null=True)
 	initiator_name = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
+	opponent_name = models.CharField(max_length=150, blank=False, null=False, default="Waiting...")
 	timestamp = models.DateTimeField()
 	expire = models.DateTimeField()
 	is_open = models.BooleanField(default=True)
 	initiator_connected = models.BooleanField(default=False)
 	opponent_connected = models.BooleanField(default=False)
+	initiator_color = models.CharField(max_length=5, null=True)
 	private = models.BooleanField(default=False)
 	computer_game = models.BooleanField(default=False)
-	initiator_color = models.CharField(max_length=5, null=True)
+	solo_game = models.BooleanField(default=False)
+	status = models.CharField(max_length=50, blank=False, null=False, default="waiting") # "playing" or "completed"
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
@@ -41,8 +57,10 @@ class ChessLobby(models.Model):
 			self.expire = self.timestamp + timezone.timedelta(minutes=10)
 		if self.private:
 			self.is_open = False
+			self.status = "playing"
 		elif self.white_id and self.black_id:
 			self.is_open = False
+			self.status = "playing"
 		elif (self.white_id or self.black_id) and self.initiator_connected:
 			self.is_open = True
 		else:
@@ -58,7 +76,6 @@ class ActiveGames(models.Model):
 	black_id = models.UUIDField(null=False)
 	start_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
-	status = models.CharField(max_length=50, blank=False, null=False, default="") # "playing" or "completed"
 	state = models.TextField(default="")
 
 class GameHistoryTable(models.Model):

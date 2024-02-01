@@ -13,12 +13,22 @@
         border: 1px solid red;
         box-shadow: 0 0 5px red;
     }
+
+    .btn-success {
+        background-color: red;
+        border-color: rgb(223, 15, 15);
+    }
+
+    .btn-success:hover {
+        background-color: rgb(163, 35, 35);
+        border-color: rgb(139, 36, 36);
+    }
 </style>
 {% endblock %}
 
 {% block setting_window %}
-    <h1 style="color: rgb(196, 118, 29);">Close Account</h1>
-    <p>Warning: Closing your account is permanent and will prevent you from recovering your account.</p>
+    <h1 style="color: var(--title-text);">Close Account</h1>
+    <p style="color: var(--warning-text);">Warning: Closing your account is permanent and will prevent you from recovering your account.</p>
     <br>
     <p>Are you sure you want to close your account?</p>
     <form method="POST" class="form-group">
@@ -37,6 +47,10 @@
         document.addEventListener("DOMContentLoaded", function() {
             const inputField = document.querySelector("#id_password");
             inputField.classList.add("red-border-glow");
+            var settingHeaders = document.getElementsByClassName('close_account');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
         });
     </script>
 {% endblock %}

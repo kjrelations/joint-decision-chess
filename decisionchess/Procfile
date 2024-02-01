@@ -1,1 +1,1 @@
-web: python manage.py collectstatic --noinput && gunicorn decisionchess.wsgi --log-file -
+web: python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p $PORT decisionchess.asgi:application

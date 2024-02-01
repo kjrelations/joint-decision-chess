@@ -3,9 +3,8 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
+from django.db.models import Q
 from django.utils import timezone
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
@@ -14,11 +13,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotFound
 from django.urls import reverse
+from django.utils.timesince import timesince
 from base64 import binascii
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages
-from .forms import ChangeEmailForm, EditProfile, CloseAccount
+from datetime import datetime, timedelta, timezone as dt_timezone
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
+from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
+from .user_settings import default_themes
 import uuid
 import json
 import random
@@ -30,7 +32,52 @@ def index(request):
 def home(request):
     recent_blogs = BlogPosts.objects.all().order_by('-timestamp')[:2]
     context = {"blogs": recent_blogs}
+    if request.user and request.user.id is not None:
+        user_id = request.user.id
+    else:
+        user_id = request.session.get('guest_uuid')
+
+    # Active games with the same id, where there is a disconnect via the lobby column, and it matches the lobby game id
+    user_games = ActiveGames.objects.filter(
+        Q(white_id=user_id) | Q(black_id=user_id)
+    )
+
+    lobby_ids = ChessLobby.objects.filter(
+        Q(opponent_connected=False) | Q(initiator_connected=False),
+        lobby_id__in=user_games.values('active_game_id')
+    ).values_list('lobby_id', flat=True)
+
+    games_in_play = user_games.filter(
+        active_game_id__in=lobby_ids
+    ).order_by('-start_time')
+
+    context["has_games_in_play"] = bool(games_in_play)
+    context["games_in_play"] = games_in_play
+    sides, opponents = [], []
+    for game in games_in_play:
+        if game.white_id == user_id:
+            sides.append('white')
+            try:
+                opponent_username = User.objects.get(id=game.black_id)
+                opponent_username = opponent_username.username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+            opponents.append(opponent_username)
+        else:
+            sides.append('black')
+            try:
+                opponent_username = User.objects.get(id=game.white_id)
+                opponent_username = opponent_username.username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+            opponents.append(opponent_username)
+    context['sides'] = sides
+    context['opponents'] = opponents
+    context['form'] = CreateNewGameForm()
     return render(request, "main/home.html", context)
+
+def custom_404(request, exception):
+    return render(request, 'main/404.html', {'exception': exception}, status=404)
 
 def quick_pair(request):
     game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
@@ -44,6 +91,13 @@ def game_exists(game_uuid):
     active_game_exists = ActiveGames.objects.filter(active_game_id=game_uuid).exists()
     historic_game_exists = GameHistoryTable.objects.filter(historic_game_id=game_uuid).exists()
     return lobby_game_exists or active_game_exists or historic_game_exists
+
+def is_valid_uuid(value):
+    try:
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError):
+        return False
 
 # TODO on refactor: optional_uuid to a body thing, rename new_open_game, change method to POST only
 def create_new_game(request, optional_uuid = None):
@@ -62,6 +116,7 @@ def create_new_game(request, optional_uuid = None):
                 new_open_game.initiator_name = request.user.username
             else:
                 user_id = request.session.get('guest_uuid')
+            # TODO Test the removal of all these sets
             if user_id is None:
                 user_id = uuid.uuid4()
                 request.session["guest_uuid"] = str(user_id)
@@ -70,19 +125,38 @@ def create_new_game(request, optional_uuid = None):
                 if data.get('computer_game'):
                     new_open_game.computer_game = True
                     new_open_game.private = True
+                    new_open_game.opponent_name = "minimax" # Later look up name with more bots
+                if data.get('solo'):
+                    new_open_game.solo_game = True
+                    new_open_game.private = True
                 position = data.get('position')
+                opponent_column_to_fill = "black_id"
                 if position == "white":
                     new_open_game.white_id = user_id
                     new_open_game.initiator_color = "white"
                 elif position == "black":
                     new_open_game.black_id = user_id
                     new_open_game.initiator_color = "black"
+                    opponent_column_to_fill = "white_id"
                 elif position == "random":
                     column_to_fill = random.choice(["black_id", "white_id"])
                     setattr(new_open_game, column_to_fill, user_id)
                     new_open_game.initiator_color = "white" if column_to_fill == "white_id" else "black"
+                    opponent_column_to_fill = "white_id" if column_to_fill == "black_id" else "black_id"
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                if data.get('rematch'):
+                    try:
+                        historic = GameHistoryTable.objects.get(historic_game_id=data.get('rematch'))
+                        opponent_id = getattr(historic, opponent_column_to_fill)
+                        setattr(new_open_game, opponent_column_to_fill, opponent_id)
+                        try:
+                            opponent = User.objects.get(id=opponent_id)
+                            new_open_game.opponent_name = opponent.username
+                        except User.DoesNotExist:
+                            new_open_game.opponent_name = "Anonymous"
+                    except:
+                        return JsonResponse({"status": "error", "message": "Recent Game DNE"}, status=401)
                 private = data.get('private')
                 if private:
                     new_open_game.private = True
@@ -92,6 +166,7 @@ def create_new_game(request, optional_uuid = None):
             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
 def create_signed_key(request):
+    # TODO handle invalid requests: Missing recent_game_id, not logged in users and not a guest id available
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         if data.get('signed_uuid'):
@@ -103,8 +178,11 @@ def create_signed_key(request):
                 user_id = request.user.id
             else:
                 user_id = uuid.UUID(request.session.get('guest_uuid'))
-            recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
-            if not recent_game or str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
+            try:
+                recent_game = GameHistoryTable.objects.get(historic_game_id=recent_game_id)
+            except GameHistoryTable.DoesNotExist:
+                return JsonResponse({"status": "error"}, status=401)
+            if str(user_id) not in [str(recent_game.white_id), str(recent_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             
             try:
@@ -122,10 +200,23 @@ def create_signed_key(request):
             return JsonResponse({"status": "error"}, status=401)
 
 def get_lobby_games(request):
-    expired_games = ChessLobby.objects.filter(expire__lt=timezone.now())
+    expired_games = ChessLobby.objects.filter(expire__lt=timezone.now(), is_open=True)
     expired_games.delete()
 
     lobby_games = ChessLobby.objects.filter(is_open=True)
+    position_filter = request.GET.get('position')
+    username_filter = request.GET.get('username')
+
+    position_query = Q()
+    if position_filter == 'white':
+        position_query = Q(Q(white_id__isnull=True) & Q(initiator_color="black"))
+    elif position_filter == 'black':
+        position_query = Q(Q(black_id__isnull=True) & Q(initiator_color="white"))
+
+    lobby_games = lobby_games.filter(
+        Q(initiator_name=username_filter) if username_filter else Q(),
+        position_query
+    )
     serialized_data = [
         {
             "initiator_name": game.initiator_name,
@@ -163,26 +254,47 @@ def get_config(request, game_uuid):
             return JsonResponse({"status": "error"}, status=401)
         else:
             user_id = uuid.UUID(guest_uuid)
-    try:
-        game = ChessLobby.objects.get(lobby_id=game_uuid)
-        if str(user_id) not in [str(game.white_id), str(game.black_id)]:
-            return JsonResponse({"status": "error"}, status=401)
-        fill = None
-        if str(user_id) == str(game.white_id) == str(game.black_id):
-            if game.initiator_color == "black":
+    
+    theme_names = request.session.get('themes')
+    if theme_names is None and request.user and request.user.id is not None:
+        user_settings = UserSettings.objects.get(user=request.user)
+        user_themes = user_settings.themes
+        user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
+        theme_names = [json.loads(theme)["name"] for theme in user_themes]
+    elif theme_names is None:
+        themes = default_themes()
+        themes = [theme.replace("'", "\"") for theme in themes]
+        theme_names = [json.loads(theme)["name"] for theme in themes]
+        request.session['themes'] = theme_names
+
+    type = request.GET.get('type')
+    if type == 'live':
+        try:
+            game = ChessLobby.objects.get(lobby_id=game_uuid)
+            if str(user_id) not in [str(game.white_id), str(game.black_id)]:
+                return JsonResponse({"status": "error"}, status=401)
+            fill = None
+            if str(user_id) == str(game.white_id) == str(game.black_id):
+                if game.initiator_color == "black":
+                    fill = "white"
+                elif game.initiator_color == "white":
+                    fill = "black"
+                else:
+                    return JsonResponse({"status": "error"}, status=401)
+            elif str(user_id) == str(game.white_id):
                 fill = "white"
-            elif game.initiator_color == "white":
+            elif str(user_id) == str(game.black_id):
                 fill = "black"
             else:
                 return JsonResponse({"status": "error"}, status=401)
-        elif str(user_id) == str(game.white_id):
-            fill = "white"
-        elif str(user_id) == str(game.black_id):
-            fill = "black"
-        else:
+
+            return JsonResponse({"message": {"starting_side": fill, "theme_names": theme_names}}, status=200)
+        except ChessLobby.DoesNotExist:
+            # TODO check historic games and send a special refresh message if available
             return JsonResponse({"status": "error"}, status=401)
-        return JsonResponse({"message": {"starting_side": fill}}, status=200)
-    except ChessLobby.DoesNotExist:
+    elif type == 'historic':
+        return JsonResponse({"message": {"theme_names": theme_names}}, status=200)
+    else:
         return JsonResponse({"status": "error"}, status=401)
 
 def play(request, game_uuid):
@@ -209,31 +321,43 @@ def play(request, game_uuid):
     # For now, temporarily disallow multiple people from loading the same game
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
-        if game.computer_game and str(user_id) in [str(game.white_id), str(game.black_id)]:
+        
+        player = "Anonymous"
+        if request.user.is_authenticated:
+            player = request.user.username
+        if (game.initiator_color == 'black' and str(game.black_id) == str(user_id)) or \
+           (game.initiator_color == 'white' and str(game.white_id) == str(user_id)):
+            opponent = game.opponent_name
+        else:
+            opponent = game.initiator_name
+        sessionVariables.update({'opponent': opponent})
+
+        if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
+            sessionVariables['computer_game'] = True if game.computer_game else False
             return render(request, "main/play/computer.html", sessionVariables)
         elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
+            # This should later redirect spectators to a spectator view if it's an active game, otherwise to home, maybe also to home for private games
             return redirect('home')
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
             if game.black_id is None and game.initiator_connected:
                 game.black_id = user_id
                 game.opponent_connected = True
+                game.opponent_name = player
                 game.save()
             elif game.white_id is None and game.initiator_connected:
                 game.white_id = user_id
                 game.opponent_connected = True
+                game.opponent_name = player
                 game.save()
             # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_id) == str(game.black_id):
-                # TODO Don't write to both columns
-                if not game.initiator_connected:
-                    game.initiator_connected = True
-                    game.save()
-                elif not game.opponent_connected:
-                    game.opponent_connected = True
-                    game.save()
-                elif game.opponent_connected and game.initiator_connected:
+                if game.opponent_connected and game.initiator_connected:
                     return redirect('home')
+                else:
+                    game.opponent_connected = False
+                    game.initiator_connected = False
+                    game.save()
             elif str(user_id) == str(game.white_id) and game.black_id is not None:
                 if game.initiator_connected and game.opponent_connected:
                     return redirect('home')
@@ -256,12 +380,13 @@ def play(request, game_uuid):
             if game.white_id is None:
                 column_to_fill = "white_id"
             game.opponent_connected = True
+            game.opponent_name = player
             setattr(game, column_to_fill, user_id)
             game.save()
             return render(request, "main/play.html", sessionVariables)
     except ChessLobby.DoesNotExist:
-        historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
-        if historic:
+        try:
+            historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -271,25 +396,37 @@ def play(request, game_uuid):
                 'outcome': historic.outcome,
                 'forced_end': historic.termination_reason
             }
+            try:
+                white_user = User.objects.get(id=historic.white_id)
+                white_user = white_user.username
+            except User.DoesNotExist:
+                white_user = "Anonymous"
+            try:
+                black_user = User.objects.get(id=historic.black_id)
+                black_user = black_user.username
+            except User.DoesNotExist:
+                black_user = "Anonymous"
+            player_side = white_user
+            opponent_side = black_user
+            flip = False
+            if str(historic.black_id) == str(user_id) and str(historic.white_id) != str(user_id):
+                player_side = black_user
+                opponent_side = white_user
+                flip = True
+            sessionVariables.update({'player': player_side, 'opponent': opponent_side, 'init_flip': flip})
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, "main/play/historic.html", sessionVariables)
-        # This would also redirect spectators if it's an active game
-        return render(request, "main/play.html", sessionVariables)
-
-def is_valid_uuid(value):
-    try:
-        uuid.UUID(value)
-        return True
-    except (ValueError, AttributeError):
-        return False
+        except:
+            return redirect('home')
 
 def update_connected(request):
     # Have this handle live disconnects later
     if request.method == 'POST':
         data = json.loads(request.body.decode('utf-8'))
-        connect_game_uuid = data.get('game_uuid') # Retrieve from server somehow?
-        # Actually just ensuring it's in session should be fine later
+        # TODO It's best to use a JWT in the python script
+        # TODO check that it matches some value in session
+        connect_game_uuid = data.get('game_uuid')
         if not is_valid_uuid(connect_game_uuid):
             return JsonResponse({"status": "error"}, status=400)
         if request.user and request.user.id is not None:
@@ -301,6 +438,8 @@ def update_connected(request):
             else:
                 user_id = uuid.UUID(guest_uuid)
         web_connect = data.get('web_connect')
+        if web_connect != True and web_connect != False:
+            return JsonResponse({"status": "error"}, status=400)
         try:
             game = ChessLobby.objects.get(lobby_id=connect_game_uuid)
             
@@ -309,16 +448,6 @@ def update_connected(request):
             if compare is None:
                 compare = game.black_id
                 null_id = "white"
-            session_game = request.session.get(connect_game_uuid)
-            # This should probably just check if the game is waiting or not in the else case, 
-            # this first condition will likely change later
-            if session_game is not None and "white" in session_game:
-                request.session[connect_game_uuid] = ["white", "black"]
-            else:
-                # This to be altered once sides can be selected, not fully right for now for black
-                filling = "white" if null_id == "black" else "black"
-                request.session[connect_game_uuid] = [filling]
-            # maybe fail if None as a starting condition and add it to session in play view function
             
             waiting_game = game.white_id is None or game.black_id is None
             # This allows the one player to join their own game or different games and 
@@ -329,7 +458,7 @@ def update_connected(request):
                 is_initiator = True
 
             message = {}
-            save_to_active = False
+            update_and_check = False
             if waiting_game and game.initiator_connected != web_connect and is_initiator:
                 game.initiator_connected = web_connect
                 if game.computer_game:
@@ -339,42 +468,43 @@ def update_connected(request):
                         game.black_id = bot_id
                     else:
                         game.white_id = bot_id
-                    save_to_active = True
+                    update_and_check = True
+                elif data.get('computer_game') == False:
+                    if null_id == "black":
+                        game.black_id = user_id
+                    else:
+                        game.white_id = user_id
+                    game.opponent_name = request.user.username if request.user else "Anonymous"
+                    update_and_check = True
                 game.save()
-                message = {"status": "updated"}
-            elif compare is not None and waiting_game: # and str(compare) != user_id: # For ranked only
-                if null_id == "black":
-                    game.black_id = user_id
-                else:
-                    game.white_id = user_id
-                game.save()
-                save_to_active = True
                 message = {"status": "updated"}
             elif not waiting_game:
-                save_to_active = True
+                update_and_check = True
                 message = {"status": "updated"}
-            if save_to_active: # TODO change to update_and_check
+            if update_and_check:
                 # We prefer this first definition that can't be tampered with in live matches,
                 # but need the second for self-play
                 message_sending_player = "white" if str(game.white_id) == str(user_id) else "black"
                 message_sending_player = data["color"] if game.white_id == game.black_id else message_sending_player
-                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
-                if active_game_exists: # TODO Run the following block even if it doesn't exist later, also write to the second column for the same player on disconnect
-                    # A disconnect message means the other player disconnected, not the current player
-                    if game.initiator_color == message_sending_player:
-                        field_to_update = "initiator_connected" if web_connect else "opponent_connected"
-                        setattr(game, field_to_update, web_connect)
-                    else:
-                        field_to_update = "opponent_connected" if web_connect else "initiator_connected"
-                        setattr(game, field_to_update, web_connect)
-                    game.save()
+                # A disconnect message means the other player disconnected, not the current player, but we set both to allow for reconnecting on both sides
+                if game.initiator_color == message_sending_player:
+                    field_to_update = "initiator_connected" if web_connect else "opponent_connected"
+                    setattr(game, field_to_update, web_connect)
+                    if not web_connect:
+                        setattr(game, "initiator_connected", web_connect)
                 else:
+                    field_to_update = "opponent_connected" if web_connect else "initiator_connected"
+                    setattr(game, field_to_update, web_connect)
+                    if not web_connect:
+                        setattr(game, "opponent_connected", web_connect)
+                game.save()
+                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
+                if not active_game_exists:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
                         white_id = game.white_id,
                         black_id = game.black_id,
-                        gametype = "classical",
-                        status = "playing"
+                        gametype = "classical"
                     )
                     active_game.save()
             return JsonResponse(message, status=200)
@@ -397,12 +527,15 @@ def get_or_update_state(request, game_uuid):
         if data.get("token"):
             decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
             if decoded.get('game'):
-                active_game = ActiveGames.objects.get(active_game_id=game_uuid)
-                active_game.state = decoded['game']
-                if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
-                    return JsonResponse({"status": "error"}, status=401)
-                active_game.save()
-                return JsonResponse({"status": "updated"}, status=200)
+                try:
+                    active_game = ActiveGames.objects.get(active_game_id=game_uuid)
+                    active_game.state = decoded['game']
+                    if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
+                        return JsonResponse({"status": "error"}, status=401)
+                    active_game.save()
+                    return JsonResponse({"status": "updated"}, status=200)
+                except ActiveGames.DoesNotExist:
+                    return JsonResponse({"message": "DNE"}, status=200)
             else:
                 return JsonResponse({"status": "error"}, status=400)
         else:
@@ -421,12 +554,13 @@ def get_or_update_state(request, game_uuid):
 
 def save_game(request):
     if request.method == 'PUT':
+        # TODO validate data values, can't have nulls or blanks for example
         data = json.loads(request.body.decode('utf-8'))
+        # TODO It's best to use a JWT in the python script
+        # TODO check that it matches some value in session
         completed_game_uuid = data.get('game_uuid') # Retrieve from server somehow? Would need websockets to bypass web data. That's best and this shouldn't be a http response then
-        # Actually just ensuring it's in session should be fine
         if not is_valid_uuid(completed_game_uuid):
             return JsonResponse({"status": "error"}, status=400)
-        # Needs to be a player with uuid in session to access this endpoint
         if request.user and request.user.id is not None:
             user_id = request.user.id
         else:
@@ -442,16 +576,16 @@ def save_game(request):
             lobby_game = ChessLobby.objects.get(lobby_id=completed_game_uuid)
             try:
                 save_chat_and_game(active_game, data)
-            except Exception as e:
+            except Exception:
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()
             return JsonResponse({"status": "updated"}, status=200)
         except ActiveGames.DoesNotExist:
-            saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
-            if saved_game:
+            try:
+                saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
                 return JsonResponse({}, status=200)
-            else:
+            except:
                 return JsonResponse({"status": "error", "message": "Game DNE"}, status=400)
 
 @transaction.atomic
@@ -490,17 +624,113 @@ def news(request):
     return render(request, "main/news.html", {"blogs": blogs})
 
 def profile(request, username):
-    profile_user = User.objects.get(username=username)
-    if profile_user.bot_account:
-        return redirect('home')
+    try:
+        profile_user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return HttpResponseNotFound(render(request, 'main/404.html', status=404))
+    if profile_user.bot_account and request.user and request.user.username != "kjrelations":
+        return HttpResponseNotFound(render(request, 'main/404.html', status=404))
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
-    return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since})
+    historic_games = GameHistoryTable.objects.filter(Q(white_id=profile_user.id) | Q(black_id=profile_user.id))
+    games_details = []
+    for game in historic_games:
+        if profile_user.id == game.white_id:
+            side = "White"
+            try:
+                opponent_username = User.objects.get(id=game.black_id).username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+        else:
+            side = "Black"
+            try:
+                opponent_username = User.objects.get(id=game.white_id).username
+            except User.DoesNotExist:
+                opponent_username = "Anonymous"
+        relative_game_time = timesince(game.end_time, datetime.utcnow().replace(tzinfo=dt_timezone.utc))
+        result = []
+        move_list = game.algebraic_moves.split(',')
+        end_scores = ['0-0', '1-0', '0-1', '½–½']
+        for string in end_scores:
+            if string in move_list:
+                move_list.remove(string)
+        for i in range(0, len(move_list), 2):
+            pair = move_list[i:i+2]
+            pair_string = " ".join(pair)
+            result.append(f"{(i//2) + 1}. {pair_string}")
+        
+        init_index = 2 if len(move_list) > 5 else len(result)
+        formatted_moves_string = " ".join(result[:init_index])
+        if len(move_list) > 5:
+            formatted_moves_string += f" ... {result[-1]}"
+        games_details.append({
+            'game_id': game.historic_game_id,
+            'outcome': game.outcome,
+            'opponent': opponent_username,
+            'game_type': game.gametype.capitalize(),
+            'side': side,
+            'relative_game_time': relative_game_time,
+            'formatted_moves_string': formatted_moves_string
+        })
+        
+    return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since, "games_details": games_details})
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})
 
 def privacy_policy(request):
     return render(request, "main/privacy.html", {})
+
+@login_required
+def change_themes(request):
+    if request.method == "POST":
+        form = ChangeThemesForm(request.POST)
+        response_themes = []
+        for theme_name in form.fields.keys():
+            if theme_name != 'starting_theme':
+                response_themes.append([theme_name, theme_name.title().replace("-", " ")])
+        
+        if form.is_valid():
+            selected_themes = []
+            initial_theme = form.cleaned_data['starting_theme']
+            selected_themes.append(initial_theme.title().replace("-", " "))
+            for theme_name, value in form.cleaned_data.items():
+                if value and theme_name != 'starting_theme' and theme_name != initial_theme:
+                    selected_themes.append(theme_name.title().replace("-", " "))
+            
+            new_user_themes = default_themes(selected_themes)
+            user_settings = UserSettings.objects.get(user=request.user)
+            user_settings.themes = new_user_themes
+            user_settings.save()
+            request.session['themes'] = selected_themes
+            messages.success(request, 'Themes updated!')
+
+            return render(request, "main/settings/change_themes.html", {"form": form, "themes": response_themes, 'endings': ['1', '2', '3']})
+    else:
+        selected_themes, snake_case_names, response_themes = [], [], []
+        initial_theme = None
+        if 'themes' in request.session:
+            selected_themes = request.session['themes']
+            initial_theme = selected_themes[0].lower().replace(" ", "-")
+        elif request.user and request.user.is_authenticated:
+            user_settings = UserSettings.objects.get(user=request.user)
+            user_themes = user_settings.themes
+            user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
+            selected_themes = [json.loads(theme)["name"] for theme in user_themes]
+            request.session['themes'] = selected_themes
+            initial_theme = selected_themes[0].lower().replace(" ", "-")
+        form = ChangeThemesForm(initial_value=initial_theme)
+
+        if selected_themes != []:
+            snake_case_names = [theme.lower().replace(" ", "-") for theme in selected_themes]
+        for theme_name in form.fields.keys():
+            if snake_case_names != [] and theme_name in snake_case_names:
+                form.fields[theme_name].initial = True
+            elif snake_case_names == []:
+                form.fields[theme_name].initial = True 
+            if theme_name != 'starting_theme':
+                response_themes.append([theme_name, theme_name.title().replace("-", " ")])
+
+    return render(request, "main/settings/change_themes.html", {"form": form, "themes": response_themes, 'endings': ['1', '2', '3']})
 
 @login_required
 def change_email(request):
@@ -514,10 +744,14 @@ def change_email(request):
                 token = default_token_generator.make_token(request.user)
 
                 # Create a confirmation link with the user's ID, email, and token
-                # TODO only use hash for uuid this is too easily decoded
-                uid = urlsafe_base64_encode(force_bytes(request.user.pk))
-                new_email_encoded = urlsafe_base64_encode(force_bytes(new_email))
-                confirmation_link = f"{get_current_site(request)}/account/confirm/{uid}/{token}/?new_email={new_email_encoded}"
+                payload = {
+                    'user_id': str(request.user.pk),
+                    'email': new_email,
+                    'exp': datetime.utcnow() + timedelta(days=1)
+                }
+                payload_token = jwt.encode(payload, settings.EMAIL_KEY, algorithm='HS256')
+                protocol = 'https' if request.is_secure() else 'http'
+                confirmation_link = f"{protocol}://{get_current_site(request)}/account/confirm/{payload_token}/{token}/"
 
                 # Send an email with the confirmation link to the user
                 subject = "Confirm Email - Decision Chess"
@@ -541,51 +775,50 @@ def change_email(request):
     return render(request, "main/settings/change_email.html", {"form": form })
 
 @login_required
-def confirm_email(request, uidb64, token):
+def confirm_email(request, uidtoken, token):
+    target_url = reverse('change_email')
+    absolute_url = request.build_absolute_uri(target_url)
     try:
-        # Decode the user ID and get the user TODO hash it and compare to db also simply retrieve new emails from sessions
-        uid = urlsafe_base64_decode(uidb64).decode()
+        # Decode the user ID and get the new user email
+        decoded_payload = jwt.decode(uidtoken, settings.EMAIL_KEY, algorithms=['HS256'])
+        uid = decoded_payload['user_id']
+        expired = datetime.utcfromtimestamp(decoded_payload['exp'])
+        if expired < datetime.utcnow():
+            messages.error(request, 'Token is invalid or expired')
+            return redirect(absolute_url)
+        
         user = User.objects.get(pk=uid)
-        new_email_encoded = request.GET.get('new_email')
-        if new_email_encoded:
-            # This a security issue and is only for basic testing
-            new_email = urlsafe_base64_decode(new_email_encoded).decode()
-
+        uid = decoded_payload['user_id']
+        new_email = decoded_payload['email']
+        if new_email:
             # Check if the token is valid
             if default_token_generator.check_token(user, token):
                 user.email = new_email
                 user.email_reference = new_email
                 user.save()
 
-                form = ChangeEmailForm(user) 
                 messages.success(request, 'Your email has been updated')
-
-                return render(request, "main/settings/change_email.html", {"form": form })
+                return redirect(absolute_url)
+            
             else:
                 messages.error(request, 'Token is invalid or expired')
-                form = ChangeEmailForm(user) 
-                
-                return render(request, "main/settings/change_email.html", {"form": form })
+                return redirect(absolute_url)
+            
         else:
             messages.error(request, 'Token is invalid or expired')
-            form = ChangeEmailForm(user) 
-            
-            return render(request, "main/settings/change_email.html", {"form": form })
+            return redirect(absolute_url)
+        
     except (TypeError, ValueError, OverflowError, binascii.Error):
         messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        return redirect(absolute_url)
+    
     except IntegrityError:
         messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        return redirect(absolute_url)
+    
     except Exception:
-        messages.error(request, 'An error occurred')
-        form = ChangeEmailForm(user) 
-        
-        return render(request, "main/settings/change_email.html", {"form": form })
+        messages.error(request, 'An error occurred')        
+        return redirect(absolute_url)
     
 @login_required
 def change_password(request):

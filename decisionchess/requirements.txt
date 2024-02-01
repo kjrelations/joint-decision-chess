@@ -1,35 +1,60 @@
-aioconsole==0.6.2
-aiohttp==3.8.6
-aiosignal==1.3.1
-asgiref==3.7.2
-async-timeout==4.0.3
-attrs==23.1.0
-charset-normalizer==3.3.1
-colorama==0.4.6
-crispy-bootstrap4==2023.1
-Django==4.2.7
-django-cors-headers==4.3.0
+-i https://pypi.org/simple
+asgiref==3.7.2; python_version >= '3.7'
+attrs==23.2.0; python_version >= '3.7'
+autobahn==23.6.2; python_version >= '3.9'
+automat==22.10.0
+certifi==2023.11.17; python_version >= '3.6'
+cffi==1.16.0; python_version >= '3.8'
+channels[daphne]==4.0.0; python_version >= '3.7'
+channels-redis==4.2.0; python_version >= '3.8'
+charset-normalizer==3.3.2; python_full_version >= '3.7.0'
+constantly==23.10.4; python_version >= '3.8'
+crispy-bootstrap4==2023.1; python_version >= '3.8'
+cryptography==41.0.7; python_version >= '3.7'
+daphne==4.0.0; python_version >= '3.7'
+django==5.0.1; python_version >= '3.10'
+django-cors-headers==4.3.1; python_version >= '3.8'
 django-countries==7.5.1
-django-crispy-forms==2.1
-frozenlist==1.4.0
-gunicorn==21.2.0
-idna==3.4
-iniconfig==2.0.0
-installer==0.7.0
-Markdown==3.5
-multidict==6.0.4
-packaging==23.2
-pluggy==1.2.0
-psycopg==3.1.12
-psycopg-binary==3.1.12
-pygame==2.5.2
-pygbag==0.8.3
-pyparsing==3.1.1
-pytest==7.4.0
+django-crispy-forms==2.1; python_version >= '3.8'
+django-debug-toolbar==4.2.0; python_version >= '3.8'
+django-livereload-server==0.5.1
+gunicorn==21.2.0; python_version >= '3.5'
+h2==4.1.0
+hpack==4.0.0; python_full_version >= '3.6.1'
+hyperframe==6.0.1; python_full_version >= '3.6.1'
+hyperlink==21.0.0
+idna==3.6; python_version >= '3.5'
+incremental==22.10.0
+install==1.3.5; python_version >= '2.7'
+installer==0.7.0; python_version >= '3.7'
+markdown==3.5.2; python_version >= '3.8'
+msgpack==1.0.7; python_version >= '3.8'
+packaging==23.2; python_version >= '3.7'
+priority==1.3.0
+psycopg[binary]==3.1.17; python_version >= '3.7'
+psycopg-binary==3.1.17
+pyasn1==0.5.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5'
+pyasn1-modules==0.3.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5'
+pycparser==2.21
+pygame==2.5.2; python_version >= '3.6'
+pygbag==0.8.6; python_version >= '3.8'
+pyjwt==2.8.0; python_version >= '3.7'
+pyopenssl==23.3.0
+pyparsing==3.1.1; python_full_version >= '3.6.8'
 python-decouple==3.8
-sqlparse==0.4.4
-token-utils==0.1.8
-typing_extensions==4.8.0
-tzdata==2023.3
-whitenoise==6.6.0
-yarl==1.9.2
+redis==5.0.1; python_version >= '3.7'
+requests==2.31.0; python_version >= '3.7'
+service-identity==24.1.0
+setuptools==69.0.3; python_version >= '3.8'
+six==1.16.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'
+sqlparse==0.4.4; python_version >= '3.5'
+token-utils==0.1.8; python_version >= '3.6'
+tornado==6.4; python_version >= '3.8'
+twisted[http2,tls]==23.10.0; python_full_version >= '3.8.0'
+twisted-iocpsupport==1.0.4; platform_system == 'Windows'
+txaio==23.1.1; python_version >= '3.7'
+typing-extensions==4.9.0; python_version >= '3.8'
+tzdata==2023.4; sys_platform == 'win32'
+urllib3==2.1.0; python_version >= '3.8'
+whitenoise==6.6.0; python_version >= '3.8'
+zope-interface==6.1; python_version >= '3.7'

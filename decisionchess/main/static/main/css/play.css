@@ -7,9 +7,9 @@
 }
 
 .chat-box {
-    background-color: #4b4b4b;
+    color: var(--chat-box-text);
+    background-color: var(--chat-box-background);
     border-radius: 0;
-    color: #b9b9b9;
 }
 
 .chat-wrapper {
@@ -29,26 +29,26 @@
 
 .chat-input {
     border: none;
-    border-top: 1px solid #253d41;
+    border-top: 1px solid var(--chat-input-border);
     border-radius: 0;
-    color: #b9b9b9;
-    background-color: #4b4b4b;
+    color: var(--chat-input-text);
+    background-color: var(--chat-input-background);
     padding: 0;
     padding-left: 0.25em;
 }
 
 .chat-input::placeholder {
     font-size: smaller;
-    color: #b9b9b9;
+    color: var(--chat-input-placeholder);
 }
 
 .chat-input:focus {
     z-index: 0;
     border: none;
-    border-top: 1px solid #455a5e;
+    border-top: 1px solid var(--chat-input-focus-border);
     border-radius: 0;
-    color: #b9b9b9;
-    background-color: #4b4b4b;
+    color: var(--chat-input-focus-text);
+    background-color: var(--chat-input-focus-background);
     box-shadow: none;
 }
 
@@ -57,21 +57,39 @@
 }
 
 .form-control:disabled {
-    background-color: #292929;
+    background-color: var(--chat-input-disabled);
 }
 
 .chat-input:disabled::placeholder {
     color: transparent;
-    /* background-color: #292929; */
+}
+
+.scaled-pieces {
+    width: 17px;
+    height: 20px;
 }
 
 .command-center {
-    background-color: #253d41;
+    color: white;
+    background-color: var(--command-center-background);
+}
+
+.userblock {
+    text-align: left;
+    padding-left: 5px;
+}
+
+.indicator {
+    align-self: end;
+    color: var(--homebutton-decision);
+    margin-left: auto;
+    margin-right: 5px;
 }
 
 .scrollable-moves-list {
-    overflow-y: scroll;
-    max-height: 40%; /* 10% above for the username later */
+    overflow-y: auto;
+    max-height: 100%;
+    min-width: 100%;
 }
 
 .action-button {
@@ -79,7 +97,7 @@
     outline: none;
     background-color: transparent;
     transition: background-color 0.3s ease;
-    color: white;
+    color: var(--action-button);
 }
 
 .action-button:focus {
@@ -98,18 +116,14 @@
     background-color: #da8525;
 }
 
-.action-button.confirm.waiting:disabled:hover {
-    background-color: #c7c7c7;
-    color: #4d4d4d;
+.action-button.confirm.waiting:disabled:hover,
+.action-button.confirm.used:disabled:hover {
+    color: var(--action-button-waiting-text);
+    background-color: var(--action-button-waiting-background);
 }
 
 .action-button.confirm.used {
-    color: #4d4d4d;
-}
-
-.action-button.confirm.used:disabled:hover {
-    background-color: #c7c7c7;
-    color: #4d4d4d;
+    color: var(--action-button-waiting-text);
 }
 
 .action-button.cancel.check {
@@ -121,11 +135,11 @@
 }
 
 .action-button.confirm:hover .icon-color {
-    color: #fff6e0;
+    color: var(--action-button-icon-hover);
 }
 
 .action-button.confirm:disabled:hover .icon-color {
-    color: #727272;
+    color: var(--action-button-icon-disabled);
 }
 
 .hidden {
@@ -134,7 +148,7 @@
 
 .move-row {
     display: flex;
-    color: white;
+    color: var(--move-row-text);
 }
 
 .move-row > div {
@@ -142,7 +156,7 @@
 }
 
 .even-move-row {
-    background-color: rgb(150, 150, 150);
+    background-color: var(--even-move-row-background);
 }
 
 .move-button {
@@ -150,7 +164,7 @@
     outline: none;
     background-color: transparent;
     transition: background-color 0.3s ease;
-    color: white;
+    color: var(--move-button-text);
     text-align: left;
 }
 
@@ -159,10 +173,16 @@
 }
 
 .move-button:hover {
-    background-color: #2589da;
+    background-color: var(--move-button-background-hover);
 }
 
 .move-button:disabled {
-    background-color: #17568a;
+    background-color: var(--move-button-disabled-background);
     cursor: pointer;
+}
+
+@media (max-width: 767px) {
+    .command-column {
+        margin-left: 15px !important;
+    }
 }

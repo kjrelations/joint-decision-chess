@@ -1,0 +1,31 @@
+{% extends "main/base.html" %}
+
+{% block style %}
+<style>
+    .emoji {
+        text-align: center;
+        font-size: 8rem;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block title %}
+Error
+{% endblock %}
+
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div id="content", name="content", class="content">
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <div class="col-10 col-md-5">
+                <div class="emoji">😕</div>
+                <h1 style="text-align: center;">Oops! Page Not Found</h1>
+                <p style="text-align: center;">We couldn't find the page you were looking for.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

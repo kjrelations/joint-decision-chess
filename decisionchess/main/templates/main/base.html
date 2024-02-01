@@ -3,43 +3,103 @@
 <!doctype html>
 <html>
 <head>
-	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
-
-    <meta charset="utf-8">
+	<meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no, interactive-widget=overlays-content, viewport-fit=cover">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-	<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'main/css/bootstrap-4.3.1-dist/bootstrap.min.css' %}">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+	<script src="{% static 'main/js/jquery-3.7.1.min.js' %}"></script>
+	
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/site_themes/light_theme.css' %}" id="theme-link">
+	<link rel="icon" type="image/svg+xml" href="{% static 'images/decision-favicon-depth.svg' %}" id="favicon">
+	<link rel="shortcut icon" type="image/svg+xml" href="{% static 'images/decision-favicon-depth.svg' %}" id="favicon-short">
+	<script>
+		document.addEventListener("DOMContentLoaded", function() {
+			function loadSVG() {
+				fetch("{% static 'images/decision-chess-title.svg' %}")
+					.then(response => response.text())
+					.then(svgText => {
+						document.getElementById('svg-title-container').innerHTML = svgText;
+					})
+					.catch(error => {
+						console.error('Error fetching SVG:', error);
+					});
+			}
+	
+			loadSVG();
+		});
 
-	<title>{% block title %}Decision Chess{% endblock %}</title>
+		let themePreference = localStorage.getItem('themePreference');
+		const themeLink = document.getElementById('theme-link');
+
+		function updateToggleButton(buttonEl, isDark) {
+			const newCta = isDark ? "<i class='fa-solid fa-sun'></i>": "<i class='fa fa-moon'></i>"
+			const ariaLabel = isDark ? "Enable light theme": "Enable dark theme";
+			buttonEl.style.color = isDark ? 'var(--theme-toggle-dark-text)': 'var(--theme-toggle-light-text)';
+			buttonEl.style.borderColor = isDark ? 'var(--theme-toggle-dark-bg)': 'var(--theme-toggle-light-bg)';
+			buttonEl.setAttribute("aria-label", ariaLabel);
+			buttonEl.innerHTML = newCta;
+		}
+		
+		if (themePreference === 'dark') {
+			if (!themeLink.href.endsWith('dark_theme.css')) {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+				document.addEventListener("DOMContentLoaded", function() {
+					const themeButton = document.getElementById('theme-toggle-button');
+					updateToggleButton(themeButton, true);
+				});
+			}
+		} else {
+			if (!themeLink.href.endsWith('light_theme.css')) { 
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+				document.addEventListener("DOMContentLoaded", function() {
+					const themeButton = document.getElementById('theme-toggle-button');
+					updateToggleButton(themeButton, false);
+				});
+			}
+			localStorage.setItem('themePreference', 'light');
+		}
+	</script>
+	
+	<title id="title">{% block title %}Decision Chess{% endblock %}</title>
 	{% block style %} 
 	{% endblock %}
 </head>
 	
 <body>
 	<div class="homeblock">
-		<a href="/">Decision Chess</a>
+		<a class="home-button" href="/">
+			<div id="svg-title-container" style="width: 100%"></div>
+		</a>
 		{% block side_head_content %}
 		{% endblock %}
 	</div>
+	<button class="theme-toggle" id="theme-toggle-button" aria-label="Enable dark theme" style="display: none;"><i class="fa fa-moon"></i></button>
 	<div class="container-fluid" style="padding: 0;">
 		<div class="row" style="max-width: 100%;">
 			<div id="header-column" class="col-12 col-hb-12 col-md-1">
 				<div class="sidenav">
-					<div class="nav-new-game">Play</div>
+					<div class="nav-new-game" data-toggle="modal" data-target="#CreateNewGame">Play</div>
 					<a href="/news">News</a>
 					{% if user %}
 						{% if user.is_authenticated %}
-						<a href="/account/email">Settings</a>
-						<a href="/profile/{{ user.username }}">Profile</a>
+						<a href="/account/themes">Settings</a>
+						<div class="profile-dropdown last" id="profileDropdown">{{ user.username }}</div>
 						{% endif %}
 					{% else %}
-						<a href="/login">Sign in</a>
+						<a class="last" href="/login">Sign in</a>
 					{% endif %}
 				</div>
 			</div>
-			
-			<div class="col-12 col-hb-12 col-md-11">
+			<div class="profile-content" id="profileDropdownContent">
+				<a href="/profile/{{ user.username }}">Profile</a>
+				<form id="profile-logout" method="post" action="{% url 'logout' %}">
+					{% csrf_token %}
+					<button type="submit">Logout</button>
+				</form>
+			</div>
+
+			<div class="col-12 col-hb-12 col-md-11" style="padding-right: 0px;">
 				<div class="main-wrapper">
 					{% block content %}
 					{% endblock %}
@@ -68,6 +128,28 @@
 	{% endblock %}
 	
 	<script>
+		function toggleTheme() {
+			const themeLink = document.getElementById('theme-link');
+			document.body.classList.add('disable-all-transitions');
+			const themeButton = document.getElementById('theme-toggle-button')
+
+			if (themeLink.getAttribute('href') === '{% static "main/css/site_themes/light_theme.css" %}') {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+				localStorage.setItem('themePreference', 'dark');
+				updateToggleButton(themeButton, true);
+			} else {
+				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+				localStorage.setItem('themePreference', 'light');
+				updateToggleButton(themeButton, false);
+			}
+
+			setTimeout(() => {
+				document.body.classList.remove('disable-all-transitions');
+			}, 100);
+		}
+
+		document.getElementById('theme-toggle-button').addEventListener('click', toggleTheme);
+
 		function generateGameURL(position = "random") {
 			body = {position: position}
 			fetch('/create_new_game/', {
@@ -99,11 +181,20 @@
         newGameQuickStart.forEach(button => {
             button.addEventListener('click', generateGameURL);
         });
+
+		$(document).ready(function() {
+			$('#profileDropdown').click(function() {
+				$('#profileDropdown').toggleClass('selected');
+				$('#profileDropdownContent').toggle();
+			});
+		});
+
+		document.addEventListener("DOMContentLoaded", function() {
+			document.getElementById('profileDropdownContent').style.display = 'none';
+		});
 	</script>
 
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script src="{% static 'main/js/bootstrap-4.3.1-dist/bootstrap.bundle.min.js' %}"></script>
 
 </body>
 </html>

@@ -3,6 +3,7 @@
 {% load crispy_forms_tags %}
 
 {% block setting_window %}
+    <h1 style="color: var(--title-text);">Change Email</h1>
     <form method="POST" class="form-group">
         {% csrf_token %}
         {{form|crispy}}
@@ -15,4 +16,12 @@
         {% endfor %}
     </ul>
     {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var settingHeaders = document.getElementsByClassName('change_email');
+            for (var i = 0; i < settingHeaders.length; i++) {
+                settingHeaders[i].classList.add('active');
+            }
+        });
+    </script>
 {% endblock %}

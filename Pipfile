@@ -19,6 +19,11 @@ daphne = "*"
 channels = {extras = ["daphne"] }
 requests = "*"
 pyjwt = "*"
+channels-redis = "*"
+twisted = {extras = ["http2", "tls"], version = "*"}
+django-debug-toolbar = "*"
+install = "*"
+django-livereload-server = "*"
 
 [dev-packages]
 pytest = "*"

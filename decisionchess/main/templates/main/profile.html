@@ -3,6 +3,35 @@
 {% load static %}
 
 {% block style %}
+<style>
+    .bio {
+        overflow-y: auto;
+        border: 2px solid var(--bio-border);
+        border-radius: 5px;
+        background-color: var(--bio-background);
+        padding: 5px;
+        flex-grow: 1;
+    }
+
+    .historic-game {
+        position: relative;
+    }
+
+    .historic-game::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to right, transparent, transparent);
+        pointer-events: none;
+    }
+
+    .historic-game:hover::before {
+        background: linear-gradient(to right, transparent, rgba(115, 101, 59, 0.22), transparent);
+    }
+</style>
 {% endblock %}
 
 {% block title %}
@@ -11,20 +40,40 @@
 
 {% block content %}
 <div id="content", name="content", class="content">
-    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <div class="col-5">
-            <h1>{{ profile_user.username }}</h1>
-            {% if profile_user.account_closed %}
-                <p>This account is closed.</p>
-            {% else %}
-                <p>Member Since: {{ member_since }}</p>
-                <p>
-                    <link rel="stylesheet" href="{% static 'flags/sprite.css' %}">
-                    <i class="{{ profile_user.country.flag_css }}"></i>
-                </p>
-                <p>{{ profile_user.bio }}</p>
-            {% endif %}
+    <div class="row justify-content-center" style="max-width: 100%;">
+        <div class="col-2 d-none d-md-block"></div>
+        <div class="col-11 col-md-7 block ml-auto">
+            <div class="d-flex flex-column" style="overflow: hidden; height: 400px">
+                <h1 style="color: #e4a03a;">{{ profile_user.username|safe }}</h1>
+                {% if profile_user.account_closed %}
+                    <p>This account is closed.</p>
+                {% else %}
+                    <p>Joined: {{ member_since }}</p>
+                    <p>
+                        <link rel="stylesheet" href="{% static 'flags/sprite.css' %}">
+                        <i class="{{ profile_user.country.flag_css }}"></i>
+                    </p>
+                    <p class="bio">{{ profile_user.bio|safe }}</p>
+                {% endif %}
+            </div>
+            {% for game in games_details %}
+                <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                    <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex flex-column justify-content-start">
+                            <h3>{{ game.game_type }} as {{ game.side }} ~ {{ game.outcome }}</h3>
+                            <p class="fw-bold fs-4">{{ game.relative_game_time }} ago...</p>
+                            <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                {{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}
+                            </div>
+                            <i>{{ game.formatted_moves_string }}</i>
+                        </div>
+                    </a>
+                    <hr style="border-color: white; margin-bottom: 0px;">
+                </div>
+            {% endfor %}
+            <div style="padding-bottom: 20px;"></div>
         </div>
+        <div class="col-2 d-none d-md-block"></div>
     </div>
 </div>
 {% endblock %}

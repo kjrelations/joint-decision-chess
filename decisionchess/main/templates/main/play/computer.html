@@ -9,47 +9,64 @@ Play
 {% block style%}
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
 <script>
-    var existingWebGameMetadata = localStorage.getItem('web_game_metadata');
+    var existingWebGameMetadata = sessionStorage.getItem('web_game_metadata');
     if (existingWebGameMetadata == null) {
         var webGameMetadata = {};
-        localStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
     }
 </script>
 {% endblock %}
 
 {% block content %}
 <div id="content" name="content" class="content">
-    <div class="row justify-content-center" style="max-width: 100%;"> <!-- max width necessary for no horizontal scrolling -->
-        <!-- Given side bar maybe columns should instead be 3 5 3  and side bar width is a column width-->
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <!-- Given side bar maybe columns should instead be 2 5 4  and side bar width is a column width-->
         <!-- 2 columns for chat and notes -->
-        <div class="col-2" style="width: 100%;">
+        <div class="col-2 d-none d-md-block" style="width: 100%;">
             <div id="chat-box" class="card chat-box">
                 <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
                     <div class="chat-wrapper mb-auto">
                         <div class="chat-messages">
-                            <!-- Chat messages will be displayed here -->
                             {% for message in chat_messages.all %}
-                                <p>{{message.sender_username}}: {{message.message}}</p>
+                                <p>{{ message.sender_username|safe }}: {{ message.message|safe }}</p>
                             {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Consider if this col-5 should be present for all play views or just the main one-->
-        <!-- That is we can embedd the game itself in here as it's own template maybe -->
-        <div class="col-10 col-md-5">
+        <!-- Embedded Game -->
+        <div class="col-10 col-md-5" style="padding-right: 0px;">
             <div id="iframe-container">
-                <iframe id="embedded-iframe" src="{% static 'main/html/minimax.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock allow-modals"></iframe>
+                <iframe id="embedded-iframe" src="{% if computer_game %}{% static 'main/html/minimax.html' %}{% else %}{% static 'main/html/solo.html' %}{% endif %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
             </div>
         </div>
-        <!-- Optional blank column for command center alignment on smaller screens -->
-        <div class="col-2 d-md-none" style="width: 100%;"></div>
         <!-- 4 columns for command center-->
-        <div class="col-10 col-md-4 d-flex align-items-center">
-            <div id="command-center" class="command-center d-flex flex-column align-items-center justify-content-center" style="min-width: 100%;">
-                <!-- Content will be dynamically added here -->
-                <div class="d-flex justify-content-center align-items-center">
+        <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start command-column" style="margin-left: 30px; padding-left: 0px; padding-right: 0px;">
+            <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
+            <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
+                <div class="d-flex flex-row" style="min-height: 10%; min-width: 100%;">
+                    <div id="topPlayer" class="userblock">
+                        {% if computer_game %}
+                            {{ opponent }}
+                        {% else %}
+                            {% if user.is_authenticated %}
+                                {{ user.username }}
+                            {% else %}
+                                Anonymous
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div id='opponentIndicator' class="hidden indicator">Their Turn</div>
+                </div>
+                <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
+                    <div id="moves-list" class="scrollable-moves-list mt-auto">
+                        <!-- Content will be dynamically added here -->
+                    </div>
+                </div>
+                <div id="final-score" class="text-white font-weight-bold text-lg"></div>
+                <div id="end-message" class="text-white"></div>
+                <div class="d-flex justify-content-center align-items-center mb-auto" style="height: fit-content; background-color: var(--control-section-text); min-width: 100%;"> <!-- fix height -->
                     <button id="skipBackwardButton" post-game="true" class="action-button confirm hidden mr-2">
                         <i class="fa-solid fa-backward-step icon-color"></i>
                     </button>
@@ -63,16 +80,13 @@ Play
                         <i class="fa-solid fa-forward-step icon-color"></i>
                     </button>
                 </div>
-                <div id="moves-list" class="scrollable-moves-list" style="min-width: 100%;">
-                    <!-- Content will be dynamically added here -->
-                </div>
-                <div id="final-score" class="text-white font-weight-bold text-lg mt-2"></div>
-                <div id="end-message" class="text-white"></div>
+                {% if computer_game %}
                 <div class="d-flex justify-content-center">
                     <button id="rematchButton" post-game=true class="action-button confirm hidden">Rematch</button>
                     <button id="rematchAcceptButton" post-game=true class="action-button confirm check hidden mr-2">Accept Rematch</button>
                     <button id="rematchDenyButton" post-game=true class="action-button cancel check hidden">Decline Rematch</button>
                 </div>
+                {% endif %}
                 <div class="d-flex justify-content-center">
                     <button id="undoOfferButton" actions="true" class="action-button confirm hidden mr-2">Undo</button>
                     <button id="undoOfferConfirmButton" followup="true" class="action-button confirm check hidden mr-2">Confirm ✓</button>
@@ -85,19 +99,48 @@ Play
                     <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
                     <button id="flipButton" class="action-button confirm hidden">Flip</button>
                 </div>
+                <div class="d-flex flex-row" style="min-height: 10%; min-width: 100%;">
+                    <div id="bottomPlayer" class="userblock">{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}</div>
+                    <div id='playerIndicator' class="hidden indicator">Your Turn</div>
+                </div>
             </div>
-            <script>
-                var game_uuid = "{{ game_uuid }}";
-                var sender = "{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}";
-                sessionStorage.setItem('connected', "{{ connected }}");
-                sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
-                sessionStorage.setItem('initialized', "{{ initialized }}");
-                sessionStorage.setItem('promoting', 'false');
-                var csrftoken = "{{ csrf_token|escapejs }}";
-                sessionStorage.setItem('csrftoken', csrftoken);
-            </script>
-            <script src="{% static 'main/js/computer.js' %}"></script>                
+            <div class="d-flex flex-wrap mb-auto" id="bottomPieces" style="height: 25px;"></div>
         </div>
+        <div class="col-10 d-block d-md-none" style="width: 100%; margin-left: 15px;">
+            <div id="chat-box-mobile" class="card chat-box">
+                <div class="card-body d-flex flex-column justify-content-end mh-100" style="padding: 0;">
+                    <div class="chat-wrapper mb-auto">
+                        <div class="chat-messages">
+                            {% for message in chat_messages.all %}
+                            <p>{{ message.sender_username|safe }}: {{ message.message|safe }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            var game_uuid = "{{ game_uuid }}";
+            var sender = "{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}";
+            sessionStorage.setItem('connected', "{{ connected }}");
+            sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
+            sessionStorage.setItem('initialized', "{{ initialized }}");
+            sessionStorage.setItem('promoting', 'false');
+            var csrftoken = "{{ csrf_token|escapejs }}";
+            sessionStorage.setItem('csrftoken', csrftoken);
+            sessionStorage.setItem('muted', 'false');
+            const pawnsrc = "{% static 'main/images/material/pawn_grayscale.svg' %}";
+            const bishopsrc = "{% static 'main/images/material/bishop_grayscale.svg' %}";
+            const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";
+            const rooksrc = "{% static 'main/images/material/rook_grayscale.svg' %}";
+            const queensrc = "{% static 'main/images/material/queen_grayscale.svg' %}";
+            const faviconImages = [
+                "{% static 'images/decision-favicon-depth.svg' %}",
+                "{% static 'images/decision-favicon-depth-alternate.svg' %}",
+            ];
+            const computerGame = "{% if not computer_game %}false{% else %}true{% endif %}";
+        </script>
+        <script src="{% static 'main/js/computer.js' %}"></script>                
     </div>
 </div>
 {% endblock %}

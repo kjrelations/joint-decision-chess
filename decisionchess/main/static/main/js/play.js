@@ -18,10 +18,16 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 
-    document.getElementById('chat-input').value = '';
+    var inputs = document.getElementsByClassName('chat-input');
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = '';
+    }
 });
 
 window.addEventListener('resize', function() {
@@ -30,21 +36,67 @@ window.addEventListener('resize', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('command-center').style.height = (width * 0.5) + 'px';
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
+    document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
 
-function areArraysEqual(arr1, arr2) {
-    if (arr1.length !== arr2.length) {
-        return false;
-    }
-    for (var i = 0; i < arr1.length; i++) {
-        if (arr1[i] !== arr2[i]) {
+function handleVisibilityChange() {
+    if (document.hidden) {
+      sessionStorage.setItem('muted', 'true');
+    } else {
+      sessionStorage.setItem('muted', 'false');
+  }
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
+function areEqual(obj1, obj2, type) {
+    if (type === 'array') {
+        if (obj1.length !== obj2.length) {
             return false;
+        }
+
+        for (var i = 0; i < obj1.length; i++) {
+            if (obj1[i] !== obj2[i]) {
+                return false;
+            }
+        }
+    } else if (type === 'object') {
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+
+        if (keys1.length !== keys2.length) {
+            return false;
+        }
+
+        for (let key of keys1) {
+            if (obj1[key] !== obj2[key]) {
+                return false;
+            }
         }
     }
     return true;
 }
+
+function changeFavicon(index) {
+    const favicon = document.getElementById('favicon');
+    const faviconShort = document.getElementById('favicon-short');
+    if (index >= 0 && index < faviconImages.length) {
+        favicon.href = faviconImages[index];
+        faviconShort.href = faviconImages[index];
+    }
+}
+
+let currentIndex = 0;
+var alternatingFavicon = false;
+function faviconInterval() {
+    changeFavicon(currentIndex);
+    currentIndex = (currentIndex + 1) % faviconImages.length;
+}
+
+var faviconIntervalId;
 
 var gameSaved = false;
 var signed_uuid = "";
@@ -52,13 +104,26 @@ var rematch_request = false;
 var rematch_accepted = false;
 var rematch_received = false;
 var savedMoves = [];
+var savedPieces = {};
 var comp_moves = [];
 var move_index = -1;
 var selectedMoveId = "";
 var promotion_lock = false;
+var flipped = false;
+
+function movePieceTranslation(move) {
+    var newMove = move
+        .replace('K', '♔')
+        .replace('Q', '♕')
+        .replace('R', '♖')
+        .replace('B', '♗')
+        .replace('N', '♘')
+        .replace('P', '♙');
+    return newMove;
+}
 
 function updateCommandCenter() {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
@@ -67,7 +132,7 @@ function updateCommandCenter() {
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
         comp_moves = webGameMetadata.comp_moves;
-        const equal_arrays = areArraysEqual(moves, savedMoves)
+        const equal_arrays = areEqual(moves, savedMoves, 'array')
         if (endState !== '' && !equal_arrays) {
             const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(requestIntervalId);
@@ -93,6 +158,75 @@ function updateCommandCenter() {
             }
             promotion_lock = promoting;
         }
+
+        var netPieces = webGameMetadata.net_pieces;
+        if (!areEqual(savedPieces, netPieces, 'object')) {
+            savedPieces = netPieces;
+            var topPieces = document.getElementById('topPieces');
+            var bottomPieces = document.getElementById('bottomPieces');
+            topPieces.innerHTML = '';
+            bottomPieces.innerHTML = '';
+            var playerPieces = !flipped ? bottomPieces : topPieces;
+            var opponentPieces = !flipped ? topPieces : bottomPieces;
+            pawnSum = netPieces['p'];
+            bishopSum = netPieces['b'];
+            knightSum = netPieces['n'];
+            rookSum = netPieces['r'];
+            queenSum = netPieces['q'];
+            const piecesList = [queenSum, rookSum, knightSum, bishopSum, pawnSum];
+            var score = 0;
+            const color = webGameMetadata.player_color;
+
+            for (let i = 0; i < piecesList.length; i++) {
+                if (piecesList[i] !== 0) {
+                    var content = document.createElement('img');
+                    content.className = 'scaled-pieces';
+                    if (i === 0) {
+                        content.src = queensrc;
+                        score += piecesList[i] * 9;
+                    } else if (i === 1) {
+                        content.src = rooksrc;
+                        score += piecesList[i] * 5;
+                    } else if (i === 2) {
+                        content.src = knightsrc;
+                        score += piecesList[i] * 3;
+                    } else if (i === 3) {
+                        content.src = bishopsrc;
+                        score += piecesList[i] * 3;
+                    } else {
+                        content.src = pawnsrc;
+                        score += piecesList[i];
+                    }
+                    const playerSum = color === 'white' ? piecesList[i] > 0 : piecesList[i] < 0;
+                    if (playerSum) {
+                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                            const clone = content.cloneNode(true);
+                            if (j === piecesList[i] - 1) {
+                                clone.style.marginRight = '2px';
+                            }
+                            playerPieces.appendChild(clone);
+                        }
+                    } else if (piecesList[i] !== 0) {
+                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                            const clone = content.cloneNode(true);
+                            if (j === piecesList[i] - 1) {
+                                clone.style.marginRight = '2px';
+                            }
+                            opponentPieces.appendChild(clone);
+                        }
+                    }
+                }
+            }
+            const scoreCompare = color === 'white' ? score > 0 : score < 0;
+            const scoreElement = document.createElement('div')
+            scoreElement.textContent = '+' + Math.abs(score);
+            if (scoreCompare) {
+                playerPieces.appendChild(scoreElement);
+            } else if (score !== 0) {
+                opponentPieces.appendChild(scoreElement);
+            }
+        }
+
         // Don't keep unnecessarily updating
         if (equal_arrays) {
             return;
@@ -101,27 +235,37 @@ function updateCommandCenter() {
         
         movesListContainer.innerHTML = '';
 
+        var j = 1;
         for (var i = 0; i < moves.length; i += 2) {
-            var move1 = moves[i];
+            var move1 = movePieceTranslation(moves[i]);
             var move2 = (
                 (i + 1 < moves.length) && 
                 moves[i + 1] !== '1-0' && 
                 moves[i + 1] !== '0-1' && 
                 moves[i + 1] !== '½–½'
             ) ? moves[i + 1] : '';
+            move2 = movePieceTranslation(move2);
 
             var moveRow = document.createElement('div');
             moveRow.className = 'move-row ' + (i % 4 === 0 ? '' : 'even-move-row');
             
+            var pairNumber = document.createElement('div');
+            pairNumber.style.width = '10%';
+            pairNumber.textContent = j;
+            pairNumber.style.textAlign = 'center'
+            pairNumber.style.backgroundColor = 'var(--command-center-background)';
+            pairNumber.className = 'move-number';
+            pairNumber.id = 'move-number-' + j;
+
             var leftHalf = document.createElement('button');
-            leftHalf.style.width = '50%';
+            leftHalf.style.width = '45%';
             leftHalf.textContent = move1;
             leftHalf.className = 'move-button';
             leftHalf.setAttribute('move-index', i);
             leftHalf.id = 'move-' + i;
 
             var rightHalf = (move2 === "" ? document.createElement('div'): document.createElement('button'));
-            rightHalf.style.width = '50%';
+            rightHalf.style.width = '45%';
             rightHalf.textContent = move2;
             if (move2 !== '') {
                 rightHalf.className = 'move-button';
@@ -129,7 +273,16 @@ function updateCommandCenter() {
                 rightHalf.id = 'move-' + (i + 1);
             }
 
+            var initialized = sessionStorage.getItem('initialized');
+            initialized = (initialized === 'true' ? true : false);
+            if (!initialized) {
+                pairNumber.classList.add('hidden');
+                leftHalf.classList.add('hidden');
+                rightHalf.classList.add('hidden');
+            }
+
             if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '½–½') {
+                moveRow.appendChild(pairNumber);
                 moveRow.appendChild(leftHalf);
                 moveRow.appendChild(rightHalf);
 
@@ -151,8 +304,30 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
-
+            var currentTurn = JSON.parse(webGameMetadata.whites_turn);
+            const color = webGameMetadata.player_color;
+            currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
+            var currentIndicator = document.getElementById('playerIndicator');
+            var opponentIndicator = document.getElementById('opponentIndicator');
+            if (currentTurn && !alternatingFavicon) {
+                const title = document.getElementById('title');
+                title.text = "Your Turn";
+                faviconIntervalId = setInterval(faviconInterval, 2000);
+                currentIndicator.classList.remove('hidden');
+                opponentIndicator.classList.add('hidden');
+                alternatingFavicon = true;
+            } else if (!currentTurn && alternatingFavicon) {
+                clearInterval(faviconIntervalId);
+                changeFavicon(0);
+                const title = document.getElementById('title');
+                title.text = "Playing"
+                currentIndicator.classList.add('hidden');
+                opponentIndicator.classList.remove('hidden');
+                alternatingFavicon = false;
+            }
+            j += 1;
         }
+        movesListContainer.scrollTop = movesListContainer.scrollHeight;
 
         if (endState === "\u00bd\u2013\u00bd") {
             endState = '½–½';
@@ -168,6 +343,7 @@ function updateCommandCenter() {
             } else {
                 endmessage += forcedEnd + ' • ';
             }
+            finalScorebox.classList.add('mt-2');
         }
 
         if (endState === '1-0') {
@@ -203,6 +379,12 @@ function updateCommandCenter() {
                 rematch_request = true;
                 document.getElementById("rematchButton").disabled = true;
             }, {once: true});
+            const title = document.getElementById('title');
+            currentTurn = null;
+            title.text = "Game Over";
+            changeFavicon(0);
+            document.getElementById('playerIndicator').remove();
+            document.getElementById('opponentIndicator').remove();
         }
         if (selectedMoveId !== "") {
             var previousMove = document.getElementById(selectedMoveId);
@@ -301,23 +483,32 @@ setInterval(updateCommandCenter, 100);
 var socket;
 
 function initializeWebSocket() {
-    socket = new WebSocket("ws://" + window.location.host + "/ws/chat/" + game_uuid + "/");
+    if (window.location.protocol == 'https:') {
+        wsProtocol = 'wss://';
+    } else {
+        wsProtocol = 'ws://';
+    }
+
+    socket = new WebSocket(wsProtocol + window.location.host + "/ws/chat/" + game_uuid + "/");
 
     socket.onmessage = function (event) {
         var chat_data = JSON.parse(event.data);
         handleMessage(chat_data["message"]);
     };
 
+    socket.onopen = function () {
+        sendMessage("", "initialized");
+    }
+
     socket.onclose = function (event) {
-        // add custom chat highlighted message
-        $("#chat-input").prop("disabled", true);
+        $(".chat-input").prop("disabled", true);
     };
 
-    $("#chat-input").prop("disabled", false);
+    $(".chat-input").prop("disabled", false);
 }
 
-$("#chat-input").keypress(function (e) {
-    if (e.which === 13) {  // 13 is the Enter key code
+$(".chat-input").on('keydown', function (e) {
+    if (e.keyCode === 13 || e.key === 'Enter') {
         e.preventDefault();  // Prevent the Enter key from creating a new line
         var message = $(this).val();
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -328,7 +519,7 @@ $("#chat-input").keypress(function (e) {
 });
 
 function sendMessage(message, type = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
@@ -343,8 +534,16 @@ function sendMessage(message, type = null) {
             }
         };
         if (type !== null) {
-            if (type.includes("rematch")) {
+            if (
+                type.includes("rematch") || 
+                type === "initialized" ||
+                type === "undo_sent" ||
+                type === "draw_sent"
+            ) {
                 messageObj["message"]["log"] = type;
+                if (type == "initialized") {
+                    messageObj["message"]["opponent"] = opponent;
+                }
             }
         }
         socket.send(JSON.stringify(messageObj));
@@ -355,7 +554,7 @@ function sendMessage(message, type = null) {
 
 function handleMessage(data) {
     if (data.hasOwnProperty('log')) {
-        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var currentGameID = sessionStorage.getItem('current_game_id');
         var playerColor;
         currentGameID = (currentGameID === 'null' ? null : currentGameID);
@@ -364,15 +563,53 @@ function handleMessage(data) {
         } else {
             return;
         }
-        if (data["log"] === "disconnect") {
-            // Add highlighted message to chat
-            if (rematch_accepted) {
-                fetchUUID(signed_uuid, currentGameID).then(data => {
-                    window.location.href = '/play/' + data.uuid + '/';
+        if (data["log"] === "connect") {
+            connect_user = data["user"];
+            // Exclude spectators by adding highlighted message
+            // to chat if opponent is the same
+            if (connect_user === opponent) {
+                var log = $('<p></p>').text(data["user"] + " connected");
+                log.css({
+                    'background-color': 'var(--chat-box-log)',
+                    'text-align': 'center'
                 });
+                // Don't include initial connect messages
+                if ($(".chat-messages").children().length !== 0) {
+                    $(".chat-messages").append(log);
+                }
             }
-            if (rematch_request) {
-                document.getElementById("rematchButton").classList.add("used");
+        } else if (data["log"] === "initialized") {
+            connect_user = data["sender"];
+            player = data["opponent"];
+            opponent_color = data["color"];
+            if ((connect_user !== opponent || player !== sender) && opponent_color !== playerColor) {
+                // Assuming top is always opponent to start is fine as no flips occurred preinit
+                opponentContent = document.getElementById('topPlayer');
+                opponent = (connect_user !== "black" && connect_user !== "white") ? connect_user : "Anonymous"; // prevent these two usernames
+                opponentContent.innerHTML = opponent;
+                if (player !== sender) {
+                    sendMessage("", "initialized");
+                }
+            }
+        } else if (data["log"] === "disconnect") {
+            disconnect_user = data["user"];
+            if (disconnect_user === opponent) {
+                // Add highlighted message to chat
+                var log = $('<p></p>').text(data["user"] + " disconnected...");
+                log.css({
+                    'background-color': 'var(--chat-box-log)',
+                    'text-align': 'center'
+                });
+                $(".chat-messages").append(log);
+
+                if (rematch_accepted) {
+                    fetchUUID(signed_uuid, currentGameID).then(data => {
+                        window.location.href = '/play/' + data.uuid + '/';
+                    });
+                }
+                if (rematch_request) {
+                    document.getElementById("rematchButton").classList.add("used");
+                }
             }
         } else if (data["log"] === "rematch_request" && !rematch_request) {
             rematch_received = true
@@ -394,8 +631,9 @@ function handleMessage(data) {
                 document.getElementById("rematchButton").classList.add("used");
                 sendMessage("", "rematch_declined");
             }, {once: true});
+            appendChatLog("Rematch Received");
         } else if (data["log"] === "rematch_accepted") {
-            $(".chat-messages").append('<p>Rematch Accepted...</p>');
+            appendChatLog("Rematch Accepted");
             rematch_accepted = true;
             if (!rematch_received) {
                 let new_game_id;
@@ -407,18 +645,37 @@ function handleMessage(data) {
             }
         } else if (data["log"] === "rematch_declined") {
             document.getElementById("rematchButton").classList.add("used");
-            $(".chat-messages").append('<p>Declined Rematch</p>');
+            appendChatLog("Rematch Declined");
+        } else if (
+            data["log"] === "undo_sent" || 
+            data["log"] === "draw_sent" ||
+            data["log"] === "spam"
+            ) {
+            appendChatLog(data["text"]);
         }
         return;
     }
-    $(".chat-messages").append('<p>' + data["sender"] + ": " + data["text"] + '</p>');
+    // Prevent XSS script injection attacks by escaping content
+    var message = $('<p></p>').text(data["sender"] + ": " + data["text"]);
+    $(".chat-messages").append(message);
+}
+
+function appendChatLog(message) {
+    var log = $('<p></p>').text(message);
+    log.css({
+        'background-color': 'var(--chat-box-log)',
+        'text-align': 'center'
+    });
+    $(".chat-messages").append(log);
 }
 
 function generateRematchURL(position, game_id) {
     if (position !== "white" && position !== "black") {
         return console.error('Invalid position input')
     }
-    body = {"position": position}
+    var currentGameID = sessionStorage.getItem('current_game_id');
+    currentGameID = currentGameID.replace(position + '-', '');
+    body = {"position": position, "rematch": currentGameID};
     fetch('/create_new_game/' + game_id + '/', {
         method: 'POST',
         headers: {
@@ -507,10 +764,17 @@ function checkNewConnect() {
             idStrings.push(button.id);
         });
 
+        var elementsWithMoveNumber = document.querySelectorAll('.move-number');
+        elementsWithMoveNumber.forEach(element => {
+            idStrings.push(element.id);
+        });
+
         idStrings.forEach(idString => {
             document.getElementById(idString).classList.remove("hidden");
         })
         initializeWebSocket();
+        var movesListContainer = document.getElementById('moves-list');
+        movesListContainer.scrollTop = movesListContainer.scrollHeight;
         initCheck = initialized;
     } else if (initialized === true && currentConnected === true) {
         if (typeof socket !== 'undefined' && socket instanceof WebSocket && socket.readyState === WebSocket.CLOSED) {
@@ -539,48 +803,65 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
-var eventExecutionStatus = {};
+function handlestep(webGameMetadata, sessionStorageObjectName, existingWebGameMetadata, currentGameID, buttonId) {
+    var early_exit = false;
+    if (
+        move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
+        move_index < 0 && buttonId === "backwardButton"
+    ) {
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].index = null;
+        existingWebGameMetadata[currentGameID] = webGameMetadata;
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        
+        document.getElementById(buttonId).disabled = false;
+        early_exit = true;
+        return {'index_number': null, 'early_exit': early_exit};
+    }
+    if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
+        index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
 
-function handleWebtoGameAction(buttonId, localStorageObjectName, Options = null) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+    } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
+        index_number = (buttonId === "backwardButton" ? move_index : -1);
+    } else {
+        index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
+        index_number = (index_number < move_index ? index_number + 1 : index_number);
+    }
+    return {'index_number': index_number, 'early_exit': early_exit}
+}
+
+function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = null) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = (currentGameID === 'null' ? null : currentGameID);
     if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
         var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[localStorageObjectName].execute = true;
+        webGameMetadata[sessionStorageObjectName].execute = true;
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        if (localStorageObjectName == "step") {
-            // Could move this block into it's own function later
-            if (
-                move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
-                move_index < 0 && buttonId === "backwardButton"
-            ) {
-                webGameMetadata[localStorageObjectName].execute = false;
-                webGameMetadata[localStorageObjectName].index = null;
-                existingWebGameMetadata[currentGameID] = webGameMetadata;
-                localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-                
-                document.getElementById(buttonId).disabled = false;
+        if (sessionStorageObjectName == "step") {
+            const stepResults = handlestep(
+                webGameMetadata, 
+                sessionStorageObjectName, 
+                existingWebGameMetadata, 
+                currentGameID, 
+                buttonId
+            );
+            if (stepResults.early_exit) {
                 return;
             }
-            if (buttonId === "forwardButton" || buttonId === "skipForwardButton") {
-                index_number = (buttonId === "forwardButton" ? move_index + 1 : comp_moves.length - 1);
-
-            } else if (buttonId === "backwardButton" || buttonId === "skipBackwardButton") {
-                index_number = (buttonId === "backwardButton" ? move_index : -1);
-            } else {
-                index_number = parseInt(document.getElementById(buttonId).getAttribute('move-index'), 10);
-                index_number = (index_number < move_index ? index_number + 1 : index_number);
-            }
-            webGameMetadata[localStorageObjectName].index = index_number;
+            webGameMetadata[sessionStorageObjectName].index = stepResults.index_number;
         }
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
 
-        if (!eventExecutionStatus[localStorageObjectName]) {
-            eventExecutionStatus[localStorageObjectName] = { isExecuting: false, timeoutId: null };
+        if (sessionStorageObjectName === "undo_move") {
+            appendChatLog("Undo Offer Sent");
         }
 
-        handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+        if (sessionStorageObjectName === "draw_offer") {
+            appendChatLog("Draw Offer Sent");
+        }
+
+        handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
 
     } else {
         console.warn("Failed to execute action");
@@ -608,20 +889,20 @@ var actionEventList = [
 ]
 
 var inputList = [
-    { buttonId: "forwardButton", localStorageObjectName: "step"},
-    { buttonId: "backwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipForwardButton", localStorageObjectName: "step"},
-    { buttonId: "skipBackwardButton", localStorageObjectName: "step"},
-    { buttonId: "undoOfferButton", localStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
-    { buttonId: "drawOfferButton", localStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
-    { buttonId: "resignButton", localStorageObjectName: "resign", Options: "followups"},
-    { buttonId: "cycleThemeButton", localStorageObjectName: "cycle_theme"},
-    { buttonId: "flipButton", localStorageObjectName: "flip_board"},
+    { buttonId: "forwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "backwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipForwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "skipBackwardButton", sessionStorageObjectName: "step"},
+    { buttonId: "undoOfferButton", sessionStorageObjectName: "undo_move", Options: "followups", action: "undo_request"},
+    { buttonId: "drawOfferButton", sessionStorageObjectName: "draw_offer", Options: "followups", action: "draw_request" },
+    { buttonId: "resignButton", sessionStorageObjectName: "resign", Options: "followups"},
+    { buttonId: "cycleThemeButton", sessionStorageObjectName: "cycle_theme"},
+    { buttonId: "flipButton", sessionStorageObjectName: "flip_board"},
 ];
 
-function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
-    if (localStorageObjectName == "step") {
-        webGameMetadata[localStorageObjectName].index = null;
+function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
+    if (sessionStorageObjectName == "step") {
+        webGameMetadata[sessionStorageObjectName].index = null;
         if (buttonId === "forwardButton") {
             move_index++;
         } else if (buttonId === "backwardButton") {
@@ -636,21 +917,63 @@ function buttonHandling(buttonId, webGameMetadata, localStorageObjectName) {
         moveId = 'move-' + move_index;
         if (move_index !== -1) {
             document.getElementById(moveId).disabled = true;
+        } else {
+            var movesListContainer = document.getElementById('moves-list');
+            movesListContainer.scrollTop = 0;
         }
         if (selectedMoveId !== "") {
             document.getElementById(selectedMoveId).disabled = false;
         }
         selectedMoveId = (move_index !== -1 ? moveId: "");
+        if (selectedMoveId !== "") {
+            var movesListContainer = document.getElementById('moves-list');
+            var selectedMove = document.getElementById(selectedMoveId);
+
+            var containerHeight = movesListContainer.clientHeight;
+            var moveHeight = selectedMove.clientHeight;
+
+            // Don't need to scroll, if the element is already visible
+            if (!(selectedMove.offsetTop - moveHeight >= 0 && selectedMove.offsetTop + moveHeight <= containerHeight)) {
+                movesListContainer.scrollTop = selectedMove.offsetTop - (containerHeight - moveHeight) / 2 - containerHeight;
+            }
+
+        }
+    } else if (sessionStorageObjectName == "flip_board") {
+        topElement = document.getElementById('topPlayer');
+        bottomElement = document.getElementById('bottomPlayer');
+        topHTML = topElement.innerHTML;
+        bottomHTML = bottomElement.innerHTML;
+        topElement.innerHTML = bottomHTML;
+        bottomElement.innerHTML = topHTML;
+
+        topPiecesRow = document.getElementById('topPieces');
+        bottomPiecesRow = document.getElementById('bottomPieces');
+        topPiecesHTML = topPiecesRow.innerHTML;
+        bottomPiecesHTML = bottomPiecesRow.innerHTML;
+        topPiecesRow.innerHTML = bottomPiecesHTML;
+        bottomPiecesRow.innerHTML = topPiecesHTML;
+
+        flipped = !flipped;
+    } else if (sessionStorageObjectName === "undo_move_accept") {
+        sendMessage("Undo Offer Accepted", "undo_sent");
+    } else if (sessionStorageObjectName === "undo_move_deny") {
+        sendMessage("Undo Offer Declined", "undo_sent");
+    } else if (sessionStorageObjectName === "draw_offer_accept") {
+        sendMessage("Draw Offer Accepted", "draw_sent");
+    } else if (sessionStorageObjectName === "draw_offer_deny") {
+        sendMessage("Draw Offer Declined", "draw_sent");
+    } else if (sessionStorageObjectName === "resign") {
+        appendChatLog("Resigned");
     }
     return webGameMetadata;
 }
 
-function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options) {
-    var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options) {
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var webGameMetadata = existingWebGameMetadata[currentGameID];
-    var actionCommandStatus = webGameMetadata[localStorageObjectName];
+    var actionCommandStatus = webGameMetadata[sessionStorageObjectName];
     
-    // console.log(localStorageObjectName, actionCommandStatus) // Good dev log, very good boy
+    // console.log(sessionStorageObjectName, actionCommandStatus) // Good dev log, very good boy
     var initialDefaults = (!actionCommandStatus.execute && !actionCommandStatus.update_executed);
     var optionalReset = false;
     if (actionCommandStatus.hasOwnProperty("reset")) {
@@ -658,21 +981,21 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         optionalReset = actionCommandStatus.reset;
     }
     if (!actionCommandStatus.update_executed && optionalReset !== true && !initialDefaults) {
-        eventExecutionStatus[localStorageObjectName].timeoutId = setTimeout(function () {
+        setTimeout(function () {
             // This can be too fast and execute again right before reset is set to false, 
             // hence the default condition check
-            handleActionStatus(buttonId, currentGameID, localStorageObjectName, Options);
+            handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
         }, 10);
     } else {
-        var accept_response_sent = localStorageObjectName.includes("accept") && webGameMetadata[localStorageObjectName].update_executed;
-        webGameMetadata[localStorageObjectName].execute = false;
-        webGameMetadata[localStorageObjectName].update_executed = false;
+        var accept_response_sent = sessionStorageObjectName.includes("accept") && webGameMetadata[sessionStorageObjectName].update_executed;
+        webGameMetadata[sessionStorageObjectName].execute = false;
+        webGameMetadata[sessionStorageObjectName].update_executed = false;
         
-        webGameMetadata = buttonHandling(buttonId, webGameMetadata, localStorageObjectName);
+        webGameMetadata = buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName);
 
         if (optionalReset === true) {
-            resetButtons(buttonId, localStorageObjectName, Options);
-            webGameMetadata[localStorageObjectName].reset = false;
+            resetButtons(buttonId, Options);
+            webGameMetadata[sessionStorageObjectName].reset = false;
         }
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
         if (totalReset) {
@@ -693,13 +1016,13 @@ function handleActionStatus(buttonId, currentGameID, localStorageObjectName, Opt
         }
         // We don't want to clear the offer queue on follow-ups or simple client actions or deny (individual resets)
         // Only on accepts, main actions accepts, and total resets
-        var offer_accepted_received = offerEventList.some(item => item.eventNames[0] === localStorageObjectName)
+        var offer_accepted_received = offerEventList.some(item => item.eventNames[0] === sessionStorageObjectName)
         if (accept_response_sent || offer_accepted_received || totalReset) {
             offerQueue = [];
         }
 
         existingWebGameMetadata[currentGameID] = webGameMetadata;
-        localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
         
         if (buttonId.includes("move")) {
             return;
@@ -750,7 +1073,7 @@ function resetButtons(mainbuttonId, Options) {
 inputList.forEach(function(input) {
     const optionsValue = (input.hasOwnProperty("Options") ? input.Options: null);
     document.getElementById(input.buttonId).addEventListener("click", function() {
-        handleButton(input.buttonId, input.localStorageObjectName, optionsValue);
+        handleButton(input.buttonId, input.sessionStorageObjectName, optionsValue);
     });
 });
 
@@ -768,7 +1091,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
     if (currentGameID !== null && initialized === true) {
         const acceptObjectName = baseStorageName + "_accept";
         const denyObjectName = baseStorageName + "_deny";
-        var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var acceptReset = existingWebGameMetadata[currentGameID][acceptObjectName].reset;
         var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
@@ -790,7 +1113,7 @@ function requestDisplay(action, ButtonID, baseStorageName) {
 var requestIntervalId = setInterval(function() {
     inputList.forEach(function(request) {
         if (request.hasOwnProperty('action')) {
-            requestDisplay(request.action, request.buttonId, request.localStorageObjectName);
+            requestDisplay(request.action, request.buttonId, request.sessionStorageObjectName);
         }
     });
 }, 100);
@@ -811,15 +1134,23 @@ function showNewOptions(offerQueue) {
     }
 }
 
-function handleButton(buttonId, localStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
+function displayChatLog(sessionStorageObjectName) {
+    if (sessionStorageObjectName === "undo_move") {
+        appendChatLog("Undo Offer Received");
+    } else if (sessionStorageObjectName === "draw_offer") {
+        appendChatLog("Draw Offer Received");
+    }
+}
+
+function handleButton(buttonId, sessionStorageObjectName, Options = null, resetDisplay = null, currentAction = null) {
     document.getElementById(buttonId).disabled = true;
     if (Options !== null) {
         result = optionStringsHelper(buttonId, Options)
         const buttonApproveId = result.ApproveId;
         const buttonAbandonId = result.AbandonId;
         const abandonString = result.AbandonStr;
-        const acceptObjectName = localStorageObjectName + "_accept";
-        const denyObjectName = localStorageObjectName + "_deny";
+        const acceptObjectName = sessionStorageObjectName + "_accept";
+        const denyObjectName = sessionStorageObjectName + "_deny";
         if (resetDisplay !== true) {
             document.getElementById(buttonId).classList.add("hidden");
             document.getElementById(buttonApproveId).classList.remove("hidden");
@@ -828,6 +1159,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
             if (Options === "responses") {
                 document.getElementById(buttonId).classList.add("waiting")
                 offerQueue.push({mainId: buttonId, ApproveId: buttonApproveId, AbandonId: buttonAbandonId})
+                displayChatLog(sessionStorageObjectName);
             }
             otherFollowups.forEach(function(element) {
                 if (element.id !== buttonApproveId && element.id !== buttonAbandonId) {
@@ -835,7 +1167,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 }
             });
             var actionbuttons = document.querySelectorAll('[actions="true"]');
-            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             var currentGameID = sessionStorage.getItem('current_game_id');
             var webGameMetadata = existingWebGameMetadata[currentGameID];
             
@@ -865,7 +1197,7 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                     showNewOptions(offerQueue);
                 }
                 
-                var responseName = (Options === "followups" ? localStorageObjectName : acceptObjectName)
+                var responseName = (Options === "followups" ? sessionStorageObjectName : acceptObjectName)
                 
                 handleWebtoGameAction(buttonId, responseName, Options);
             }, { once: true });
@@ -919,32 +1251,19 @@ function handleButton(buttonId, localStorageObjectName, Options = null, resetDis
                 showNewOptions(offerQueue);
             }
 
-            var existingWebGameMetadata = JSON.parse(localStorage.getItem('web_game_metadata'));
+            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             var currentGameID = sessionStorage.getItem('current_game_id');
             var webGameMetadata = existingWebGameMetadata[currentGameID];
-            webGameMetadata[localStorageObjectName].reset = false;
+            webGameMetadata[sessionStorageObjectName].reset = false;
             webGameMetadata[acceptObjectName].reset = false;
             webGameMetadata[denyObjectName].reset = false;
             existingWebGameMetadata[currentGameID] = webGameMetadata;
             
             sessionStorage.setItem(currentAction, 'false');
-            localStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
             document.getElementById(buttonId).disabled = false;
         }
     } else {
-        handleWebtoGameAction(buttonId, localStorageObjectName);
+        handleWebtoGameAction(buttonId, sessionStorageObjectName);
     };
 }
-
-// // Logging Debug python console messages; Only for development hence keep it commented. Maybe add a global dev flag too
-// function pythonDebugLogger() {
-//     var logs = webGameMetadata.console_messages
-//     for (var i = 0; i < logs.length; i++) {
-//         console.log(logs[i])
-//     }
-// }
-
-// window.addEventListener('load', pythonDebugLogger);
-
-// // Set up an interval to log debug print statements
-// setInterval(pythonDebugLogger, 1000);
