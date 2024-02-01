@@ -56,7 +56,7 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-def handle_piece_move(game, selected_piece, row, col, valid_captures):
+def handle_piece_move(game, selected_piece, row, col):
     # Initialize Variables
     promotion_square = None
     promotion_required = False
@@ -74,7 +74,7 @@ def handle_piece_move(game, selected_piece, row, col, valid_captures):
         if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
-        if (row, col) in valid_captures:
+        if "x" in game.alg_moves[-1]:
             handle_play(window, capture_sound)
         else:
             handle_play(window, move_sound)
@@ -291,9 +291,7 @@ async def main():
                     else:
                         raise Exception("Bad request")
                 except Exception as e:
-                    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')"
-                    window.eval(js_code)
+                    log_err_and_print(e, window)
                     raise Exception(str(e))
             if init["local_debug"]:
                 window.sessionStorage.setItem("muted", "false")

@@ -20,3 +20,4 @@ botInfo = BotInformation(
     bot_id = user.id,
     config = bot_config
 )
+botInfo.save()

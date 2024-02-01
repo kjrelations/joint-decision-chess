@@ -7,7 +7,7 @@ class Game:
         if custom_params is None:
             if board is None or starting_player is None:
                 raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
-            # whites_turn = True for white, False for black, the final version will always default to True for new games, but for now we keep it like this
+            # whites_turn, the final version will always default to True for new games but not custom ones
             self.whites_turn = whites_turn
             self.board = board
             self.moves = []
@@ -556,7 +556,7 @@ class Game:
                             self.castle_attributes[move_name] = [False, None]
 
             self._move_index += increment
-            # TODO This is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
+            # TODO Eventually, this is only for historic/completed games not live ones, will eventually rework with _latest and branching paths
             # self.whites_turn = not self.whites_turn
 
         if self._move_index == len(self.moves) - 1:

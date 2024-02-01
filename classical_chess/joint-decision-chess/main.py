@@ -59,7 +59,7 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-def handle_piece_move(game, selected_piece, row, col, valid_captures):
+def handle_piece_move(game, selected_piece, row, col):
     # Initialize Variables
     promotion_square = None
     promotion_required = False
@@ -180,7 +180,18 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
             client_state_actions[client_action_name] = False
 
 # Game State loop for promotion
-async def promotion_state(promotion_square, client_game, row, col, draw_board_params, client_state_actions, command_status_names, drawing_settings, game_tab_id, node, init, offers):
+async def promotion_state(
+        promotion_square, 
+        client_game, 
+        row, col, 
+        draw_board_params, 
+        client_state_actions, 
+        command_status_names, 
+        drawing_settings, 
+        game_tab_id, 
+        node, 
+        init, 
+        offers):
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
     promoted, promotion_required = False, True
     
@@ -686,9 +697,7 @@ async def main():
             if not init["final_updates"]:
                 await handle_node_events(node, window, init, client_game, client_state_actions, offers, drawing_settings)
         except Exception as e:
-            exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-            js_code = f"console.log('{exc_str}')"
-            window.eval(js_code)
+            log_err_and_print(e, window)
             raise Exception(str(e))
 
         if init["initializing"]:
@@ -731,9 +740,7 @@ async def main():
                         raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
-                    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-                    js_code = f"console.log('{exc_str}')"
-                    window.eval(js_code)
+                    log_err_and_print(e, window)
                     raise Exception(str(e))
             retrieved_state = None
             if init["local_debug"]:
@@ -977,7 +984,7 @@ async def main():
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
                                     promotion_square, promotion_required = \
-                                        handle_piece_move(client_game, selected_piece, row, col, valid_captures)
+                                        handle_piece_move(client_game, selected_piece, row, col)
                                     
                                     # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                     valid_moves, valid_captures, valid_specials = [], [], []
@@ -1060,7 +1067,7 @@ async def main():
                             ## Free moves or captures
                             if (row, col) in valid_moves:
                                 promotion_square, promotion_required = \
-                                    handle_piece_move(client_game, selected_piece, row, col, valid_captures)
+                                    handle_piece_move(client_game, selected_piece, row, col)
                                 
                                 # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                 valid_moves, valid_captures, valid_specials = [], [], []
@@ -1330,12 +1337,6 @@ async def main():
                 'selected_piece_image': selected_piece_image
             })
 
-            # TODO remove later
-            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 128))
-
-            game_window.blit(overlay, (0, 0))
-
         pygame.display.flip()
         await asyncio.sleep(0)
 
@@ -1384,6 +1385,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as e:
-        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-        js_code = f"console.log('{exc_str}')"
-        window.eval(js_code)
+        log_err_and_print(e, window)

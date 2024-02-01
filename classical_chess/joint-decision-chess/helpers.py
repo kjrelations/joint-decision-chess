@@ -202,6 +202,12 @@ def load_keys(file_path):
                 keys[key] = value
     return keys
 
+# Helper for logging errors
+def log_err_and_print(e, window):
+    exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+    js_code = f"console.log('{exc_str}')"
+    window.eval(js_code)
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
