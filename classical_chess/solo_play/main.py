@@ -250,18 +250,24 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                     draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
                     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
 
+            collided = False
             for button in promotion_buttons:
                 button.handle_event(event)
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
                         client_game.promote_to_piece(row, col, button.piece)
                         print_d("ALG_MOVES:", client_game.alg_moves, debug=debug_prints)
                         promotion_required = False
                         promoted = True
+                        collided = True
+
+            if event.type == pygame.MOUSEBUTTONDOWN and not collided:
+                    client_game.undo_move()
+                    promotion_required = False
 
         game_window.fill((0, 0, 0))
         
