@@ -1,5 +1,6 @@
 import pytest
 
+# Hook for printing the board
 def pytest_exception_interact(node, call, report):
     if report.failed:
         if "chess_board" in node.fixturenames:
