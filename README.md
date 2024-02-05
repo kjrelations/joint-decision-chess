@@ -5,9 +5,9 @@ Currently this is a deployed public site for playing classical chess. Multiplaye
 
 The project is available at https://decisionchess.com
 
-![home](.\images\home.PNG)
+![home](/images/home.PNG)
 
-![play](.\images\play.PNG)
+![play](/images/play.PNG)
 
 The goal was first to have a website running for classical chess first with all the necessary features for this simple version of the game. Then I will implement my personally designed chess variant. Many more features will be added that will be specific to my version such as customizing the specifics of the game and adding personally designed sub-variants. 
 
