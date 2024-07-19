@@ -548,6 +548,12 @@ async def main():
             web_game_metadata_dict = json.loads(web_game_metadata)
             move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
             client_game.step_to_move(move_index)
+            if client_game._move_index == -1:
+                pass
+            elif 'x' in client_game.alg_moves[client_game._move_index]:
+                handle_play(window, capture_sound)
+            else:
+                handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
 

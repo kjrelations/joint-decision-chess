@@ -59,89 +59,6 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-def handle_piece_move(game, selected_piece, row, col):
-    # Initialize Variables
-    promotion_square = None
-    promotion_required = False
-    # Need to be considering the selected piece for this section not an old piece
-    piece = game.board[selected_piece[0]][selected_piece[1]]
-    is_white = piece.isupper()
-
-    temp_board = [rank[:] for rank in game.board]  
-    temp_board[row][col] = temp_board[selected_piece[0]][selected_piece[1]]
-    temp_board[selected_piece[0]][selected_piece[1]] = ' '
-
-    # Move the piece if the king does not enter check
-    if not is_check(temp_board, is_white):
-        game.update_state(row, col, selected_piece)
-        if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
-            print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
-        
-        if "x" in game.alg_moves[-1]:
-            handle_play(window, capture_sound)
-        else:
-            handle_play(window, move_sound)
-        
-        selected_piece = None
-
-        checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
-        if checkmate:
-            print("CHECKMATE")
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
-        elif remaining_moves == 0:
-            print("STALEMATE")
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
-        elif game.threefold_check():
-            print("STALEMATE BY THREEFOLD REPETITION")
-            game.forced_end = "Stalemate by Threefold Repetition"
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
-
-    # Pawn Promotion
-    if game.board[row][col].lower() == 'p' and (row == 0 or row == 7):
-        promotion_required = True
-        promotion_square = (row, col)
-
-    return promotion_square, promotion_required
-
-def handle_piece_special_move(game, selected_piece, row, col):
-    # Need to be considering the selected piece for this section not an old piece
-    piece = game.board[selected_piece[0]][selected_piece[1]]
-    is_white = piece.isupper()
-
-    # Castling and Enpassant moves are already validated, we simply update state
-    game.update_state(row, col, selected_piece, special=True)
-    print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
-    if (row, col) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
-        handle_play(window, move_sound)
-    else:
-        handle_play(window, capture_sound)
-
-    checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
-    if checkmate:
-        print("CHECKMATE")
-        game.end_position = True
-        game.add_end_game_notation(checkmate)
-        return piece, is_white
-    elif remaining_moves == 0:
-        print("STALEMATE")
-        game.end_position = True
-        game.add_end_game_notation(checkmate)
-        return piece, is_white
-    elif game.threefold_check():
-        print("STALEMATE BY THREEFOLD REPETITION")
-        game.forced_end = "Stalemate by Threefold Repetition"
-        game.end_position = True
-        game.add_end_game_notation(checkmate)
-        return piece, is_white
-
-    return piece, is_white
-
 def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name, game_tab_id):
     command_name, client_action_name, client_executed_name, *remaining = status_names
     if len(status_names) == 3:
@@ -318,6 +235,12 @@ async def main():
             web_game_metadata_dict = json.loads(web_game_metadata)
             move_index = web_game_metadata_dict[game_id]["step"]["index"]
             client_game.step_to_move(move_index)
+            if client_game._move_index == -1:
+                pass
+            elif 'x' in client_game.alg_moves[client_game._move_index]:
+                handle_play(window, capture_sound)
+            else:
+                handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
 
