@@ -501,7 +501,7 @@ def initialize_game(init, game_id, node, drawing_settings):
     return client_game, game_tab_id
 
 async def waiting_screen(init, game_window, client_game, drawing_settings):
-    # Need to pump the event queque like below in order to move window
+    # Need to pump the event queue like below in order to move window
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             init["running"] = False
@@ -534,38 +534,6 @@ async def waiting_screen(init, game_window, client_game, drawing_settings):
         pygame.display.flip()
         drawing_settings["wait_screen_drawn"] = True
     await asyncio.sleep(0)
-
-def reset_request(request, init, node, client_state_actions):
-    if request == "draw":
-        request_name, accept_reset, deny_reset, request_received = \
-            "draw_request", "draw_accept_reset", "draw_deny_reset", "draw_offer_received"
-        request_sent, offer_action, offer_reset = "draw_offer_sent", "draw_offer", "draw_offer_reset"
-    elif request == "undo":
-        request_name, accept_reset, deny_reset, request_received = \
-            "undo_request", "undo_accept_reset", "undo_deny_reset", "undo_received"
-        request_sent, offer_action, offer_reset = "undo_sent", "undo", "undo_reset"
-    else:
-        return
-    
-    request_value = window.sessionStorage.getItem(request_name)
-    try:
-        request_value = json.loads(request_value)
-    except (json.JSONDecodeError, ValueError):
-        request_value = False
-    if not init["sent"] and request_value:
-        reset_data = {node.CMD: "reset"}
-        node.tx(reset_data)
-        window.sessionStorage.setItem("total_reset", "true")
-        client_state_actions[accept_reset] = True
-        client_state_actions[deny_reset] = True
-        client_state_actions[request_received] = False
-    if not init["sent"] and client_state_actions[request_sent]:
-        reset_data = {node.CMD: "reset"}
-        node.tx(reset_data)
-        window.sessionStorage.setItem("total_reset", "true")
-        client_state_actions[offer_action] = False
-        client_state_actions[offer_reset] = True
-        client_state_actions[request_sent] = False
 
 # Main loop
 async def main():
@@ -815,6 +783,12 @@ async def main():
                 web_game_metadata_dict = json.loads(web_game_metadata)
                 move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
                 client_game.step_to_move(move_index)
+                if client_game._move_index == -1:
+                    pass
+                elif 'x' in client_game.alg_moves[client_game._move_index]:
+                    handle_play(window, capture_sound)
+                else:
+                    handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
 
@@ -1260,7 +1234,7 @@ async def main():
                 send_game = client_game.to_json()
                 txdata.update({"game": send_game})
                 for potential_request in ["draw", "undo"]:
-                    reset_request(potential_request, init, node, client_state_actions)
+                    reset_request(potential_request, init, node, client_state_actions, window)
                 if not init["sent"]:
                     if not init["local_debug"]:
                         await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)

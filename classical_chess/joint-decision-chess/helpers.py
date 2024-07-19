@@ -208,6 +208,39 @@ def log_err_and_print(e, window):
     js_code = f"console.log('{exc_str}')"
     window.eval(js_code)
 
+# Helper for sending a reset signal to the node and web values
+def reset_request(request, init, node, client_state_actions, window):
+    if request == "draw":
+        request_name, accept_reset, deny_reset, request_received = \
+            "draw_request", "draw_accept_reset", "draw_deny_reset", "draw_offer_received"
+        request_sent, offer_action, offer_reset = "draw_offer_sent", "draw_offer", "draw_offer_reset"
+    elif request == "undo":
+        request_name, accept_reset, deny_reset, request_received = \
+            "undo_request", "undo_accept_reset", "undo_deny_reset", "undo_received"
+        request_sent, offer_action, offer_reset = "undo_sent", "undo", "undo_reset"
+    else:
+        return
+    
+    request_value = window.sessionStorage.getItem(request_name)
+    try:
+        request_value = json.loads(request_value)
+    except (json.JSONDecodeError, ValueError):
+        request_value = False
+    if not init["sent"] and request_value:
+        reset_data = {node.CMD: "reset"}
+        node.tx(reset_data)
+        window.sessionStorage.setItem("total_reset", "true")
+        client_state_actions[accept_reset] = True
+        client_state_actions[deny_reset] = True
+        client_state_actions[request_received] = False
+    if not init["sent"] and client_state_actions[request_sent]:
+        reset_data = {node.CMD: "reset"}
+        node.tx(reset_data)
+        window.sessionStorage.setItem("total_reset", "true")
+        client_state_actions[offer_action] = False
+        client_state_actions[offer_reset] = True
+        client_state_actions[request_sent] = False
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
