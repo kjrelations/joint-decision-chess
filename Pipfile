@@ -20,7 +20,7 @@ channels = {extras = ["daphne"] }
 requests = "*"
 pyjwt = "*"
 channels-redis = "*"
-twisted = {extras = ["http2", "tls"], version = "*"}
+twisted = "*"
 django-debug-toolbar = "*"
 django-livereload-server = "*"
 
