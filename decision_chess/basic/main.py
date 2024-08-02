@@ -50,7 +50,7 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-def handle_piece_move(game, selected_piece, row, col):
+def handle_piece_move(game, selected_piece, row, col, update_positions=False, allow_promote=True):
     # Initialize Variables
     promotion_square = None
     promotion_required = False
@@ -65,8 +65,8 @@ def handle_piece_move(game, selected_piece, row, col):
     # Move the piece if the king does not enter check
     if not (is_check(temp_board, is_white) and \
             not (piece.lower() == 'k' and temp_board[row][col].isupper() == is_white)): # redundant now? Not for premoves
-        update, illegal = game.update_state(row, col, selected_piece)
-        if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
+        update, illegal = game.update_state(row, col, selected_piece, update_positions=update_positions)
+        if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)) and update:
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
         if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
@@ -101,20 +101,21 @@ def handle_piece_move(game, selected_piece, row, col):
                 return None, promotion_required
 
     # Pawn Promotion
-    if piece.lower() == 'p' and (row == 0 or row == 7):
+    if piece.lower() == 'p' and (row == 0 or row == 7) and allow_promote:
         promotion_required = True
         promotion_square = (row, col)
 
     return promotion_square, promotion_required
 
-def handle_piece_special_move(game, selected_piece, row, col):
+def handle_piece_special_move(game, selected_piece, row, col, update_positions=False):
     # Need to be considering the selected piece for this section not an old piece
     piece = game.board[selected_piece[0]][selected_piece[1]]
     is_white = piece.isupper()
 
     # Castling and Enpassant moves are already validated, we simply update state
-    update, illegal = game.update_state(row, col, selected_piece, special=True)
-    print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
+    update, illegal = game.update_state(row, col, selected_piece, special=True, update_positions=update_positions)
+    if update:
+        print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
     if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
         capture_sound.play()
     elif update:
@@ -189,8 +190,9 @@ def promotion_state(
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
-                        client_game.promote_to_piece(row, col, button.piece)
-                        print_d("ALG_MOVES:", client_game.alg_moves, debug=debug_prints)
+                        update = client_game.promote_to_piece(row, col, button.piece)
+                        if update:
+                            print_d("ALG_MOVES:", client_game.alg_moves, debug=debug_prints)
                         promotion_required = False
                         promoted = True
                         collided = True
@@ -354,19 +356,20 @@ def main():
                         piece = client_game.board[row][col]
                         is_white = piece.isupper()
                         
-                        if not selected_piece:
+                        if client_game.playing_stage and not selected_piece:
                             if piece != ' ':
                                 # Update states with new piece selection
                                 first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
                                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                                 
-                        else:
+                        elif client_game.playing_stage:
                             # Allow moves only on current turn, if up to date, and synchronized
                             if not client_game.white_played or not client_game.black_played and client_game._latest and client_game._sync:
                                 ## Free moves or captures
                                 if (row, col) in valid_moves:
+                                    update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                     promotion_square, promotion_required = \
-                                        handle_piece_move(client_game, selected_piece, row, col)
+                                        handle_piece_move(client_game, selected_piece, row, col, update_positions=update_positions)
                                     
                                     # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                     valid_moves, valid_captures, valid_specials = [], [], []
@@ -378,7 +381,8 @@ def main():
 
                                 ## Specials
                                 elif (row, col) in valid_specials:
-                                    piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col)
+                                    update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
+                                    piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, update_positions=update_positions)
                                     
                                     # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                     valid_moves, valid_captures, valid_specials = [], [], []
@@ -433,6 +437,8 @@ def main():
                         left_mouse_button_down = False
                         hovered_square = None
                         selected_piece_image = None
+                        if not client_game.playing_stage:
+                            continue
                         # For the second time a mouseup occurs on the same square it deselects it
                         # This can be an arbitrary number of mousedowns later
                         if not first_intent and (row, col) == selected_piece:
@@ -447,8 +453,9 @@ def main():
                         if not client_game.white_played or not client_game.black_played and client_game._latest and client_game._sync:
                             ## Free moves or captures
                             if (row, col) in valid_moves:
+                                update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                 promotion_square, promotion_required = \
-                                    handle_piece_move(client_game, selected_piece, row, col)
+                                    handle_piece_move(client_game, selected_piece, row, col, update_positions=update_positions)
                                 
                                 # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                 valid_moves, valid_captures, valid_specials = [], [], []
@@ -460,7 +467,8 @@ def main():
 
                             ## Specials
                             elif (row, col) in valid_specials:
-                                piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col)
+                                update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
+                                piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, update_positions=update_positions)
                                 
                                 # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                 valid_moves, valid_captures, valid_specials = [], [], []
@@ -507,47 +515,49 @@ def main():
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
-        drawing_settings['new_state'] = {
-            'board': client_game.board,
-            'active_moves': [client_game.white_active_move, client_game.black_active_move]
-            }
-        if drawing_settings['new_state'] != drawing_settings['state']:
-            set_check_or_checkmate_settings(drawing_settings, client_game)
+                    elif not client_game.playing_stage and event.key == pygame.K_l:
+                        if client_game._starting_player:
+                            client_game.white_lock = True
+                        else:
+                            client_game.black_lock = True
+                    
+                    elif not client_game.playing_stage and event.key == pygame.K_u:
+                        client_game.white_active_move = None
+                        client_game.black_active_move = None
+                        client_game.white_played = False
+                        client_game.black_played = False
+                        client_game.reveal_stage = False
+                        client_game.decision_stage = False
+                        client_game.playing_stage = True
+                        right_clicked_squares = []
+                        drawn_arrows = []
 
-        game_window.fill((0, 0, 0))
+        if client_game._starting_player and client_game.white_lock or \
+           not client_game._starting_player and client_game.black_lock:
+            client_game.reveal_stage = False
+            client_game.white_lock = False
+            client_game.black_lock = False
+            right_clicked_squares = []
+            drawn_arrows = []
+            if client_game.decision_stage_enabled and not client_game.decision_stage:
+                client_game.decision_stage = True
+            elif client_game.decision_stage:
+                client_game.decision_stage = False
 
-        white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
-        draw_board_params = {
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'drawing_settings': drawing_settings,
-            'selected_piece': selected_piece,
-            'white_current_position': client_game.white_current_position,
-            'white_previous_position': client_game.white_previous_position,
-            'black_current_position': client_game.black_current_position,
-            'black_previous_position': client_game.black_previous_position,
-            'right_clicked_squares': right_clicked_squares,
-            'drawn_arrows': drawn_arrows,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': hovered_square,
-            'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
-            'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
-            'white_selected_piece_image': white_selected_piece_image,
-            'black_selected_piece_image': black_selected_piece_image,
-            'selected_piece_image': selected_piece_image
-        }
-
-        draw_board(draw_board_params)
+        if not client_game.decision_stage and not client_game.reveal_stage and \
+           client_game.white_active_move is not None and client_game.black_active_move is not None:
+            piece_row, piece_col = client_game.white_active_move[0]
+            row, col = client_game.white_active_move[1]
+            if client_game.white_active_move[-1] == '':
+                _, _ = handle_piece_move(client_game, (piece_row, piece_col), row, col, update_positions=True, allow_promote=False)
+            else:
+                _, _ = handle_piece_special_move(client_game, (piece_row, piece_col), row, col)
 
         if promotion_required:
             # Lock the game state (disable other input)
             
             # Display an overlay or popup with promotion options
-            # We cannot simply reuse the above declaration as it can be mutated by draw_board
+            white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
             draw_board_params = {
                 'window': game_window,
                 'theme': current_theme,
@@ -590,6 +600,10 @@ def main():
                 valid_moves, valid_captures, valid_specials = [], [], []
                 right_clicked_squares = []
                 drawn_arrows = []
+            else:
+                client_game.playing_stage = True
+                client_game.reveal_stage = False
+                client_game.decision_stage = False
 
             set_check_or_checkmate_settings(drawing_settings, client_game)
 
@@ -646,6 +660,42 @@ def main():
                     client_game.forced_end = "Stalemate by Threefold Repetition"
                     client_game.end_position = True
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+
+        drawing_settings['new_state'] = {
+            'board': client_game.board,
+            'active_moves': [client_game.white_active_move, client_game.black_active_move]
+            }
+        if drawing_settings['new_state'] != drawing_settings['state']:
+            set_check_or_checkmate_settings(drawing_settings, client_game)
+
+        game_window.fill((0, 0, 0))
+
+        white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
+        draw_board_params = {
+            'window': game_window,
+            'theme': current_theme,
+            'board': client_game.board,
+            'drawing_settings': drawing_settings,
+            'selected_piece': selected_piece,
+            'white_current_position': client_game.white_current_position,
+            'white_previous_position': client_game.white_previous_position,
+            'black_current_position': client_game.black_current_position,
+            'black_previous_position': client_game.black_previous_position,
+            'right_clicked_squares': right_clicked_squares,
+            'drawn_arrows': drawn_arrows,
+            'valid_moves': valid_moves,
+            'valid_captures': valid_captures,
+            'valid_specials': valid_specials,
+            'pieces': pieces,
+            'hovered_square': hovered_square,
+            'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
+            'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
+            'white_selected_piece_image': white_selected_piece_image,
+            'black_selected_piece_image': black_selected_piece_image,
+            'selected_piece_image': selected_piece_image
+        }
+
+        draw_board(draw_board_params)
 
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights

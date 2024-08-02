@@ -10,6 +10,11 @@ class Game:
                 raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
             self.white_played = False
             self.black_played = False
+            self.reveal_stage_enabled = True
+            self.decision_stage_enabled = True
+            self.playing_stage = True
+            self.reveal_stage = False
+            self.decision_stage = False
             self.board = board
             self.moves = []
             self.alg_moves = []
@@ -38,6 +43,8 @@ class Game:
             self.max_states = 500 
             self.end_position = False
             self.forced_end = ""
+            self.white_lock = False
+            self.black_lock = False
             self._starting_player = starting_player
             self._move_undone = False
             self._sync = True
@@ -51,6 +58,11 @@ class Game:
         else:
             self.white_played = custom_params["white_played"]
             self.black_played = custom_params["black_played"]
+            self.reveal_stage_enabled = custom_params["reveal_stage_enabled"]
+            self.decision_stage_enabled = custom_params["decision_stage_enabled"]
+            self.playing_stage = custom_params["playing_stage"]
+            self.reveal_stage = custom_params["reveal_stage"]
+            self.decision_stage = custom_params["decision_stage"]
             self.board = custom_params["board"]
             self.moves = custom_params["moves"]
             self.alg_moves = custom_params["alg_moves"]
@@ -78,6 +90,8 @@ class Game:
             self.max_states = custom_params["max_states"]
             self.end_position = custom_params["end_position"]
             self.forced_end = custom_params["forced_end"]
+            self.white_lock = custom_params["white_lock"]
+            self.black_lock = custom_params["black_lock"]
             self._starting_player = custom_params["_starting_player"]
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
@@ -112,6 +126,11 @@ class Game:
             self.black_active_move = new_game.black_active_move
             self._promotion_white = new_game._promotion_white
             self._promotion_black = new_game._promotion_black
+        self.reveal_stage_enabled = new_game.reveal_stage_enabled
+        self.decision_stage_enabled = new_game.decision_stage_enabled
+        self.playing_stage = new_game.playing_stage
+        self.reveal_stage = new_game.reveal_stage
+        self.decision_stage = new_game.decision_stage
         self.white_current_position = new_game.white_current_position
         self.white_previous_position = new_game.white_previous_position
         self.black_current_position = new_game.black_current_position
@@ -124,6 +143,8 @@ class Game:
                     self.board_states.update({state: update})
         self.end_position = new_game.end_position
         self.forced_end = new_game.forced_end
+        self.white_lock = new_game.white_lock
+        self.black_lock = new_game.black_lock
         self._move_undone = False
         self._sync = True
         self._move_index = new_game._move_index
@@ -160,7 +181,7 @@ class Game:
                     valid_specials.remove(move)
         return valid_moves, valid_captures, valid_specials
 
-    def update_state(self, new_row, new_col, selected_piece, special=False):
+    def update_state(self, new_row, new_col, selected_piece, special=False, update_positions=True):
         # Jump to current state before applying moves
         if self._move_index < len(self.moves) - 1: # should be same as not _latest
             self.step_to_move(len(self.moves) - 1)
@@ -333,8 +354,11 @@ class Game:
             enpassant_white,
             enpassant_black,
             castle_white,
-            castle_black
+            castle_black,
+            update_positions
             ):
+            if not update_positions:
+                return board
             board[white_initial_pos[0]][white_initial_pos[1]] = ' '
             board[black_initial_pos[0]][black_initial_pos[1]] = ' '
             if not white_captured:
@@ -364,7 +388,8 @@ class Game:
             enpassant_white,
             enpassant_black,
             castle_white,
-            castle_black
+            castle_black,
+            update_positions
         )
         
         # Need to calculate alg_moves before we update board to settle disambiguities
@@ -387,101 +412,112 @@ class Game:
             enpassant_white,
             enpassant_black,
             castle_white,
-            castle_black
+            castle_black,
+            update_positions
         )
 
-        same_position = (new_row_white, new_col_white) == (new_row_black, new_col_black)
-        self.white_current_position = (new_row_white, new_col_white) if not white_captured or same_position else None
-        self.white_previous_position = (white_initial_pos[0], white_initial_pos[1])
-        self.black_current_position = (new_row_black, new_col_black) if not black_captured or same_position else None
-        self.black_previous_position = (black_initial_pos[0], black_initial_pos[1])
+        if self.reveal_stage_enabled and self.playing_stage:
+            self.playing_stage = False
+            self.reveal_stage = True
+        elif self.decision_stage_enabled and self.playing_stage:
+            self.playing_stage = False
+            self.decision_stage = True
+        else:
+            self.playing_stage = True
 
-        white_move = output_move(white_piece, white_initial_pos, new_row_white, new_col_white, potential_white_capture, self.white_active_move[2], self.white_active_move[-1])
-        black_move = output_move(black_piece, black_initial_pos, new_row_black, new_col_black, potential_black_capture, self.black_active_move[2], self.black_active_move[-1])
-        # This will handle out of sychronized promotion states in the synchronize function
-        if self._promotion_white is not None:
-            string_list = list(white_move[1])
-            string_list[0] = self._promotion_white
-            white_move[1] = ''.join(string_list)
-            white_algebraic_move += self._promotion_white.upper()
-        if self._promotion_black is not None:
-            string_list = list(black_move[1])
-            string_list[0] = self._promotion_black
-            black_move[1] = ''.join(string_list)
-            black_algebraic_move += self._promotion_black.upper()
-        self.moves.append([white_move, black_move])
-        self.alg_moves.append([white_algebraic_move, black_algebraic_move])
-        self._move_index += 1
-        self.white_played = False
-        self.black_played = False
-        # Need the check for is None for synchronization
-        if piece.lower() == 'p' and new_row in [0, 7] \
-           and (self._promotion_white is None or self._promotion_black is None):
-            self._set_last_move = True
-        self._promotion_white = None
-        self._promotion_black = None
-        self._temp_actives = None
+        if update_positions:
+            same_position = (new_row_white, new_col_white) == (new_row_black, new_col_black)
+            self.white_current_position = (new_row_white, new_col_white) if not white_captured or same_position else None
+            self.white_previous_position = (white_initial_pos[0], white_initial_pos[1])
+            self.black_current_position = (new_row_black, new_col_black) if not black_captured or same_position else None
+            self.black_previous_position = (black_initial_pos[0], black_initial_pos[1])
 
-        if white_piece == 'K' and white_initial_pos == (7, 4) and not self.castle_attributes['white_king_moved'][0]:
-            self.castle_attributes['white_king_moved'] = [True, self._move_index]
+            white_move = output_move(white_piece, white_initial_pos, new_row_white, new_col_white, potential_white_capture, self.white_active_move[2], self.white_active_move[-1])
+            black_move = output_move(black_piece, black_initial_pos, new_row_black, new_col_black, potential_black_capture, self.black_active_move[2], self.black_active_move[-1])
+            # This will handle out of sychronized promotion states in the synchronize function
+            if self._promotion_white is not None:
+                string_list = list(white_move[1])
+                string_list[0] = self._promotion_white
+                white_move[1] = ''.join(string_list)
+                white_algebraic_move += self._promotion_white.upper()
+            if self._promotion_black is not None:
+                string_list = list(black_move[1])
+                string_list[0] = self._promotion_black
+                black_move[1] = ''.join(string_list)
+                black_algebraic_move += self._promotion_black.upper()
+            self.moves.append([white_move, black_move])
+            self.alg_moves.append([white_algebraic_move, black_algebraic_move])
+            self._move_index += 1
+            self.white_played = False
+            self.black_played = False
+            # Need the check for is None for synchronization
+            if piece.lower() == 'p' and new_row in [0, 7] \
+            and (self._promotion_white is None or self._promotion_black is None):
+                self._set_last_move = True
+            self._promotion_white = None
+            self._promotion_black = None
+            self._temp_actives = None
 
-            if self.white_active_move[-1] == 'castle' and (new_row_white, new_col_white) == (7, 2):
+            if white_piece == 'K' and white_initial_pos == (7, 4) and not self.castle_attributes['white_king_moved'][0]:
+                self.castle_attributes['white_king_moved'] = [True, self._move_index]
+
+                if self.white_active_move[-1] == 'castle' and (new_row_white, new_col_white) == (7, 2):
+                    self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
+                elif self.white_active_move[-1] == 'castle' and (new_row_white, new_col_white) == (7, 6):
+                    self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
+            
+            elif white_piece == 'R' and white_initial_pos == (7, 0) and not self.castle_attributes['left_white_rook_moved'][0]:
                 self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
-            elif self.white_active_move[-1] == 'castle' and (new_row_white, new_col_white) == (7, 6):
+            elif white_piece == 'R' and white_initial_pos == (7, 7) and not self.castle_attributes['right_white_rook_moved'][0]:
                 self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
-        
-        elif white_piece == 'R' and white_initial_pos == (7, 0) and not self.castle_attributes['left_white_rook_moved'][0]:
-            self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
-        elif white_piece == 'R' and white_initial_pos == (7, 7) and not self.castle_attributes['right_white_rook_moved'][0]:
-            self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
-        
-        if black_piece == 'k' and black_initial_pos == (0, 4) and not self.castle_attributes['black_king_moved'][0]:
-            self.castle_attributes['black_king_moved'] = [True, self._move_index]
+            
+            if black_piece == 'k' and black_initial_pos == (0, 4) and not self.castle_attributes['black_king_moved'][0]:
+                self.castle_attributes['black_king_moved'] = [True, self._move_index]
 
-            if self.black_active_move[-1] == 'castle' and (new_row_black, new_col_black) == (0, 2):
+                if self.black_active_move[-1] == 'castle' and (new_row_black, new_col_black) == (0, 2):
+                    self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
+                elif self.black_active_move[-1] == 'castle' and (new_row_black, new_col_black) == (0, 6):
+                    self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
+            
+            elif black_piece == 'r' and black_initial_pos == (0, 0) and not self.castle_attributes['left_black_rook_moved'][0]:
                 self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
-            elif self.black_active_move[-1] == 'castle' and (new_row_black, new_col_black) == (0, 6):
+            elif black_piece == 'r' and black_initial_pos == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
                 self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
-        
-        elif black_piece == 'r' and black_initial_pos == (0, 0) and not self.castle_attributes['left_black_rook_moved'][0]:
-            self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
-        elif black_piece == 'r' and black_initial_pos == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
-            self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
-        
-        self.white_active_move = None
-        self.black_active_move = None
+            
+            self.white_active_move = None
+            self.black_active_move = None
 
-        # Update state once standard moves are played, not during a pawn promotion
-        if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
-            self._move_undone = False
-            self._sync = True
-            
-            # Update dictionary of board states
-            current_special_moves = []
-            for row in range(8):
-                for col in range(8):
-                    other_piece = self.board[row][col]
-                    if other_piece != ' ':
-                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
-                        current_special_moves.extend(specials)
-            _current_board_state = tuple(tuple(r) for r in self.board)
-            special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
-            _current_board_state = _current_board_state + special_tuple
-            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
-            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
-            
-            if _current_board_state in self.board_states:
-                self.board_states[_current_board_state] += 1
-                self._state_update[_current_board_state] = self.board_states[_current_board_state]
-            else:
-                self.board_states[_current_board_state] = 1
-                self._state_update[_current_board_state] = self.board_states[_current_board_state]
-                if len(self.board_states) > self.max_states:
-                    # Find and remove the least accessed board state, this also happens to be the oldest 
-                    # least accessed state based on Python 3.7+ storing dictionary items by insertion order
-                    least_accessed = min(self.board_states, key=self.board_states.get)
-                    del self.board_states[least_accessed]
-        return True, False
+            # Update state once standard moves are played, not during a pawn promotion
+            if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
+                self._move_undone = False
+                self._sync = True
+                
+                # Update dictionary of board states
+                current_special_moves = []
+                for row in range(8):
+                    for col in range(8):
+                        other_piece = self.board[row][col]
+                        if other_piece != ' ':
+                            _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                            current_special_moves.extend(specials)
+                _current_board_state = tuple(tuple(r) for r in self.board)
+                special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+                _current_board_state = _current_board_state + special_tuple
+                flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+                _current_board_state = _current_board_state + (tuple(flat_castle_values),)
+                
+                if _current_board_state in self.board_states:
+                    self.board_states[_current_board_state] += 1
+                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                else:
+                    self.board_states[_current_board_state] = 1
+                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                    if len(self.board_states) > self.max_states:
+                        # Find and remove the least accessed board state, this also happens to be the oldest 
+                        # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                        least_accessed = min(self.board_states, key=self.board_states.get)
+                        del self.board_states[least_accessed]
+        return update_positions, False
 
     def update_blocking_positions(self, pieces_info):
         first = pieces_info['first']
@@ -783,6 +819,7 @@ class Game:
                 # least accessed state based on Python 3.7+ storing dictionary items by insertion order
                 least_accessed = min(self.board_states, key=self.board_states.get)
                 del self.board_states[least_accessed]
+        return self._set_last_move
 
     def threefold_check(self):
         for count in self.board_states.values():
@@ -1122,6 +1159,11 @@ class GameEncoder(json.JSONEncoder):
             data = {
                 "white_played": obj.white_played,
                 "black_played": obj.black_played,
+                "reveal_stage_enabled": obj.reveal_stage_enabled,
+                "decision_stage_enabled": obj.decision_stage_enabled,
+                "playing_stage": obj.playing_stage,
+                "reveal_stage": obj.reveal_stage,
+                "decision_stage": obj.decision_stage,
                 "board": obj.board,
                 "moves": obj.moves,
                 "alg_moves": obj.alg_moves,
@@ -1133,6 +1175,8 @@ class GameEncoder(json.JSONEncoder):
                 "max_states": obj.max_states,
                 "end_position": obj.end_position,
                 "forced_end": obj.forced_end,
+                "white_lock": obj.white_lock,
+                "black_lock": obj.black_lock,
                 "_debug": obj._debug,
                 "_starting_player": obj._starting_player,
                 "_move_undone": obj._move_undone,
