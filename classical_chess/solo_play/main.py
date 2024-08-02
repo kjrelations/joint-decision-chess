@@ -85,26 +85,27 @@ def handle_piece_move(game, selected_piece, row, col):
         
         selected_piece = None
 
-        checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
-        if checkmate:
-            print("CHECKMATE")
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
-        elif remaining_moves == 0:
-            print("STALEMATE")
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
-        elif game.threefold_check():
-            print("STALEMATE BY THREEFOLD REPETITION")
-            game.forced_end = "Stalemate by Threefold Repetition"
-            game.end_position = True
-            game.add_end_game_notation(checkmate)
-            return None, promotion_required
+        if not (piece.lower() == 'p' and (row == 0 or row == 7)):
+            checkmate, remaining_moves = is_checkmate_or_stalemate(game.board, not is_white, game.moves)
+            if checkmate:
+                print("CHECKMATE")
+                game.end_position = True
+                game.add_end_game_notation(checkmate)
+                return None, promotion_required
+            elif remaining_moves == 0:
+                print("STALEMATE")
+                game.end_position = True
+                game.add_end_game_notation(checkmate)
+                return None, promotion_required
+            elif game.threefold_check():
+                print("STALEMATE BY THREEFOLD REPETITION")
+                game.forced_end = "Stalemate by Threefold Repetition"
+                game.end_position = True
+                game.add_end_game_notation(checkmate)
+                return None, promotion_required
 
     # Pawn Promotion
-    if game.board[row][col].lower() == 'p' and (row == 0 or row == 7):
+    if piece.lower() == 'p' and (row == 0 or row == 7):
         promotion_required = True
         promotion_square = (row, col)
 
