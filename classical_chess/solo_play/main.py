@@ -916,50 +916,6 @@ async def main():
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
         
-        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
-
-        web_game_metadata_dict = json.loads(web_game_metadata)
-        
-        # Undo move, resign, draw offer, cycle theme, flip command handle
-        for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
-
-        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
-            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-
-        net_pieces = net_board(client_game.board)
-
-        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
-            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            # Maybe a simple range list of the index or move number
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-        
-        # Maybe I just set this in a better/DRY way?
-        # The following just sets web information so that we know the playing player side, it might be useless? Can't remember why I implemented this
-        if client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'white':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'white'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-        elif not client_game._starting_player and web_game_metadata_dict[game_tab_id]['player_color'] != 'black':
-            web_game_metadata_dict[game_tab_id]['player_color'] = 'black'
-
-            web_game_metadata = json.dumps(web_game_metadata_dict)
-            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
             right_clicked_squares = []
@@ -1010,7 +966,7 @@ async def main():
                 web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
                 web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
                 web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-                web_game_metadata_dict[game_tab_id]['comp_moves'] = client_game.moves
+                web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
                 web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
                 web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
 
@@ -1018,6 +974,46 @@ async def main():
                 window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
             init["final_updates"] = True
+        
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+
+        web_game_metadata_dict = json.loads(web_game_metadata)
+        
+        # Undo move, resign, draw offer, cycle theme, flip command handle
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+
+        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
+
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+
+        net_pieces = net_board(client_game.board)
+
+        metadata_update = False
+        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
+            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+
+            metadata_update = True
+
+        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
+            # Maybe a simple range list of the index or move number
+            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
+
+            metadata_update = True
+        
+        starting_player_color = 'white' if client_game._starting_player else 'black'
+        if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
+            web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
+
+            metadata_update = True
+
+        if metadata_update:
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()

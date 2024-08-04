@@ -168,6 +168,12 @@
     text-align: left;
 }
 
+.move-child {
+    transition: background-color 0.3s ease;
+    color: var(--move-button-text);
+    text-align: left;
+}
+
 .move-button:focus {
     outline: none;
 }

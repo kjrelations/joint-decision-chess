@@ -128,14 +128,14 @@ def translate_FEN_into_board(FEN):
 def load_historic_game(json_game):
     starting_player = True
     # Would depend on starting for games that start at a different position
-    whites_turn = len(json_game["comp_moves"]) % 2 == 0 # TODO change here
+    whites_turn = len(json_game["comp_moves"]) % 2 == 0
 
     move = json_game["comp_moves"][-1]
     prev, curr = list(move[0]), list(move[1])
     prev_row, prev_col = int(prev[1]), int(prev[2])
     curr_row, curr_col = int(curr[1]), int(curr[2])
     previous_position = (prev_row, prev_col)
-    current_position = (curr_row, curr_col)  # TODO change here
+    current_position = (curr_row, curr_col)
 
     _castle_attributes = {
         'white_king_moved' : [False, None],
@@ -171,7 +171,7 @@ def load_historic_game(json_game):
         "moves": json_game["comp_moves"],
         "alg_moves": json_game["alg_moves"],
         "castle_attributes": _castle_attributes,
-        "current_position": current_position, # TODO change here
+        "current_position": current_position,
         "previous_position": previous_position,
         "board_states": {},
         "max_states": 500,
@@ -242,23 +242,6 @@ def reset_request(request, init, node, client_state_actions, window):
         client_state_actions[offer_reset] = True
         client_state_actions[request_sent] = False
 
-# Helper to flatten copmutational moves
-def flattened_comp_moves(moves):
-    moves_list = []
-    for move in moves:
-        white_move, black_move = move
-        white_move_str_1, white_move_str_3 = ','.join(white_move[:2]), ','.join(white_move[3:])
-        black_move_str_1, black_move_str_3 = ','.join(black_move[:2]), ','.join(black_move[3:])
-        white_move_str_2 = white_move[2]
-        black_move_str_2 = black_move[2]
-        if isinstance(white_move_str_2, list):
-            white_move_str_2 = '[' + ','.join(white_move_str_2) + ']'
-        if isinstance(black_move_str_2, list):
-            black_move_str_2 = '[' + ','.join(black_move_str_2) + ']'
-        move_str = ','.join([white_move_str_1, white_move_str_2, white_move_str_3, black_move_str_1, black_move_str_2, black_move_str_3])
-        moves_list.append(move_str)
-    return moves_list
-
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
@@ -281,11 +264,12 @@ def pawn_moves(board, row, col, is_white):
         return moves, captures
     
     # Loop over neighboring columns for captures
+    allied_king = 'K' if is_white else 'k'
     for c in [-1, 1]:
         new_col = col + c
         if 0 <= new_col <= 7:
             piece = board[row + forwards][new_col]
-            if piece != ' ' and piece.lower() != 'k': # Can guard own pieces; no capturing kings
+            if piece != ' ' and piece != allied_king: # Can guard own pieces
                 moves.append((row + forwards, new_col))
                 captures.append((row + forwards, new_col))
     
@@ -311,16 +295,17 @@ def pawn_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a rook
-def rook_moves(board, row, col):
+def rook_moves(board, row, col, is_white):
     moves = []
     captures = []
+    allied_king = 'K' if is_white else 'k'
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
         if board[row][i] == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].lower() != 'k':
+            if board[row][i] != allied_king:
                 moves.append((row, i))
                 captures.append((row, i))
             break
@@ -329,7 +314,7 @@ def rook_moves(board, row, col):
         if board[row][i] == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].lower() != 'k':
+            if board[row][i] != allied_king:
                 moves.append((row, i))
                 captures.append((row, i))
             break
@@ -339,7 +324,7 @@ def rook_moves(board, row, col):
         if board[i][col] == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].lower() != 'k':
+            if board[i][col] != allied_king:
                 moves.append((i, col))
                 captures.append((i, col))
             break
@@ -348,7 +333,7 @@ def rook_moves(board, row, col):
         if board[i][col] == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].lower() != 'k':
+            if board[i][col] != allied_king:
                 moves.append((i, col))
                 captures.append((i, col))
             break
@@ -396,9 +381,10 @@ def rook_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a knight
-def knight_moves(board, row, col):
+def knight_moves(board, row, col, is_white):
     moves = []
     captures = []
+    allied_king = 'K' if is_white else 'k'
 
     knight_moves = [(row - 2, col - 1), (row - 2, col + 1), (row - 1, col - 2), (row - 1, col + 2),
                     (row + 1, col - 2), (row + 1, col + 2), (row + 2, col - 1), (row + 2, col + 1)]
@@ -406,8 +392,8 @@ def knight_moves(board, row, col):
     # Remove moves that are out of bounds
     valid_knight_moves = [(move[0], move[1]) for move in knight_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
 
-    # Cannot superimpose with own king or capture enemy king
-    valid_knight_moves = [(move[0], move[1]) for move in valid_knight_moves if board[move[0]][move[1]].lower() != 'k']
+    # Cannot superimpose with own king
+    valid_knight_moves = [(move[0], move[1]) for move in valid_knight_moves if board[move[0]][move[1]] != allied_king]
 
     # Valid captures
     captures = [move for move in valid_knight_moves if board[move[0]][move[1]] != " "]
@@ -431,10 +417,11 @@ def knight_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a bishop
-def bishop_moves(board, row, col):   ### TODO remove is_whites now
+def bishop_moves(board, row, col, is_white):
     moves = []
     captures = []
     directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
+    allied_king = 'K' if is_white else 'k'
 
     for dr, dc in directions:
         for i in range(1, 8):
@@ -443,7 +430,7 @@ def bishop_moves(board, row, col):   ### TODO remove is_whites now
                 if board[new_row][new_col] == ' ':
                     moves.append((new_row, new_col))
                 else:
-                    if board[new_row][new_col].lower() != 'k':
+                    if board[new_row][new_col] != allied_king:
                         moves.append((new_row, new_col))
                         captures.append((new_row, new_col))
                     break
@@ -473,17 +460,17 @@ def bishop_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a queen
-def queen_moves(board, row, col):
+def queen_moves(board, row, col, is_white):
     moves = []
     captures = []
 
     # Bishop-like moves
-    b_moves, b_captures = bishop_moves(board, row, col)
+    b_moves, b_captures = bishop_moves(board, row, col, is_white)
     moves.extend(b_moves)
     captures.extend(b_captures)
 
     # Rook-like moves
-    r_moves, r_captures = rook_moves(board, row, col)
+    r_moves, r_captures = rook_moves(board, row, col, is_white)
     moves.extend(r_moves)
     captures.extend(r_captures)
 
@@ -502,7 +489,7 @@ def queen_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a king
-def king_moves(board, row, col):
+def king_moves(board, row, col, is_white):
     moves = []
     captures = []
 
@@ -559,27 +546,27 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             captures.extend(p_captures)
 
         elif piece_type == 'r':
-            r_moves, r_captures = rook_moves(board, row, col)
+            r_moves, r_captures = rook_moves(board, row, col, is_white)
             moves.extend(r_moves)
             captures.extend(r_captures)
 
         elif piece_type == 'n':
-            n_moves, n_captures = knight_moves(board, row, col)
+            n_moves, n_captures = knight_moves(board, row, col, is_white)
             moves.extend(n_moves)
             captures.extend(n_captures)
 
         elif piece_type == 'b':
-            b_moves, b_captures = bishop_moves(board, row, col)
+            b_moves, b_captures = bishop_moves(board, row, col, is_white)
             moves.extend(b_moves)
             captures.extend(b_captures)
 
         elif piece_type == 'q':
-            q_moves, q_captures = queen_moves(board, row, col)
+            q_moves, q_captures = queen_moves(board, row, col, is_white)
             moves.extend(q_moves)
             captures.extend(q_captures)
 
         elif piece_type == 'k':
-            k_moves, k_captures = king_moves(board, row, col)
+            k_moves, k_captures = king_moves(board, row, col, is_white)
             moves.extend(k_moves)
             captures.extend(k_captures)
         
@@ -735,7 +722,8 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                     # Try each move and see if it removes the check
                     # Before making the move, create a copy of the board where the piece has moved
                     old_position = board[move[0]][move[1]]
-                    if old_position != ' ' and old_position.isupper() == is_color:
+                    new_piece = temp_board[move[0]][move[1]]
+                    if new_piece != ' ' and new_piece.isupper() == is_color:
                         continue
                     temp_board[move[0]][move[1]] = temp_board[row][col]
                     temp_board[row][col] = ' '
@@ -1064,16 +1052,7 @@ def reverse_chessboard(board):
 # Helper function for reversing coordinates of input parameters
 def reverse_coordinates(params):
     params['board'] = reverse_chessboard(params['board'])
-    for key in [
-        'selected_piece', 
-        'white_active_position', 
-        'black_active_position', 
-        'white_current_position', 
-        'white_previous_position', 
-        'black_current_position', 
-        'black_previous_position', 
-        'hovered_square'
-        ]:
+    for key in ['selected_piece', 'current_position', 'previous_position', 'hovered_square']:
         if params[key] is not None:
             params[key] = map_to_reversed_board(params[key][0], params[key][1])
 

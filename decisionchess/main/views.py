@@ -297,6 +297,28 @@ def get_config(request, game_uuid):
     else:
         return JsonResponse({"status": "error"}, status=401)
 
+def decision_play(request, game_uuid):
+    if request.user and request.user.id is not None:
+        user_id = request.user.id
+    else:
+        guest_uuid = request.session.get('guest_uuid')
+        if guest_uuid is None:
+            user_id = uuid.uuid4()
+            request.session["guest_uuid"] = str(user_id)
+        else:
+            user_id = uuid.UUID(guest_uuid)
+    sessionVariables = {
+        'game_uuid': game_uuid,
+        'connected': 'false',
+        'current_game_id': str(game_uuid),
+        'initialized': 'null',
+        'draw_request': 'false',
+        'undo_request': 'false',
+        'total_reset': 'false'
+    }
+    sessionVariables.update({'opponent': "black"})
+    return render(request, "main/play/decision_play.html", sessionVariables)
+
 def play(request, game_uuid):
     if request.user and request.user.id is not None:
         user_id = request.user.id
@@ -308,7 +330,7 @@ def play(request, game_uuid):
         else:
             user_id = uuid.UUID(guest_uuid)
     sessionVariables = {
-        'game_uuid': game_uuid, # str unneeded?
+        'game_uuid': game_uuid,
         'connected': 'false',
         'current_game_id': str(game_uuid),
         'initialized': 'null',

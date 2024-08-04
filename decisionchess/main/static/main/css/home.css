@@ -89,6 +89,7 @@ html {
     display: flex;
     text-align: center; 
     padding-bottom: 0.5em; 
+    border-bottom: thin solid var(--lobby-outline);
     position: sticky; 
     top: 0; 
     background-color: var(--lobby-header-background);

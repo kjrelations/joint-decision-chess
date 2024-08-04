@@ -132,7 +132,7 @@ function updateCommandCenter() {
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
         comp_moves = webGameMetadata.comp_moves;
-        const equal_arrays = areEqual(moves, savedMoves, 'array')
+        const equal_arrays = areEqual(moves, savedMoves, 'array');
         if (endState !== '' && !equal_arrays) {
             const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
             clearInterval(requestIntervalId);
@@ -234,7 +234,9 @@ function updateCommandCenter() {
         savedMoves = moves;
         
         movesListContainer.innerHTML = '';
-
+        
+        var initialized = sessionStorage.getItem('initialized');
+        initialized = (initialized === 'true' ? true : false);
         var j = 1;
         for (var i = 0; i < moves.length; i += 2) {
             var move1 = movePieceTranslation(moves[i]);
@@ -273,8 +275,6 @@ function updateCommandCenter() {
                 rightHalf.id = 'move-' + (i + 1);
             }
 
-            var initialized = sessionStorage.getItem('initialized');
-            initialized = (initialized === 'true' ? true : false);
             if (!initialized) {
                 pairNumber.classList.add('hidden');
                 leftHalf.classList.add('hidden');
@@ -304,29 +304,31 @@ function updateCommandCenter() {
                     })(rightHalf.id);
                 }
             }
-            var currentTurn = JSON.parse(webGameMetadata.whites_turn);
-            const color = webGameMetadata.player_color;
-            currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
-            var currentIndicator = document.getElementById('playerIndicator');
-            var opponentIndicator = document.getElementById('opponentIndicator');
-            if (currentTurn && !alternatingFavicon) {
-                const title = document.getElementById('title');
-                title.text = "Your Turn";
-                faviconIntervalId = setInterval(faviconInterval, 2000);
-                currentIndicator.classList.remove('hidden');
-                opponentIndicator.classList.add('hidden');
-                alternatingFavicon = true;
-            } else if (!currentTurn && alternatingFavicon) {
-                clearInterval(faviconIntervalId);
-                changeFavicon(0);
-                const title = document.getElementById('title');
-                title.text = "Playing"
-                currentIndicator.classList.add('hidden');
-                opponentIndicator.classList.remove('hidden');
-                alternatingFavicon = false;
-            }
             j += 1;
         }
+
+        var currentTurn = JSON.parse(webGameMetadata.whites_turn);
+        const color = webGameMetadata.player_color;
+        currentTurn = currentTurn && color === 'white' || !currentTurn && color === 'black';
+        var currentIndicator = document.getElementById('playerIndicator');
+        var opponentIndicator = document.getElementById('opponentIndicator');
+        if (currentTurn && !alternatingFavicon) {
+            const title = document.getElementById('title');
+            title.text = "Your Turn";
+            faviconIntervalId = setInterval(faviconInterval, 2000);
+            currentIndicator.classList.remove('hidden');
+            opponentIndicator.classList.add('hidden');
+            alternatingFavicon = true;
+        } else if (!currentTurn && alternatingFavicon) {
+            clearInterval(faviconIntervalId);
+            changeFavicon(0);
+            const title = document.getElementById('title');
+            title.text = "Playing"
+            currentIndicator.classList.add('hidden');
+            opponentIndicator.classList.remove('hidden');
+            alternatingFavicon = false;
+        }
+
         movesListContainer.scrollTop = movesListContainer.scrollHeight;
 
         if (endState === "\u00bd\u2013\u00bd") {
@@ -468,12 +470,12 @@ function resetCommandCenter() {
     var finalScorebox = document.getElementById('final-score');
 
     movesListContainer.innerHTML = "";
-    endMessagebox.innerHTML = ""
-    finalScorebox.innerHTML = ""
+    endMessagebox.innerHTML = "";
+    finalScorebox.innerHTML = "";
 }
 
-var previousConnected = false
-var initCheck = false
+var previousConnected = false;
+var initCheck = false;
 
 window.addEventListener('load', resetCommandCenter);
 window.addEventListener('load', updateCommandCenter);

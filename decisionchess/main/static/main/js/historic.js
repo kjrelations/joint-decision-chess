@@ -173,9 +173,11 @@ function updateCommandCenter() {
         savedMoves = moves
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
-
+        
         movesListContainer.innerHTML = '';
-
+        
+        var initialized = sessionStorage.getItem('initialized');
+        initialized = (initialized === 'true' ? true : false);
         var j = 1;
         for (var i = 0; i < moves.length; i += 2) {
             var move1 = movePieceTranslation(moves[i]);
@@ -214,8 +216,6 @@ function updateCommandCenter() {
                 rightHalf.id = 'move-' + (i + 1);
             }
 
-            var initialized = sessionStorage.getItem('initialized');
-            initialized = (initialized === 'true' ? true : false);
             if (!initialized) {
                 pairNumber.classList.add('hidden');
                 leftHalf.classList.add('hidden');
