@@ -164,11 +164,15 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if node.data.get("starting_position"):
                         init["starting_position"] = json.loads(node.data.pop("starting_position"))
                         init["starting_position"]["_starting_player"] = init["starting_player"]
-                        init["sent"] = int(init["starting_player"] != init["starting_position"]["whites_turn"])
+                        if init["starting_player"]:
+                            played_condition = init["starting_player"] == init["starting_position"]["white_played"]
+                        else:
+                            played_condition = init["starting_player"] == init["starting_position"]["black_played"]
+                        init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                     else:
-                        init["sent"] = int(not init["starting_player"])
+                        init["sent"] = 0
                     init["initializing"] = True
                     init["reloaded"] = True
                 elif cmd == f"{init['opponent']} ready":
@@ -177,31 +181,44 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
-                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
-                                game.end_position:
-                                    client_game.synchronize(game)
-                                    drawing_settings["recalc_selections"] = True
-                                    init["sent"] = 0
-                                    if client_game.alg_moves != []:
-                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                                            if "x" not in client_game.alg_moves[-1]:
-                                                handle_play(window, move_sound)
-                                            else:
-                                                handle_play(window, capture_sound)
-                                        if client_game.end_position:
-                                            is_white = client_game.whites_turn
-                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                            if checkmate:
-                                                print("CHECKMATE")
-                                            elif remaining_moves == 0:
-                                                print("STALEMATE")
-                                            elif client_game.threefold_check():
-                                                print("DRAW BY THREEFOLD REPETITION")
-                                            elif client_game.forced_end != "":
-                                                print(client_game.forced_end)
-                                            print("ALG_MOVES: ", client_game.alg_moves)
-                                            break
-                                        print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
+                            temp_alg_moves = client_game.alg_moves
+                            illegal = client_game.synchronize(game)
+                            drawing_settings["recalc_selections"] = True
+                            # Unnecessary?
+                            if not (client_game.white_played and client_game._starting_player) and \
+                               not (client_game.black_played and not client_game._starting_player):
+                                init["sent"] = 0
+                            if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
+                                if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '1-1', '½–½']): # Could add a winning or losing sound
+                                    if "x" in client_game.alg_moves[-1][0] or "x" in client_game.alg_moves[-1][1]:
+                                        handle_play(window, capture_sound)
+                                    else:
+                                        handle_play(window, move_sound)
+                                if client_game.end_position:
+                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate = checkmate_white or checkmate_black
+                                    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+                                    if checkmate:
+                                        print("CHECKMATE")
+                                    elif no_remaining_moves:
+                                        print("STALEMATE")
+                                    elif client_game.threefold_check():
+                                        print("DRAW BY THREEFOLD REPETITION")
+                                    elif client_game.forced_end != "":
+                                        print(client_game.forced_end)
+                                    print("ALG_MOVES: ", client_game.alg_moves)
+                                    break
+                                print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
+                            if illegal:
+                                txdata = {node.CMD: f"{init['player']}_update"}
+                                txdata[node.CMD] += "_req_sync"
+                                send_game = client_game.to_json()
+                                txdata.update({"game": send_game, "illegal": True})
+                                node.tx(txdata)
+                                init["sent"] = 1
+                        if node.data.get('illegal'):
+                            handle_play(window, error_sound)
                     if "_sync" in cmd:
                         # Need to set game here if no update cmd is trigerred, else we have an old game we're comparing to
                         if "game" in node.data:
@@ -210,20 +227,23 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             print(f"Syncing {init['player'].capitalize()}...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
+                            if client_game._starting_player:
+                                played_condition = client_game._starting_player == client_game.white_played
+                            else:
+                                played_condition = client_game._starting_player == client_game.black_played
+                            init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
                         elif not game._sync and not client_game._sync and not init["desync"]:
                             confirmed_state = None
-                            if not init["local_debug"]:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                except:
-                                    err = 'Confirmed state retrieval failed. Quitting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
+                            # if not init["local_debug"]:
+                            #     try:
+                            #         confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                            #     except:
+                            #         err = 'Confirmed state retrieval failed. Quitting...'
+                            #         js_code = f"console.log('{err}')"
+                            #         window.eval(js_code)
+                            #         print(err)
                             if confirmed_state is not None:
                                 confirmed_state = json.loads(confirmed_state)
                                 confirmed_state["_starting_player"] = init["starting_player"]
@@ -244,8 +264,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
+                            init["sent"] = 0
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
@@ -280,19 +299,23 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         node.publish()
                 elif cmd == "_retrieve":
                     confirmed_state = None
-                    if not init["local_debug"]:
-                        try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                        except:
-                            err = 'Confirmed state retrieval failed. Quitting...'
-                            js_code = f"console.log('{err}')"
-                            window.eval(js_code)
-                            print(err)
+                    # if not init["local_debug"]:
+                    #     try:
+                    #         confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                    #     except:
+                    #         err = 'Confirmed state retrieval failed. Quitting...'
+                    #         js_code = f"console.log('{err}')"
+                    #         window.eval(js_code)
+                    #         print(err)
                     if confirmed_state is not None:
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
                         client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
+                        else:
+                            played_condition = client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                         node.tx({node.CMD: "retrieve_sync"})
@@ -316,31 +339,44 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
-                            if (len(game.alg_moves) > len(client_game.alg_moves)) or (len(game.alg_moves) < len(client_game.alg_moves) and game._move_undone) or \
-                                game.end_position:
-                                    client_game.synchronize(game)
-                                    drawing_settings["recalc_selections"] = True
-                                    init["sent"] = 0
-                                    if client_game.alg_moves != []:
-                                        if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '½–½']): # Could add a winning or losing sound
-                                            if "x" not in client_game.alg_moves[-1]:
-                                                handle_play(window, move_sound)
-                                            else:
-                                                handle_play(window, capture_sound)
-                                        if client_game.end_position:
-                                            is_white = True
-                                            checkmate, remaining_moves = is_checkmate_or_stalemate(client_game.board, is_white, client_game.moves)
-                                            if checkmate:
-                                                print("CHECKMATE")
-                                            elif remaining_moves == 0:
-                                                print("STALEMATE")
-                                            elif client_game.threefold_check():
-                                                print("DRAW BY THREEFOLD REPETITION")
-                                            elif client_game.forced_end != "":
-                                                print(client_game.forced_end)
-                                            print("ALG_MOVES: ", client_game.alg_moves)
-                                            break
-                                        print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
+                            temp_alg_moves = client_game.alg_moves
+                            illegal = client_game.synchronize(game)
+                            drawing_settings["recalc_selections"] = True
+                            # Unnecessary?
+                            if not (client_game.white_played and client_game._starting_player) and \
+                               not (client_game.black_played and not client_game._starting_player):
+                                init["sent"] = 0
+                            if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
+                                if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '1-1', '½–½']): # Could add a winning or losing sound
+                                    if "x" in client_game.alg_moves[-1][0] or "x" in client_game.alg_moves[-1][1]:
+                                        handle_play(window, capture_sound)
+                                    else:
+                                        handle_play(window, move_sound)
+                                if client_game.end_position:
+                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate = checkmate_white or checkmate_black
+                                    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+                                    if checkmate:
+                                        print("CHECKMATE")
+                                    elif no_remaining_moves:
+                                        print("STALEMATE")
+                                    elif client_game.threefold_check():
+                                        print("DRAW BY THREEFOLD REPETITION")
+                                    elif client_game.forced_end != "":
+                                        print(client_game.forced_end)
+                                    print("ALG_MOVES: ", client_game.alg_moves)
+                                    break
+                                print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
+                            if illegal:
+                                txdata = {node.CMD: f"{init['player']}_update"}
+                                txdata[node.CMD] += "_req_sync"
+                                send_game = client_game.to_json()
+                                txdata.update({"game": send_game, "illegal": True})
+                                node.tx(txdata)
+                                init["sent"] = 1
+                        if node.data.get('illegal'):
+                            handle_play(window, error_sound)
                     if "_sync" in cmd:
                         # Need to set game here if no update cmd is triggered, else we have an old game
                         if "game" in node.data:
@@ -349,8 +385,11 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             print(f"Syncing {init['player'].capitalize()}...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
+                            if client_game._starting_player:
+                                played_condition = client_game._starting_player == client_game.white_played
+                            else:
+                                played_condition = client_game._starting_player == client_game.black_played
+                            init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
                         elif not game._sync and not client_game._sync and not init["desync"]:
@@ -384,8 +423,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
-                            your_turn = client_game.whites_turn == client_game._starting_player
-                            init["sent"] = 0 if your_turn else 1
+                            init["sent"] = 0
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
@@ -417,8 +455,11 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if init["initialized"]:
                         init_message.update({"starting_position": client_game.to_json(include_states=True)})
                     else:
-                        # TODO custom here?
-                        init["sent"] = int(not init["starting_player"])
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
+                        else:
+                            played_condition = client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
                     node.tx(init_message)
                     if not init["initialized"]:
                         init["initializing"] = True
@@ -444,7 +485,11 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
                         client_game = Game(custom_params=confirmed_state)
-                        init["sent"] = int(client_game._starting_player != client_game.whites_turn)
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
+                        else:
+                            played_condition = client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
                         node.tx({node.CMD: "retrieve_sync"})
@@ -545,7 +590,11 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             confirmed_state = json.loads(confirmed_state)
                             confirmed_state["_starting_player"] = init["starting_player"]
                             client_game = Game(custom_params=confirmed_state)
-                            init["sent"] = int(client_game._starting_player != client_game.whites_turn)
+                            if client_game._starting_player:
+                                played_condition = client_game._starting_player == client_game.white_played
+                            else:
+                                played_condition = client_game._starting_player == client_game.black_played
+                            init["sent"] = int(played_condition)
                             drawing_settings["recalc_selections"] = True
                             drawing_settings["clear_selections"] = True
                         init["reloaded"] = True

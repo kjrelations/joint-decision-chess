@@ -13,6 +13,7 @@ from network import *
 
 production = True
 local = "http://127.0.0.1:8000"
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -397,7 +398,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": False,
+        "local_debug": local_debug,
         "access_keys": None,
         "reloaded": True,
         "reconnecting": False,

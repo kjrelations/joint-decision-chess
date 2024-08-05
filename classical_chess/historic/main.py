@@ -11,6 +11,7 @@ from helpers import *
 
 production = True
 local = "http://127.0.0.1:8000"
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -128,7 +129,7 @@ async def main():
         "initializing": False,
         "initialized": False,
         "config_retrieved": False,
-        "local_debug": False
+        "local_debug": local_debug
     }
     client_game = None
     # Web Browser actions affect these only. Even if players try to alter it, 

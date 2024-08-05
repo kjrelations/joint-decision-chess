@@ -14,6 +14,7 @@ from network import *
 
 production = True
 local = "http://127.0.0.1:8000"
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -557,7 +558,7 @@ async def main():
         "sent": None,
         "player": None,
         "opponent": None,
-        "local_debug": False,
+        "local_debug": local_debug,
         "access_keys": None,
         "network_reset_ready": True,
         "desync": False,
@@ -755,7 +756,6 @@ async def main():
                 init["initializing"] = True
                 init["loaded"] = True
                 continue
-
 
         if init["waiting"]:
             await waiting_screen(init, game_window, client_game, drawing_settings)

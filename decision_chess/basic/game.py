@@ -104,30 +104,38 @@ class Game:
             self._promotion_white = custom_params["_promotion_white"]
             self._promotion_black = custom_params["_promotion_black"]
             self._set_last_move = custom_params["_set_last_move"]
-            self._temp_actives = custom_params["_temp_actives"]
+            self._temp_actives = None
 
     def synchronize(self, new_game):
         self.board = new_game.board
         self.moves = new_game.moves
         self.alg_moves = new_game.alg_moves
         self.castle_attributes = new_game.castle_attributes
+        illegal = False
         if self.white_played and new_game.black_played and not new_game.white_played:
             self.black_played = new_game.black_played
             self.black_active_move = new_game.black_active_move
-            self.black_active_move[-1] = 2
+            self.black_active_move[2] = '2'
+            if self._temp_actives is not None:
+                self._temp_actives[1] = self.black_active_move
             self._promotion_black = new_game._promotion_black
-            self.update_state(self.black_active_move[1][0], self.black_active_move[1][1], self.black_active_move[0])
+            # TODO add special
+            _, illegal = self.update_state(self.black_active_move[1][0], self.black_active_move[1][1], self.black_active_move[0], update_positions=False)
         elif self.black_played and new_game.white_played and not new_game.black_played:
             self.white_played = new_game.white_played
             self.white_active_move = new_game.white_active_move
-            self.white_active_move[-1] = 2
+            self.white_active_move[2] = '2'
+            if self._temp_actives is not None:
+                self._temp_actives[0] = self.white_active_move
             self._promotion_white = new_game._promotion_white
-            self.update_state(self.white_active_move[1][0], self.white_active_move[1][1], self.white_active_move[0])
+            _, illegal = self.update_state(self.white_active_move[1][0], self.white_active_move[1][1], self.white_active_move[0], update_positions=False)
         else:
             self.white_played = new_game.white_played
             self.black_played = new_game.black_played
             self.white_active_move = new_game.white_active_move
             self.black_active_move = new_game.black_active_move
+            if self._temp_actives is not None:
+                self._temp_actives = [self.white_active_move, self.black_active_move]
             self._promotion_white = new_game._promotion_white
             self._promotion_black = new_game._promotion_black
         self.reveal_stage_enabled = new_game.reveal_stage_enabled
@@ -156,6 +164,7 @@ class Game:
         self._move_index = new_game._move_index
         self._latest = True
         self._state_update = {}
+        return illegal
 
     def validate_moves(self, row, col):
         piece = self.board[row][col]
@@ -865,8 +874,6 @@ class Game:
                     self.board_states[_current_board_state] -= 1
                     self._state_update[_current_board_state] = self.board_states[_current_board_state]
             
-            if not undo_actives and (self.white_active_move is not None or self.black_active_move is not None):
-                self._temp_actives = [self.white_active_move, self.black_active_move]
             self.white_active_move = None
             self.black_active_move = None
 
@@ -974,8 +981,6 @@ class Game:
                 self.black_current_position = None
                 self.black_previous_position = None
         else:
-            if not undo_actives and (self.white_active_move is not None or self.black_active_move is not None):
-                self._temp_actives = [self.white_active_move, self.black_active_move]
             self.white_active_move = None
             self.black_active_move = None
     
@@ -1135,9 +1140,14 @@ class Game:
             if self._temp_actives is not None:
                 self.white_active_move = self._temp_actives[0]
                 self.black_active_move = self._temp_actives[1]
-            if any(symbol in self.alg_moves[-1] for symbol in ['1-1', '0-1', '1-0', '½–½']):
+                self._temp_actives = None
+            if any(symbol in self.alg_moves[-1] for symbol in ['1-1', '0-1', '1-0', '1-1', '½–½']):
                 self.end_position = True
         else:
+            if self.white_active_move is not None or self.black_active_move is not None:
+                self._temp_actives = [self.white_active_move, self.black_active_move]
+                self.white_active_move = None
+                self.black_active_move = None
             self._latest = False
             self.end_position = False
         
@@ -1187,6 +1197,8 @@ class GameEncoder(json.JSONEncoder):
                 "moves": obj.moves,
                 "alg_moves": obj.alg_moves,
                 "castle_attributes": obj.castle_attributes,
+                "white_active_move": obj.white_active_move,
+                "black_active_move": obj.black_active_move,
                 "white_current_position": obj.white_current_position,
                 "white_previous_position": obj.white_previous_position,
                 "black_current_position": obj.black_current_position,
@@ -1198,7 +1210,6 @@ class GameEncoder(json.JSONEncoder):
                 "black_lock": obj.black_lock,
                 "white_undo_count": obj.white_undo_count,
                 "black_undo_count": obj.black_undo_count,
-                "_debug": obj._debug,
                 "_starting_player": obj._starting_player,
                 "_move_undone": obj._move_undone,
                 "_sync": obj._sync,

@@ -45,6 +45,8 @@ class Game:
             self.forced_end = ""
             self.white_lock = False
             self.black_lock = False
+            self.white_undo_count = 0
+            self.black_undo_count = 0
             self._starting_player = starting_player
             self._move_undone = False
             self._sync = True
@@ -92,6 +94,8 @@ class Game:
             self.forced_end = custom_params["forced_end"]
             self.white_lock = custom_params["white_lock"]
             self.black_lock = custom_params["black_lock"]
+            self.white_undo_count = custom_params["white_undo_count"]
+            self.black_undo_count = custom_params["black_undo_count"]
             self._starting_player = custom_params["_starting_player"]
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
@@ -145,6 +149,8 @@ class Game:
         self.forced_end = new_game.forced_end
         self.white_lock = new_game.white_lock
         self.black_lock = new_game.black_lock
+        self.white_undo_count = new_game.white_undo_count
+        self.black_undo_count = new_game.black_undo_count
         self._move_undone = False
         self._sync = True
         self._move_index = new_game._move_index
@@ -163,8 +169,13 @@ class Game:
             temp_board[selected_piece[0]][selected_piece[1]] = ' '
             
             # Invalid move check
+            dest_piece = self.board[move[0]][move[1]]
             if is_check(temp_board, is_white) and \
-               not (piece.lower() == 'k' and temp_board[move[0]][move[1]].isupper() == is_white):
+               not (piece.lower() == 'k' and dest_piece.isupper() == is_white and dest_piece != ' '):
+                valid_moves.remove(move)
+                if move in valid_captures:
+                    valid_captures.remove(move)
+            elif piece.lower() == 'k' and dest_piece.isupper() == is_white and dest_piece != ' ' and is_check(self.board, is_white):
                 valid_moves.remove(move)
                 if move in valid_captures:
                     valid_captures.remove(move)
@@ -195,20 +206,21 @@ class Game:
         elif special:
             special_string = 'castle'
         
-        if piece.isupper():
-            self.white_played = True
-            move_priority = 1 if not self.black_played else 2
-            self.white_active_move = [selected_piece, (new_row, new_col), move_priority, special_string]
-        else:
-            self.black_played = True
-            move_priority = 1 if not self.white_played else 2
-            self.black_active_move = [selected_piece, (new_row, new_col), move_priority, special_string]
-
+        if not self.white_played or not self.black_played:
+            if piece.isupper():
+                self.white_played = True
+                move_priority = '1' if not self.black_played else '2'
+                self.white_active_move = [selected_piece, (new_row, new_col), move_priority, special_string]
+            else:
+                self.black_played = True
+                move_priority = '1' if not self.white_played else '2'
+                self.black_active_move = [selected_piece, (new_row, new_col), move_priority, special_string]
+        
         if not self.white_played or not self.black_played:
             return False, False
 
         pieces_info = {
-            'first': 'white' if self.white_active_move[2] == 1 else 'black',
+            'first': 'white' if self.white_active_move[2] == '1' else 'black',
             'white_initial_pos': self.white_active_move[0],
             'white_piece': self.board[self.white_active_move[0][0]][self.white_active_move[0][1]],
             'new_row_white': self.white_active_move[1][0], 
@@ -393,8 +405,8 @@ class Game:
         )
         
         # Need to calculate alg_moves before we update board to settle disambiguities
-        white_algebraic_move = self.translate_into_notation(new_row_white, new_col_white, white_piece, white_initial_pos, potential_white_capture, castle_white, enpassant_white, temp_board)
-        black_algebraic_move = self.translate_into_notation(new_row_black, new_col_black, black_piece, black_initial_pos, potential_black_capture, castle_black, enpassant_black, temp_board)
+        white_algebraic_move = self.translate_into_notation(new_row_white, new_col_white, white_piece, white_initial_pos, potential_white_capture, castle_white, temp_board)
+        black_algebraic_move = self.translate_into_notation(new_row_black, new_col_black, black_piece, black_initial_pos, potential_black_capture, castle_black, temp_board)
         
         self.board = update_board(
             self,
@@ -677,7 +689,7 @@ class Game:
         pieces_info['potential_black_capture'] = potential_black_capture
         pieces_info['black_captured'] = black_captured
 
-    def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, enpassant, temp_board):
+    def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, temp_board):
         file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
         rank_conversion = {i: str(8 - i) for i in range(8)}
         alg_move = ''
@@ -999,7 +1011,7 @@ class Game:
             black_prev_row, black_prev_col = int(black_prev_pos[1]), int(black_prev_pos[2])
             black_curr_row, black_curr_col = int(black_curr_pos[1]), int(black_curr_pos[2])
             
-            def step_enpassant(
+            def step_move(
                 special, 
                 board, 
                 color_potential_capture, 
@@ -1017,21 +1029,27 @@ class Game:
                 opposing_king = 'k' if is_white else 'K'
                 if is_white:
                     allied_piece = board[curr_row][curr_col].isupper()
+                    opposing_piece = board[curr_row][curr_col].islower()
                 else:
                     allied_piece = board[curr_row][curr_col].islower()
+                    opposing_piece = board[curr_row][curr_col].isupper()
                 if special != 'enpassant':
                     potential_capture = color_potential_capture
                     if isinstance(color_potential_capture, list):
                         potential_capture = color_potential_capture[0]
                     new_piece = color_piece
+                    update = True
                     if (curr_row, curr_col) == (other_curr_row, other_curr_col):
                         if (color_piece == allied_king or allied_piece) and other_color_piece != opposing_king:
                             new_piece = color_piece  
                         else:
-                            new_piece = other_color_piece if other_color_piece == opposing_king or not allied_piece else ' '
+                            new_piece = other_color_piece if other_color_piece == opposing_king or opposing_piece else ' '
+                    elif (prev_row, prev_col) == (other_curr_row, other_curr_col) and increment > 0:
+                        update = False
                     replacement = potential_capture if increment < 0 else new_piece
                     fill = color_piece if increment < 0 else ' '
-                    board[curr_row][curr_col] = replacement
+                    if update:
+                        board[curr_row][curr_col] = replacement
                     board[prev_row][prev_col] = fill
                 else:
                     potential_capture = color_potential_capture
@@ -1045,7 +1063,8 @@ class Game:
                     board[curr_row][curr_col] = move_replacement
                     board[prev_row][curr_col] = capture_replacement
                 return board
-            self.board = step_enpassant(
+            
+            self.board = step_move(
                 special_white, 
                 self.board, 
                 white_potential_capture,
@@ -1058,7 +1077,7 @@ class Game:
                 white_piece,
                 black_piece
                 )
-            self.board = step_enpassant(
+            self.board = step_move(
                 special_black, 
                 self.board, 
                 black_potential_capture,
@@ -1177,6 +1196,8 @@ class GameEncoder(json.JSONEncoder):
                 "forced_end": obj.forced_end,
                 "white_lock": obj.white_lock,
                 "black_lock": obj.black_lock,
+                "white_undo_count": obj.white_undo_count,
+                "black_undo_count": obj.black_undo_count,
                 "_debug": obj._debug,
                 "_starting_player": obj._starting_player,
                 "_move_undone": obj._move_undone,

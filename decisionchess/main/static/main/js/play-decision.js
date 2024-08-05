@@ -107,6 +107,7 @@ var rematch_accepted = false;
 var rematch_received = false;
 var savedMoves = [];
 var savedPieces = {};
+var savedStates = [];
 var comp_moves = [];
 var move_index = -1;
 var selectedMoveId = "";
@@ -254,6 +255,26 @@ function updateCommandCenter() {
             opponentIndicator.classList.remove('hidden');
         } else if (!theirTurn) {
             opponentIndicator.classList.add('hidden');
+        }
+
+        if (savedStates.length === 0 || whitePlayed !== savedStates[0] || blackPlayed !== savedStates[1]) {
+            if (selectedMoveId !== "") {
+                var previousMove = document.getElementById(selectedMoveId);
+                // Check for existence as undos can remove previously selected move elements
+                if (previousMove) {
+                    previousMove.disabled = false;
+                }
+            }
+            move_index = comp_moves.length - 1;
+            moveId = 'move-' + move_index;
+            if (move_index !== -1) {
+                selectedMove = document.getElementById(moveId);
+                if (selectedMove) {
+                    selectedMove.disabled = true;
+                    selectedMoveId = moveId;
+                }
+            }
+            savedStates = [whitePlayed, blackPlayed];
         }
         // Don't keep unnecessarily updating
         if (equal_arrays) {

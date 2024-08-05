@@ -146,7 +146,7 @@ def load_historic_game(json_game):
         'right_black_rook_moved' : [False, None]
     }
 
-    for move_index, comp_move in enumerate(json_game["comp_moves"]):
+    for move_index, comp_move in enumerate(json_game["comp_moves"]): # TODO change
         piece = comp_move[0][0]
         prev_pos = (int(comp_move[0][1]), int(comp_move[0][2]))
         if comp_move[3] == 'castle':
@@ -1125,6 +1125,7 @@ def draw_board(params):
     if theme.INVERSE_PLAYER_VIEW:
         params = reverse_coordinates(params)
     board = params['board']
+    starting_player = params['starting_player']
     chessboard = params['drawing_settings']['chessboard'].copy()
     selected_piece = params['selected_piece']
     white_current_position = params['white_current_position']
@@ -1184,10 +1185,10 @@ def draw_board(params):
         # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
-    if white_active_position is not None:
+    if white_active_position is not None and starting_player:
         x, y = theme.GRID_SIZE * white_active_position[1], theme.GRID_SIZE * white_active_position[0]
         window.blit(white_selected_piece_image, (x, y))
-    if black_active_position is not None:
+    if black_active_position is not None and not starting_player:
         x, y = theme.GRID_SIZE * black_active_position[1], theme.GRID_SIZE * black_active_position[0]
         window.blit(black_selected_piece_image, (x, y))
     # On mousedown and a piece is selected draw a transparent copy of the piece

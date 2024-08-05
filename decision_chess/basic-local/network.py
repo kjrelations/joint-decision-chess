@@ -417,7 +417,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if init["initialized"]:
                         init_message.update({"starting_position": client_game.to_json(include_states=True)})
                     else:
-                        # TODO custom here?
                         init["sent"] = int(not init["starting_player"])
                     node.tx(init_message)
                     if not init["initialized"]:
