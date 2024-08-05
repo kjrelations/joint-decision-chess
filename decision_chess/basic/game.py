@@ -848,7 +848,7 @@ class Game:
                 return True
         return False
 
-    def undo_move(self, undo_actives=True):
+    def undo_move(self):
         # In an advanced system with an analysis/exploration board we would have multiple saved move lists or games somehow
         if len(self.moves) != 0:
             # If we are not undoing a move during pawn promotion the current state of the board is saved, else skip
@@ -876,6 +876,8 @@ class Game:
             
             self.white_active_move = None
             self.black_active_move = None
+            self.white_lock = False
+            self.black_lock = False
 
             moves = self.moves[-1]
 
@@ -954,6 +956,10 @@ class Game:
 
             del self.moves[-1]
             del self.alg_moves[-1]
+            self.playing_stage = True
+            self.reveal_stage = False
+            self.decision_stage = False
+            self._temp_actives = None
             self._move_index -= 1
             self._move_undone = True
             self._sync = False

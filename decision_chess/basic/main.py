@@ -536,14 +536,12 @@ async def waiting_screen(init, game_window, client_game, drawing_settings):
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
-            'drawing_settings': drawing_settings,
+            'drawing_settings': drawing_settings.copy(),
             'selected_piece': None,
             'white_current_position': None,
             'white_previous_position': None,
             'black_current_position': None,
             'black_previous_position': None,
-            'right_clicked_squares': [],
-            'drawn_arrows': [],
             'valid_moves': [],
             'valid_captures': [],
             'valid_specials': [],
@@ -586,6 +584,7 @@ async def main():
         "starting_player": None,
         "starting_position": None,
         "sent": None,
+        "drawings_sent": 1,
         "updated_board": False,
         "player": None,
         "opponent": None,
@@ -672,8 +671,6 @@ async def main():
     hovered_square = None
     current_right_clicked_square = None
     end_right_released_square = None
-    right_clicked_squares = []
-    drawn_arrows = []
     # Boolean stating the first intention of moving a piece
     first_intent = False
     selected_piece_image = None
@@ -695,6 +692,10 @@ async def main():
         "wait_screen_drawn": False,
         "recalc_selections": False,
         "clear_selections": False,
+        "right_clicked_squares": [],
+        "drawn_arrows": [],
+        "opposing_right_clicked_squares": [],
+        "opposing_drawn_arrows": [],
         "king_outlines": outlines,
         "checkmate_white": False,
         "check_white": False,
@@ -772,6 +773,7 @@ async def main():
                 node.tx(offer_data)
                 client_state_actions["undo_sent"] = True
             # The sender will sync, only need to apply for receiver
+            # TODO complete with locks removed maybe in the undo function itself
             if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
@@ -785,8 +787,11 @@ async def main():
                 selected_piece = None
                 first_intent = False
                 valid_moves, valid_captures, valid_specials = [], [], []
-                right_clicked_squares = []
-                drawn_arrows = []
+                drawing_settings["right_clicked_squares"] = []
+                drawing_settings["opposing_right_clicked_squares"] = []
+                drawing_settings["drawn_arrows"] = []
+                drawing_settings["oppposing_drawn_arrows"] = []
+                init["drawings_sent"] = 0
                 client_state_actions["undo_received"] = False
                 client_state_actions["undo_accept"] = False
                 client_state_actions["undo_accept_executed"] = True
@@ -917,8 +922,8 @@ async def main():
 
                     if left_mouse_button_down:
                         # Clear highlights and arrows
-                        right_clicked_squares = []
-                        drawn_arrows = []
+                        drawing_settings["right_clicked_squares"] = []
+                        drawing_settings["drawn_arrows"] = []
 
                         x, y = pygame.mouse.get_pos()
                         row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
@@ -1058,10 +1063,12 @@ async def main():
                         right_mouse_button_down = False
                         # Highlighting individual squares at will
                         if (row, col) == current_right_clicked_square:
-                            if (row, col) not in right_clicked_squares:
-                                right_clicked_squares.append((row, col))
+                            if (row, col) not in drawing_settings["right_clicked_squares"]:
+                                drawing_settings["right_clicked_squares"].append((row, col))
                             else:
-                                right_clicked_squares.remove((row, col))
+                                drawing_settings["right_clicked_squares"].remove((row, col))
+                            if client_game.reveal_stage:
+                                init["drawings_sent"] = 0
                         elif current_right_clicked_square is not None:
                             x, y = pygame.mouse.get_pos()
                             row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
@@ -1069,12 +1076,16 @@ async def main():
                                 row, col = map_to_reversed_board(row, col)
                             end_right_released_square = (row, col)
 
-                            if [current_right_clicked_square, end_right_released_square] not in drawn_arrows:
+                            if [current_right_clicked_square, end_right_released_square] not in drawing_settings["drawn_arrows"]:
                                 # Disallow out of bound arrows
                                 if 0 <= end_right_released_square[0] < 8 and 0 <= end_right_released_square[1] < 8:
-                                    drawn_arrows.append([current_right_clicked_square, end_right_released_square])
+                                    drawing_settings["drawn_arrows"].append([current_right_clicked_square, end_right_released_square])
+                                    if client_game.reveal_stage:
+                                        init["drawings_sent"] = 0
                             else:
-                                drawn_arrows.remove([current_right_clicked_square, end_right_released_square])
+                                drawing_settings["drawn_arrows"].remove([current_right_clicked_square, end_right_released_square])
+                                if client_game.reveal_stage:
+                                    init["drawings_sent"] = 0
                 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_t:
@@ -1106,8 +1117,11 @@ async def main():
                         client_game.white_lock = False
                         client_game.black_lock = False
                         client_game.reveal_stage = False
-                        right_clicked_squares = []
-                        drawn_arrows = []
+                        drawing_settings["right_clicked_squares"] = []
+                        drawing_settings["opposing_right_clicked_squares"] = []
+                        drawing_settings["drawn_arrows"] = []
+                        drawing_settings["opposing_drawn_arrows"] = []
+                        init["drawings_sent"] = 0
                         init["sent"] = 0
                         client_game._sync = False
                         if client_game.decision_stage and client_game._starting_player:
@@ -1128,8 +1142,11 @@ async def main():
             client_game.reveal_stage = False
             client_game.white_lock = False
             client_game.black_lock = False
-            right_clicked_squares = []
-            drawn_arrows = []
+            drawing_settings["right_clicked_squares"] = []
+            drawing_settings["opposing_right_clicked_squares"] = []
+            drawing_settings["drawn_arrows"] = []
+            drawing_settings["opposing_drawn_arrows"] = []
+            init["drawings_sent"] = 0
             if client_game.decision_stage_enabled and not client_game.decision_stage:
                 client_game.decision_stage = True
             elif client_game.decision_stage:
@@ -1158,14 +1175,12 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
-                'drawing_settings': drawing_settings,
+                'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
                 'white_previous_position': client_game.white_previous_position,
                 'black_current_position': client_game.black_current_position,
                 'black_previous_position': client_game.black_previous_position,
-                'right_clicked_squares': right_clicked_squares,
-                'drawn_arrows': drawn_arrows,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -1200,8 +1215,8 @@ async def main():
                 selected_piece = None
                 first_intent = False
                 valid_moves, valid_captures, valid_specials = [], [], []
-                right_clicked_squares = []
-                drawn_arrows = []
+                drawing_settings["right_clicked_squares"] = []
+                drawing_settings["drawn_arrows"] = []
             else:
                 client_game.playing_stage = True
                 client_game.reveal_stage = False
@@ -1219,14 +1234,12 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
-                'drawing_settings': drawing_settings,
+                'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
                 'white_previous_position': client_game.white_previous_position,
                 'black_current_position': client_game.black_current_position,
                 'black_previous_position': client_game.black_previous_position,
-                'right_clicked_squares': right_clicked_squares,
-                'drawn_arrows': drawn_arrows,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,
@@ -1279,14 +1292,12 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
-            'drawing_settings': drawing_settings,
+            'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,
             'white_previous_position': client_game.white_previous_position,
             'black_current_position': client_game.black_current_position,
             'black_previous_position': client_game.black_previous_position,
-            'right_clicked_squares': right_clicked_squares,
-            'drawn_arrows': drawn_arrows,
             'valid_moves': valid_moves,
             'valid_captures': valid_captures,
             'valid_specials': valid_specials,
@@ -1324,6 +1335,26 @@ async def main():
             node.offline = True
             init["reloaded"] = False
             init["sent"] = 1
+            err = 'Could not send game... Reconnecting...'
+            js_code = f"console.log('{err}')"
+            window.eval(js_code)
+            print(err)
+            continue
+
+        try:
+            if not init["drawings_sent"]:
+                drawings = {
+                    "right_clicked_squares": drawing_settings["right_clicked_squares"],
+                    "drawn_arrows": drawing_settings["drawn_arrows"]
+                }
+                txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings)}
+                node.tx(txdata)
+                init["drawings_sent"] = 1
+        except Exception as err:
+            node.offline = True
+            init["reloaded"] = False
+            init["sent"] = 1
+            init["drawings_sent"] = 1
             err = 'Could not send game... Reconnecting...'
             js_code = f"console.log('{err}')"
             window.eval(js_code)
@@ -1380,8 +1411,10 @@ async def main():
 
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
-            right_clicked_squares = []
-            drawn_arrows = []
+            drawing_settings["right_clicked_squares"] = []
+            drawing_settings["opposing_right_clicked_squares"] = []
+            drawing_settings["drawn_arrows"] = []
+            drawing_settings["opposing_drawn_arrows"] = []
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     init["running"] = False
@@ -1393,14 +1426,12 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
-                'drawing_settings': drawing_settings,
+                'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
                 'white_previous_position': client_game.white_previous_position,
                 'black_current_position': client_game.black_current_position,
                 'black_previous_position': client_game.black_previous_position,
-                'right_clicked_squares': right_clicked_squares,
-                'drawn_arrows': drawn_arrows,
                 'valid_moves': valid_moves,
                 'valid_captures': valid_captures,
                 'valid_specials': valid_specials,

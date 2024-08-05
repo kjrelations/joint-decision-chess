@@ -259,6 +259,23 @@ def flattened_comp_moves(moves):
         moves_list.append(move_str)
     return moves_list
 
+# Helper to load drawings from a json loaded object
+def load_drawings(drawings):
+    right_clicked_squares = []
+    drawn_arrows = []
+    opposing_right_clicked_squares = []
+    opposing_drawn_arrows = []
+    for square in drawings["right_clicked_squares"]:
+        right_clicked_squares.append((square[0], square[1]))
+    for arrow in drawings["drawn_arrows"]:
+        drawn_arrows.append([(arrow[0][0], arrow[0][1]), (arrow[1][0], arrow[1][1])])
+    if drawings.get("opposing_right_clicked_squares"):
+        for square in drawings["opposing_right_clicked_squares"]:
+            opposing_right_clicked_squares.append((square[0], square[1]))
+        for arrow in drawings["opposing_drawn_arrows"]:
+            opposing_drawn_arrows.append([(arrow[0][0], arrow[0][1]), (arrow[1][0], arrow[1][1])])
+    return right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
@@ -921,11 +938,11 @@ def get_coordinates(row, col, GRID_SIZE):
     return x, y
 
 # Helper function to draw an arrow
-def draw_arrow(theme, arrow):
+def draw_arrow(theme, arrow, side):
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    arrow_color = ARROW_WHITE if side else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -1036,12 +1053,15 @@ def draw_arrow(theme, arrow):
     return transparent_surface
 
 # Helper function to highlight selected squares on left or right click
-def draw_highlight(window, theme, row, col, left):
-    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
-    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
+def draw_highlight(window, theme, row, col, left, player_side=True):
+    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK, \
+    HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT = \
+    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RCLICK, theme.HIGHLIGHT_BLACK_RCLICK, \
+    theme.HIGHLIGHT_WHITE_RCLICK_OPPONENT, theme.HIGHLIGHT_BLACK_RCLICK_OPPONENT
 
     square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
-    colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else [HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED]
+    secondary = [HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK] if player_side else [HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT]
+    colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else secondary
     HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
@@ -1088,13 +1108,14 @@ def reverse_coordinates(params):
     params['valid_captures'] = reversed_valid_captures
     params['valid_specials'] = reversed_valid_specials
 
-    reversed_right_click_squares, reversed_drawn_arrows = [], []
-    for square in params['right_clicked_squares']:
-        reversed_right_click_squares.append(map_to_reversed_board(square[0], square[1]))
-    for arrow in params['drawn_arrows']:
-        reversed_start, reversed_end = map_to_reversed_board(arrow[0][0], arrow[0][1]), map_to_reversed_board(arrow[1][0], arrow[1][1])
-        reversed_drawn_arrows.append([reversed_start, reversed_end])
-    params['right_clicked_squares'], params['drawn_arrows'] = reversed_right_click_squares, reversed_drawn_arrows
+    for right_clicked_squares, drawn_arrows in [['right_clicked_squares', 'drawn_arrows'], ['opposing_right_clicked_squares', 'opposing_drawn_arrows']]:
+        reversed_right_click_squares, reversed_drawn_arrows = [], []
+        for square in params['drawing_settings'][right_clicked_squares]:
+            reversed_right_click_squares.append(map_to_reversed_board(square[0], square[1]))
+        for arrow in params['drawing_settings'][drawn_arrows]:
+            reversed_start, reversed_end = map_to_reversed_board(arrow[0][0], arrow[0][1]), map_to_reversed_board(arrow[1][0], arrow[1][1])
+            reversed_drawn_arrows.append([reversed_start, reversed_end])
+        params['drawing_settings'][right_clicked_squares], params['drawing_settings'][drawn_arrows] = reversed_right_click_squares, reversed_drawn_arrows
 
     return params
 
@@ -1132,9 +1153,11 @@ def draw_board(params):
     white_previous_position = params['white_previous_position']
     black_current_position = params['black_current_position']
     black_previous_position = params['black_previous_position']
-    right_clicked_squares = params['right_clicked_squares']
     coordinate_surface = params['drawing_settings']['coordinate_surface'].copy()
-    drawn_arrows = params['drawn_arrows']
+    right_clicked_squares = params['drawing_settings']['right_clicked_squares']
+    drawn_arrows = params['drawing_settings']['drawn_arrows']
+    opposing_right_clicked_squares = params['drawing_settings']['opposing_right_clicked_squares']
+    opposing_drawn_arrows = params['drawing_settings']['opposing_drawn_arrows']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
@@ -1165,7 +1188,9 @@ def draw_board(params):
     # Highlight right clicked selected squares
     left = False
     for square in right_clicked_squares:
-        draw_highlight(window, theme, square[0], square[1], left)
+        draw_highlight(window, theme, square[0], square[1], left, starting_player)
+    for square in opposing_right_clicked_squares:
+        draw_highlight(window, theme, square[0], square[1], left, not starting_player)
 
     # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))
@@ -1180,8 +1205,13 @@ def draw_board(params):
     if hovered_square is not None:
         draw_hover_outline(window, theme, hovered_square[0], hovered_square[1])
 
+    # Preference your own arrows overtop your opponents
+    for arrow in opposing_drawn_arrows:
+        transparent_arrow = draw_arrow(theme, arrow, not starting_player)
+        # Blit each arrow separately to not blend them with each other
+        window.blit(transparent_arrow, (0, 0))
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(theme, arrow)
+        transparent_arrow = draw_arrow(theme, arrow, starting_player)
         # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     

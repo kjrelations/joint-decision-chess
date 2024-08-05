@@ -265,6 +265,14 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             txdata.update({"game": send_game})
                             node.tx(txdata)
                             init["sent"] = 0
+                elif cmd == "drawings":
+                    drawings = json.loads(node.data.pop("drawings"))
+                    opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
+                    drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
+                    drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
+                    if node.data.get("redraw"):
+                        drawing_settings["right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["drawn_arrows"] = drawn_arrows
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
@@ -424,6 +432,14 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             txdata.update({"game": send_game})
                             node.tx(txdata)
                             init["sent"] = 0
+                elif cmd == "drawings":
+                    drawings = json.loads(node.data.pop("drawings"))
+                    opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
+                    drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
+                    drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
+                    if node.data.get("redraw"):
+                        drawing_settings["right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["drawn_arrows"] = drawn_arrows
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
@@ -461,6 +477,15 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             played_condition = client_game._starting_player == client_game.black_played
                         init["sent"] = int(played_condition)
                     node.tx(init_message)
+                    if client_game.reveal_stage:
+                        drawings = {
+                            "right_clicked_squares": drawing_settings["right_clicked_squares"],
+                            "drawn_arrows": drawing_settings["drawn_arrows"],
+                            "opposing_right_clicked_squares": drawing_settings["opposing_right_clicked_squares"],
+                            "opposing_drawn_arrows": drawing_settings["opposing_drawn_arrows"]
+                        }
+                        txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "redraw": True}
+                        node.tx(txdata)
                     if not init["initialized"]:
                         init["initializing"] = True
                 elif cmd == "join_game":
