@@ -502,6 +502,14 @@ def initialize_game(init, game_id, node, drawing_settings):
                     "update_executed": False
                 }
             }
+            if client_game.decision_stage_enabled:
+                web_game_metadata_dict[game_tab_id].update(
+                    {
+                        "decision_stage": client_game.decision_stage,
+                        "next_stage": False,
+                        "reset_timer": False
+                    }
+                )
         else:
             raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
         web_game_metadata = json.dumps(web_game_metadata_dict)
@@ -633,11 +641,10 @@ async def main():
         "draw_deny_executed": False,
         "draw_deny_reset": False,
         "flip": False,
-        "flip_executed": False,
+        "flip_executed": False
     }
     # This holds the command name for the web sessionStorage object and the associated keys in the above dictionary
     command_status_names = [
-        ("step", "step", "step_executed"),
         ("undo_move", "undo", "undo_executed", "undo_reset"),
         ("undo_move_accept", "undo_accept", "undo_accept_executed", "undo_accept_reset"),
         ("undo_move_deny", "undo_deny", "undo_deny_executed", "undo_deny_reset"),
@@ -661,6 +668,7 @@ async def main():
 
     command_status_names.extend(
         [
+            ("step", "step", "step_executed"),
             ("resign", "resign", "resign_executed"),
             ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
             ("flip_board", "flip", "flip_executed")
@@ -1102,7 +1110,7 @@ async def main():
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
-                    elif not client_game.playing_stage and event.key == pygame.K_l:
+                    elif client_game.reveal_stage and event.key == pygame.K_l:
                         if client_game._starting_player:
                             client_game.white_lock = True
                         else:
@@ -1124,10 +1132,16 @@ async def main():
                         init["drawings_sent"] = 0
                         init["sent"] = 0
                         client_game._sync = False
-                        if client_game.decision_stage and client_game._starting_player:
-                            client_game.white_undo_count += 1
-                        elif client_game.decision_stage and not client_game._starting_player:
-                            client_game.black_undo_count += 1
+                        if client_game.decision_stage:
+                            if client_game._starting_player:
+                                client_game.white_undo_count += 1
+                            else:
+                                client_game.black_undo_count += 1
+                            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+                            web_game_metadata_dict = json.loads(web_game_metadata)
+                            web_game_metadata_dict[game_tab_id]["reset_timer"] = True
+                            web_game_metadata = json.dumps(web_game_metadata_dict)
+                            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
                         client_game.decision_stage = False
                         client_game.playing_stage = True
                         if client_game.white_undo_count == 3 or client_game.black_undo_count == 3:
@@ -1138,7 +1152,7 @@ async def main():
                             black_wins = client_game.white_undo_count == 3
                             client_game.add_end_game_notation(True, white_wins, black_wins)
 
-        if client_game.white_lock and client_game.black_lock:
+        if client_game.white_lock and client_game.black_lock or client_game.decision_stage_complete:
             client_game.reveal_stage = False
             client_game.white_lock = False
             client_game.black_lock = False
@@ -1151,6 +1165,7 @@ async def main():
                 client_game.decision_stage = True
             elif client_game.decision_stage:
                 client_game.decision_stage = False
+                client_game.decision_stage_complete = False
                 client_game.white_undo_count = 0
                 client_game.black_undo_count = 0
 
@@ -1158,12 +1173,12 @@ async def main():
            client_game.white_active_move is not None and client_game.black_active_move is not None:
             piece_row, piece_col = client_game.white_active_move[0]
             row, col = client_game.white_active_move[1]
-            print('here', client_game.white_lock, client_game.black_lock)
             if client_game.white_active_move[-1] == '':
                 _, _ = handle_piece_move(client_game, (piece_row, piece_col), row, col, update_positions=True, allow_promote=False)
             else:
                 _, _ = handle_piece_special_move(client_game, (piece_row, piece_col), row, col, update_positions=True)
             init["updated_board"] = True
+            init["sent"] = 0
 
         if promotion_required:
             # Lock the game state (disable other input)
@@ -1489,6 +1504,18 @@ async def main():
             web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
 
             metadata_update = True
+
+        if client_game.decision_stage_enabled:
+            if web_game_metadata_dict[game_tab_id]['decision_stage'] != client_game.decision_stage:
+                web_game_metadata_dict[game_tab_id]['decision_stage'] = client_game.decision_stage
+
+                metadata_update = True
+            
+            if web_game_metadata_dict[game_tab_id]["next_stage"]:
+                client_game.decision_stage_complete = True
+                web_game_metadata_dict[game_tab_id]["next_stage"] = False
+            
+                metadata_update = True
             
         if metadata_update:
             web_game_metadata = json.dumps(web_game_metadata_dict)

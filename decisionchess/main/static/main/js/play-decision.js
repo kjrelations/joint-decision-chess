@@ -108,6 +108,7 @@ var rematch_received = false;
 var savedMoves = [];
 var savedPieces = {};
 var savedStates = [];
+var savedDecisionStage = false;
 var comp_moves = [];
 var move_index = -1;
 var selectedMoveId = "";
@@ -276,6 +277,18 @@ function updateCommandCenter() {
             }
             savedStates = [whitePlayed, blackPlayed];
         }
+
+        if (webGameMetadata['decision_stage'] !== savedDecisionStage) {
+            if (webGameMetadata['decision_stage']) {
+                startTimer();
+            } else {
+                clearInterval(timerInterval);
+                document.getElementById('decision-timer').innerText = '00';
+                running = false;
+            }
+            savedDecisionStage = webGameMetadata['decision_stage'];
+        }
+
         // Don't keep unnecessarily updating
         if (equal_arrays) {
             return;
@@ -522,6 +535,51 @@ function resetCommandCenter() {
     movesListContainer.innerHTML = "";
     endMessagebox.innerHTML = "";
     finalScorebox.innerHTML = "";
+}
+
+let timerInterval;
+let startTime;
+let countdownTime;
+let remainingTime;
+
+function updateTimer() {
+    const now = new Date().getTime();
+    remainingTime = countdownTime - (now - startTime);
+
+    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+    var currentGameID = sessionStorage.getItem('current_game_id');
+    var webGameMetadata = existingWebGameMetadata[currentGameID];
+    if (remainingTime <= 0 || webGameMetadata['reset_timer']) {
+        clearInterval(timerInterval);
+        document.getElementById('decision-timer').innerText = '00';
+        if (!webGameMetadata['reset_timer']) {
+            webGameMetadata['next_stage'] = true;
+            existingWebGameMetadata[currentGameID] = webGameMetadata;
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata))
+        } else {
+            webGameMetadata['reset_timer'] = false;
+            existingWebGameMetadata[currentGameID] = webGameMetadata;
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata))
+        }
+        return;
+    }
+
+    if (remainingTime <= 60000 && document.getElementById('decision-timer').style.backgroundColor !== 'red') {
+        document.getElementById('decision-timer').style.backgroundColor = 'red'
+    }
+
+    const time = new Date(remainingTime);
+    const seconds = String(time.getUTCSeconds()).padStart(2, '0');
+    document.getElementById('decision-timer').innerText = `${seconds}`;
+}
+
+function startTimer() {
+    const minutes = 0;
+    const seconds = 5;
+    countdownTime = (minutes * 60 + seconds) * 1000;
+    startTime = new Date().getTime();
+    remainingTime = countdownTime;
+    timerInterval = setInterval(updateTimer, 1);
 }
 
 var previousConnected = false;

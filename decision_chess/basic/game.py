@@ -45,6 +45,7 @@ class Game:
             self.forced_end = ""
             self.white_lock = False
             self.black_lock = False
+            self.decision_stage_complete = False
             self.white_undo_count = 0
             self.black_undo_count = 0
             self._starting_player = starting_player
@@ -94,6 +95,7 @@ class Game:
             self.forced_end = custom_params["forced_end"]
             self.white_lock = custom_params["white_lock"]
             self.black_lock = custom_params["black_lock"]
+            self.decision_stage_complete = custom_params["decision_stage_complete"]
             self.white_undo_count = custom_params["white_undo_count"]
             self.black_undo_count = custom_params["black_undo_count"]
             self._starting_player = custom_params["_starting_player"]
@@ -157,6 +159,7 @@ class Game:
         self.forced_end = new_game.forced_end
         self.white_lock = new_game.white_lock
         self.black_lock = new_game.black_lock
+        self.decision_stage_complete = new_game.decision_stage_complete
         self.white_undo_count = new_game.white_undo_count
         self.black_undo_count = new_game.black_undo_count
         self._move_undone = False
@@ -1214,6 +1217,7 @@ class GameEncoder(json.JSONEncoder):
                 "forced_end": obj.forced_end,
                 "white_lock": obj.white_lock,
                 "black_lock": obj.black_lock,
+                "decision_stage_complete": obj.decision_stage_complete,
                 "white_undo_count": obj.white_undo_count,
                 "black_undo_count": obj.black_undo_count,
                 "_starting_player": obj._starting_player,
