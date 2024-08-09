@@ -160,7 +160,7 @@ def handle_piece_special_move(game, selected_piece, row, col, update_positions=F
 
     return piece, is_white
 
-def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name, game_tab_id):
+def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
     command_name, client_action_name, client_executed_name, *remaining = status_names
     if len(status_names) == 3:
         client_reset_name = None 
@@ -169,14 +169,13 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
     client_executed_status, client_reset_status = \
         client_state_actions[client_executed_name], client_state_actions.get(client_reset_name)
     
-    status_metadata_dict = web_metadata_dict[game_tab_id]
-    if status_metadata_dict.get(command_name) is not None:
-        if status_metadata_dict[command_name]['execute'] and not status_metadata_dict[command_name]['update_executed'] and not client_reset_status:
+    if web_metadata_dict.get(command_name) is not None:
+        if web_metadata_dict[command_name]['execute'] and not web_metadata_dict[command_name]['update_executed'] and not client_reset_status:
             if client_state_actions[client_action_name] != True:
                 client_state_actions[client_action_name] = True
             if client_executed_status:
-                status_metadata_dict[command_name]['update_executed'] = True
-                web_metadata_dict[game_tab_id] = status_metadata_dict
+                web_metadata_dict[command_name]['update_executed'] = True
+                web_metadata_dict = web_metadata_dict
                 json_metadata = json.dumps(web_metadata_dict)
                 
                 window.sessionStorage.setItem(games_metadata_name, json_metadata)
@@ -184,13 +183,12 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
 
         # Handling race conditions assuming speed differences and sychronizing states with this.
         # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
-        if client_executed_status and not status_metadata_dict[command_name]['execute']:
+        if client_executed_status and not web_metadata_dict[command_name]['execute']:
             client_state_actions[client_executed_name] = False    
 
-        if client_reset_status is not None and client_reset_status == True and not status_metadata_dict[command_name]['reset']:
-            status_metadata_dict[command_name]['reset'] = True
-            status_metadata_dict[command_name]['execute'] = False
-            web_metadata_dict[game_tab_id] = status_metadata_dict
+        if client_reset_status is not None and client_reset_status == True and not web_metadata_dict[command_name]['reset']:
+            web_metadata_dict[command_name]['reset'] = True
+            web_metadata_dict[command_name]['execute'] = False
             json_metadata = json.dumps(web_metadata_dict)
             
             window.sessionStorage.setItem(games_metadata_name, json_metadata)
@@ -206,7 +204,6 @@ async def promotion_state(
         client_state_actions,
         command_status_names,
         drawing_settings,
-        game_tab_id,
         node,
         init,
         offers
@@ -411,7 +408,7 @@ async def promotion_state(
 
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")     
 
         pygame.display.flip()
 
@@ -444,7 +441,7 @@ def initialize_game(init, game_id, node, drawing_settings):
     window.sessionStorage.setItem("current_game_id", game_tab_id)
     if not init["initialized"]:
         if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
-            web_game_metadata_dict[game_tab_id] = {
+            web_game_metadata_dict = {
                 "end_state": '',
                 "forced_end": '',
                 "player_color": init["player"],
@@ -452,8 +449,14 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "comp_moves": [],
                 "FEN_final_pos": "",
                 "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
-                "white_played": client_game.white_played,
-                "black_played": client_game.black_played,
+                "white_played": False,
+                "black_played": False,
+                "white_active_move": None,
+                "black_active_move": None,
+                "playing_stage": True,
+                "white_undo": 0,
+                "black_undo": 0,
+                "decision_stage_enabled": client_game.decision_stage_enabled,
                 "step": {
                     "execute": False,
                     "update_executed": False,
@@ -500,10 +503,24 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "flip_board": {
                     "execute": False,
                     "update_executed": False
+                },
+                "ready": {
+                    "execute": False,
+                    "update_executed": False
+                },
+                "redo_stages": {
+                    "execute": False,
+                    "update_executed": False
                 }
             }
+            if client_game.reveal_stage_enabled:
+                web_game_metadata_dict.update(
+                    {
+                        "reveal_stage": client_game.reveal_stage
+                    }
+                )
             if client_game.decision_stage_enabled:
-                web_game_metadata_dict[game_tab_id].update(
+                web_game_metadata_dict.update(
                     {
                         "decision_stage": client_game.decision_stage,
                         "next_stage": False,
@@ -518,11 +535,10 @@ def initialize_game(init, game_id, node, drawing_settings):
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
         if web_game_metadata is not None:
             web_game_metadata_dict = json.loads(web_game_metadata)
-            if web_game_metadata_dict.get(game_tab_id) is not None:
-                web_ready = True
-                init["initializing"], init["initialized"] = False, True
-                node.tx({node.CMD: f"{init['player']} initialized"})
-                window.sessionStorage.setItem("initialized", "true")
+            web_ready = True
+            init["initializing"], init["initialized"] = False, True
+            node.tx({node.CMD: f"{init['player']} initialized"})
+            window.sessionStorage.setItem("initialized", "true")
         if not web_ready:
             raise Exception("Failed to set web value")
     else:
@@ -641,7 +657,11 @@ async def main():
         "draw_deny_executed": False,
         "draw_deny_reset": False,
         "flip": False,
-        "flip_executed": False
+        "flip_executed": False,
+        "ready": False,
+        "ready_executed": False,
+        "redo_stages": False,
+        "redo_stages_executed": False
     }
     # This holds the command name for the web sessionStorage object and the associated keys in the above dictionary
     command_status_names = [
@@ -671,7 +691,9 @@ async def main():
             ("step", "step", "step_executed"),
             ("resign", "resign", "resign_executed"),
             ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
-            ("flip_board", "flip", "flip_executed")
+            ("flip_board", "flip", "flip_executed"),
+            ("ready", "ready", "ready_executed"),
+            ("redo_stages", "redo_stages", "redo_stages_executed")
         ]
     )
 
@@ -764,7 +786,7 @@ async def main():
                 drawing_settings["clear_selections"] = True
                 web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
                 web_game_metadata_dict = json.loads(web_game_metadata)
-                move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
+                move_index = web_game_metadata_dict["step"]["index"]
                 client_game.step_to_move(move_index)
                 if client_game._move_index == -1:
                     pass
@@ -862,6 +884,48 @@ async def main():
                 client_state_actions["draw_deny_executed"] = True
                 client_state_actions["draw_offer_received"] = False
                 window.sessionStorage.setItem("draw_request", "false")
+            if client_state_actions["ready"] and client_game.reveal_stage:
+                if client_game._starting_player:
+                    client_game.white_lock = True
+                else:
+                    client_game.black_lock = True
+                init["sent"] = 0
+                client_state_actions["ready"] = False
+                client_state_actions["ready_executed"] = True
+            if client_state_actions["redo_stages"] and client_game.decision_stage:
+                client_game.white_active_move = None
+                client_game.black_active_move = None
+                client_game.white_played = False
+                client_game.black_played = False
+                client_game.white_lock = False
+                client_game.black_lock = False
+                drawing_settings["right_clicked_squares"] = []
+                drawing_settings["opposing_right_clicked_squares"] = []
+                drawing_settings["drawn_arrows"] = []
+                drawing_settings["opposing_drawn_arrows"] = []
+                init["drawings_sent"] = 0
+                init["sent"] = 0
+                client_game._sync = False
+                if client_game._starting_player:
+                    client_game.white_undo_count += 1
+                else:
+                    client_game.black_undo_count += 1
+                web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+                web_game_metadata_dict = json.loads(web_game_metadata)
+                web_game_metadata_dict["reset_timer"] = True
+                web_game_metadata = json.dumps(web_game_metadata_dict)
+                window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+                client_game.decision_stage = False
+                client_game.playing_stage = True
+                if client_game.white_undo_count == 3 or client_game.black_undo_count == 3:
+                    client_game.forced_end = "White Reached Turn Undo Limit" if client_game.white_undo_count == 3 else "Black Reached Undo Limit"
+                    print(client_game.forced_end)
+                    client_game.end_position = True
+                    white_wins = client_game.black_undo_count == 3
+                    black_wins = client_game.white_undo_count == 3
+                    client_game.add_end_game_notation(True, white_wins, black_wins)
+                client_state_actions["redo_stages"] = False
+                client_state_actions["redo_stages_executed"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -1110,48 +1174,6 @@ async def main():
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
-                    elif client_game.reveal_stage and event.key == pygame.K_l:
-                        if client_game._starting_player:
-                            client_game.white_lock = True
-                        else:
-                            client_game.black_lock = True
-                        init["sent"] = 0
-                    
-                    elif not client_game.playing_stage and event.key == pygame.K_u:
-                        client_game.white_active_move = None
-                        client_game.black_active_move = None
-                        client_game.white_played = False
-                        client_game.black_played = False
-                        client_game.white_lock = False
-                        client_game.black_lock = False
-                        client_game.reveal_stage = False
-                        drawing_settings["right_clicked_squares"] = []
-                        drawing_settings["opposing_right_clicked_squares"] = []
-                        drawing_settings["drawn_arrows"] = []
-                        drawing_settings["opposing_drawn_arrows"] = []
-                        init["drawings_sent"] = 0
-                        init["sent"] = 0
-                        client_game._sync = False
-                        if client_game.decision_stage:
-                            if client_game._starting_player:
-                                client_game.white_undo_count += 1
-                            else:
-                                client_game.black_undo_count += 1
-                            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
-                            web_game_metadata_dict = json.loads(web_game_metadata)
-                            web_game_metadata_dict[game_tab_id]["reset_timer"] = True
-                            web_game_metadata = json.dumps(web_game_metadata_dict)
-                            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-                        client_game.decision_stage = False
-                        client_game.playing_stage = True
-                        if client_game.white_undo_count == 3 or client_game.black_undo_count == 3:
-                            client_game.forced_end = "White Reached Turn Undo Limit" if client_game.white_undo_count == 3 else "Black Reached Undo Limit"
-                            print(client_game.forced_end)
-                            client_game.end_position = True
-                            white_wins = client_game.black_undo_count == 3
-                            black_wins = client_game.white_undo_count == 3
-                            client_game.add_end_game_notation(True, white_wins, black_wins)
-
         if client_game.white_lock and client_game.black_lock or client_game.decision_stage_complete:
             client_game.reveal_stage = False
             client_game.white_lock = False
@@ -1217,7 +1239,6 @@ async def main():
                 client_state_actions,
                 command_status_names,
                 drawing_settings,
-                game_tab_id,
                 node,
                 init,
                 offers
@@ -1406,13 +1427,13 @@ async def main():
 
                 net_pieces = net_board(client_game.board)
 
-                if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
-                    web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
-                    web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
-                    web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-                    web_game_metadata_dict[game_tab_id]['comp_moves'] = flattened_comp_moves(client_game.moves)
-                    web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
-                    web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+                if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
+                    web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
+                    web_game_metadata_dict['forced_end'] = client_game.forced_end
+                    web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+                    web_game_metadata_dict['comp_moves'] = flattened_comp_moves(client_game.moves)
+                    web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
+                    web_game_metadata_dict['net_pieces'] = net_pieces
 
                     web_game_metadata = json.dumps(web_game_metadata_dict)
                     window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
@@ -1473,48 +1494,87 @@ async def main():
         
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")        
 
         net_pieces = net_board(client_game.board)
 
         metadata_update = False
-        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
-            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
-
+        if web_game_metadata_dict['net_pieces'] != net_pieces:
+            web_game_metadata_dict['net_pieces'] = net_pieces
             metadata_update = True
 
-        if web_game_metadata_dict[game_tab_id]['white_played'] != client_game.white_played:
-            web_game_metadata_dict[game_tab_id]['white_played'] = client_game.white_played
-
+        if web_game_metadata_dict['white_played'] != client_game.white_played:
+            web_game_metadata_dict['white_played'] = client_game.white_played
             metadata_update = True
 
-        if web_game_metadata_dict[game_tab_id]['black_played'] != client_game.black_played:
-            web_game_metadata_dict[game_tab_id]['black_played'] = client_game.black_played
-
+        if web_game_metadata_dict['black_played'] != client_game.black_played:
+            web_game_metadata_dict['black_played'] = client_game.black_played
             metadata_update = True
 
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = flattened_comp_moves(client_game.moves)
-
+        if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict['comp_moves'] = flattened_comp_moves(client_game.moves)
             metadata_update = True
         
         starting_player_color = 'white' if client_game._starting_player else 'black'
-        if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
-            web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
-
+        if web_game_metadata_dict['player_color'] != starting_player_color:
+            web_game_metadata_dict['player_color'] = starting_player_color
             metadata_update = True
 
-        if client_game.decision_stage_enabled:
-            if web_game_metadata_dict[game_tab_id]['decision_stage'] != client_game.decision_stage:
-                web_game_metadata_dict[game_tab_id]['decision_stage'] = client_game.decision_stage
-
+        if not client_game.playing_stage:
+            if web_game_metadata_dict['playing_stage'] != False:
+                web_game_metadata_dict['playing_stage'] = False
                 metadata_update = True
             
-            if web_game_metadata_dict[game_tab_id]["next_stage"]:
-                client_game.decision_stage_complete = True
-                web_game_metadata_dict[game_tab_id]["next_stage"] = False
+            file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
+            rank_conversion = {i: str(8 - i) for i in range(8)}
+            web_white_move = file_conversion[client_game.white_active_move[1][1]] + rank_conversion[client_game.white_active_move[1][0]]
+            web_black_move = file_conversion[client_game.black_active_move[1][1]] + rank_conversion[client_game.black_active_move[1][0]]
+            if web_game_metadata_dict['white_active_move'] != web_white_move:
+                web_game_metadata_dict['white_active_move'] = web_white_move
+                metadata_update = True
+
+            if web_game_metadata_dict['black_active_move'] != web_black_move:
+                web_game_metadata_dict['black_active_move'] = web_black_move
+                metadata_update = True
+        else:
+            if web_game_metadata_dict['playing_stage'] != True:
+                web_game_metadata_dict['playing_stage'] = True
+                metadata_update = True
+
+            if web_game_metadata_dict['white_active_move'] != None:
+                web_game_metadata_dict['white_active_move'] = None
+                metadata_update = True
+
+            if web_game_metadata_dict['black_active_move'] != None:
+                web_game_metadata_dict['black_active_move'] = None
+                metadata_update = True
+
+        if client_game.reveal_stage_enabled:
+            if web_game_metadata_dict['reveal_stage'] != client_game.reveal_stage:
+                web_game_metadata_dict['reveal_stage'] = client_game.reveal_stage
+                metadata_update = True
+
+        if client_game.decision_stage_enabled:
+            if web_game_metadata_dict['decision_stage_enabled'] != client_game.decision_stage_enabled:
+                web_game_metadata_dict['decision_stage_enabled'] = client_game.decision_stage_enabled
+                metadata_update = True
+
+            if web_game_metadata_dict['decision_stage'] != client_game.decision_stage:
+                web_game_metadata_dict['decision_stage'] = client_game.decision_stage
+                metadata_update = True
             
+            if web_game_metadata_dict['white_undo'] != client_game.white_undo_count:
+                web_game_metadata_dict['white_undo'] = client_game.white_undo_count
+                metadata_update = True
+            
+            if web_game_metadata_dict['black_undo'] != client_game.black_undo_count:
+                web_game_metadata_dict['black_undo'] = client_game.black_undo_count
+                metadata_update = True
+
+            if web_game_metadata_dict["next_stage"]:
+                client_game.decision_stage_complete = True
+                web_game_metadata_dict["next_stage"] = False
                 metadata_update = True
             
         if metadata_update:

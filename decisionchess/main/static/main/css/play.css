@@ -80,7 +80,6 @@
 }
 
 .indicator {
-    align-self: end;
     color: var(--homebutton-decision);
     margin-left: auto;
     margin-right: 5px;
@@ -185,6 +184,51 @@
 .move-button:disabled {
     background-color: var(--move-button-disabled-background);
     cursor: pointer;
+}
+
+.displayed-move {
+    background-color: var(--displayed-move-background);
+    border-radius: 20%;
+    border: 3px solid var(--displayed-move-border);
+    padding: 2px;
+    height: 40px;
+    width: 40px;
+    color: white;
+    text-align: center;
+    font-size: larger;
+}
+
+.decision-timer {
+    background-color: rgb(230, 137, 137);
+    border-radius: 20%;
+    border: 3px solid rgb(146, 0, 0);
+    color: rgb(146, 0, 0);
+    height: 50px;
+    width: 40px;
+    text-align: center;
+    font-size: 30px;
+}
+
+.circle {
+    width: 20px;
+    height: 20px;
+    background-color: rgb(97, 97, 97);
+    border-radius: 50%;
+}
+
+.circle-white {
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border: thin solid black;
+    border-radius: 50%;
+}
+
+.circle-black {
+    width: 20px;
+    height: 20px;
+    background-color: black;
+    border-radius: 50%;
 }
 
 @media (max-width: 767px) {

@@ -2,12 +2,14 @@ function adjustFont() {
     const elements = document.querySelectorAll('.action-button');
     const parent = document.getElementById('command-center');
     elements.forEach(element => {
-        if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
-            element.style.fontSize = '0.7rem';
-        } else if (parent.offsetWidth < 210) {
-            element.style.fontSize = '0.65rem';
-        } else if (parent.offsetWidth >= 320) {
-            element.style.fontSize = '1rem';
+        if (element.id !== 'readyButton' && element.id !== 'redoButton') {
+            if (210 < parent.offsetWidth && parent.offsetWidth < 320) {
+                element.style.fontSize = '0.7rem';
+            } else if (parent.offsetWidth < 210) {
+                element.style.fontSize = '0.65rem';
+            } else if (parent.offsetWidth >= 320) {
+                element.style.fontSize = '1rem';
+            }
         }
     });
 }
@@ -127,330 +129,137 @@ function movePieceTranslation(move) {
 }
 
 function updateCommandCenter() {
-    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    var currentGameID = sessionStorage.getItem('current_game_id');
-    currentGameID = (currentGameID === 'null' ? null : currentGameID);
-    if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) {
-        var webGameMetadata = existingWebGameMetadata[currentGameID];
-        var moves = webGameMetadata.alg_moves;
-        var movesListContainer = document.getElementById('moves-list');
-        var endState = webGameMetadata.end_state;
-        comp_moves = webGameMetadata.comp_moves;
-        const equal_arrays = areEqual(moves, savedMoves, 'array');
-        if (endState !== '' && !equal_arrays) {
-            const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
-            clearInterval(requestIntervalId);
-            clearInterval(connectIntervalId);
-            buttons.forEach(button => {
-                button.remove();
+    var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+    if (Object.keys(webGameMetadata).length === 0) {
+        return;
+    }
+    var moves = webGameMetadata.alg_moves;
+    var movesListContainer = document.getElementById('moves-list');
+    var endState = webGameMetadata.end_state;
+    comp_moves = webGameMetadata.comp_moves;
+    const equal_arrays = areEqual(moves, savedMoves, 'array');
+    if (endState !== '' && !equal_arrays) {
+        const buttons = document.querySelectorAll(".action-button:not([post-game=true])");
+        clearInterval(requestIntervalId);
+        clearInterval(connectIntervalId);
+        buttons.forEach(button => {
+            button.remove();
+        });
+    }
+    promoting = sessionStorage.getItem('promoting');
+    promoting = (promoting === 'true' ? true : false);
+    if (promotion_lock !== promoting) {
+        const stepButtons = ["skipBackwardButton", "backwardButton", "forwardButton", "skipForwardButton"];
+        if (promoting) {
+            stepButtons.forEach(buttonId => {
+                document.getElementById(buttonId).classList.add("used");
+                document.getElementById(buttonId).disabled = true;
+            });
+        } else {
+            stepButtons.forEach(buttonId => {
+                document.getElementById(buttonId).classList.remove("used");
+                document.getElementById(buttonId).disabled = false;
             });
         }
-        promoting = sessionStorage.getItem('promoting');
-        promoting = (promoting === 'true' ? true : false);
-        if (promotion_lock !== promoting) {
-            const stepButtons = ["skipBackwardButton", "backwardButton", "forwardButton", "skipForwardButton"];
-            if (promoting) {
-                stepButtons.forEach(buttonId => {
-                    document.getElementById(buttonId).classList.add("used");
-                    document.getElementById(buttonId).disabled = true;
-                });
-            } else {
-                stepButtons.forEach(buttonId => {
-                    document.getElementById(buttonId).classList.remove("used");
-                    document.getElementById(buttonId).disabled = false;
-                });
-            }
-            promotion_lock = promoting;
-        }
+        promotion_lock = promoting;
+    }
 
-        var netPieces = webGameMetadata.net_pieces;
-        if (!areEqual(savedPieces, netPieces, 'object')) {
-            savedPieces = netPieces;
-            var topPieces = document.getElementById('topPieces');
-            var bottomPieces = document.getElementById('bottomPieces');
-            topPieces.innerHTML = '';
-            bottomPieces.innerHTML = '';
-            var playerPieces = !flipped ? bottomPieces : topPieces;
-            var opponentPieces = !flipped ? topPieces : bottomPieces;
-            pawnSum = netPieces['p'];
-            bishopSum = netPieces['b'];
-            knightSum = netPieces['n'];
-            rookSum = netPieces['r'];
-            queenSum = netPieces['q'];
-            const piecesList = [queenSum, rookSum, knightSum, bishopSum, pawnSum];
-            var score = 0;
-            const color = webGameMetadata.player_color;
-
-            for (let i = 0; i < piecesList.length; i++) {
-                if (piecesList[i] !== 0) {
-                    var content = document.createElement('img');
-                    content.className = 'scaled-pieces';
-                    if (i === 0) {
-                        content.src = queensrc;
-                        score += piecesList[i] * 9;
-                    } else if (i === 1) {
-                        content.src = rooksrc;
-                        score += piecesList[i] * 5;
-                    } else if (i === 2) {
-                        content.src = knightsrc;
-                        score += piecesList[i] * 3;
-                    } else if (i === 3) {
-                        content.src = bishopsrc;
-                        score += piecesList[i] * 3;
-                    } else {
-                        content.src = pawnsrc;
-                        score += piecesList[i];
-                    }
-                    const playerSum = color === 'white' ? piecesList[i] > 0 : piecesList[i] < 0;
-                    if (playerSum) {
-                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
-                            const clone = content.cloneNode(true);
-                            if (j === piecesList[i] - 1) {
-                                clone.style.marginRight = '2px';
-                            }
-                            playerPieces.appendChild(clone);
-                        }
-                    } else if (piecesList[i] !== 0) {
-                        for (let j = 0; j < Math.abs(piecesList[i]); j++) {
-                            const clone = content.cloneNode(true);
-                            if (j === piecesList[i] - 1) {
-                                clone.style.marginRight = '2px';
-                            }
-                            opponentPieces.appendChild(clone);
-                        }
-                    }
-                }
-            }
-            const scoreCompare = color === 'white' ? score > 0 : score < 0;
-            const scoreElement = document.createElement('div')
-            scoreElement.textContent = '+' + Math.abs(score);
-            if (scoreCompare) {
-                playerPieces.appendChild(scoreElement);
-            } else if (score !== 0) {
-                opponentPieces.appendChild(scoreElement);
-            }
-        }
-
-        var whitePlayed = JSON.parse(webGameMetadata.white_played);
-        var blackPlayed = JSON.parse(webGameMetadata.black_played);
+    var netPieces = webGameMetadata.net_pieces;
+    if (!areEqual(savedPieces, netPieces, 'object')) {
+        savedPieces = netPieces;
+        var topPieces = document.getElementById('topPieces');
+        var bottomPieces = document.getElementById('bottomPieces');
+        topPieces.innerHTML = '';
+        bottomPieces.innerHTML = '';
+        var playerPieces = !flipped ? bottomPieces : topPieces;
+        var opponentPieces = !flipped ? topPieces : bottomPieces;
+        pawnSum = netPieces['p'];
+        bishopSum = netPieces['b'];
+        knightSum = netPieces['n'];
+        rookSum = netPieces['r'];
+        queenSum = netPieces['q'];
+        const piecesList = [queenSum, rookSum, knightSum, bishopSum, pawnSum];
+        var score = 0;
         const color = webGameMetadata.player_color;
-        var currentTurn = !whitePlayed && color === 'white' || !blackPlayed && color === 'black';
-        var theirTurn = !whitePlayed && color === 'black' || !blackPlayed && color === 'white';
-        var currentIndicator = document.getElementById('playerIndicator');
-        var opponentIndicator = document.getElementById('opponentIndicator');
-        if (currentTurn && !alternatingFavicon) {
-            const title = document.getElementById('title');
-            title.text = "Your Turn";
-            faviconIntervalId = setInterval(faviconInterval, 2000);
-            currentIndicator.classList.remove('hidden');
-            alternatingFavicon = true;
-        } else if (!currentTurn && alternatingFavicon) {
-            clearInterval(faviconIntervalId);
-            changeFavicon(0);
-            const title = document.getElementById('title');
-            title.text = "Playing"
-            currentIndicator.classList.add('hidden');
-            alternatingFavicon = false;
-        }
-        if (theirTurn && opponentIndicator.classList.contains('hidden')) {
-            opponentIndicator.classList.remove('hidden');
-        } else if (!theirTurn) {
-            opponentIndicator.classList.add('hidden');
-        }
 
-        if (savedStates.length === 0 || whitePlayed !== savedStates[0] || blackPlayed !== savedStates[1]) {
-            if (selectedMoveId !== "") {
-                var previousMove = document.getElementById(selectedMoveId);
-                // Check for existence as undos can remove previously selected move elements
-                if (previousMove) {
-                    previousMove.disabled = false;
+        for (let i = 0; i < piecesList.length; i++) {
+            if (piecesList[i] !== 0) {
+                var content = document.createElement('img');
+                content.className = 'scaled-pieces';
+                if (i === 0) {
+                    content.src = queensrc;
+                    score += piecesList[i] * 9;
+                } else if (i === 1) {
+                    content.src = rooksrc;
+                    score += piecesList[i] * 5;
+                } else if (i === 2) {
+                    content.src = knightsrc;
+                    score += piecesList[i] * 3;
+                } else if (i === 3) {
+                    content.src = bishopsrc;
+                    score += piecesList[i] * 3;
+                } else {
+                    content.src = pawnsrc;
+                    score += piecesList[i];
+                }
+                const playerSum = color === 'white' ? piecesList[i] > 0 : piecesList[i] < 0;
+                if (playerSum) {
+                    for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                        const clone = content.cloneNode(true);
+                        if (j === piecesList[i] - 1) {
+                            clone.style.marginRight = '2px';
+                        }
+                        playerPieces.appendChild(clone);
+                    }
+                } else if (piecesList[i] !== 0) {
+                    for (let j = 0; j < Math.abs(piecesList[i]); j++) {
+                        const clone = content.cloneNode(true);
+                        if (j === piecesList[i] - 1) {
+                            clone.style.marginRight = '2px';
+                        }
+                        opponentPieces.appendChild(clone);
+                    }
                 }
             }
-            move_index = comp_moves.length - 1;
-            moveId = 'move-' + move_index;
-            if (move_index !== -1) {
-                selectedMove = document.getElementById(moveId);
-                if (selectedMove) {
-                    selectedMove.disabled = true;
-                    selectedMoveId = moveId;
-                }
-            }
-            savedStates = [whitePlayed, blackPlayed];
         }
-
-        if (webGameMetadata['decision_stage'] !== savedDecisionStage) {
-            if (webGameMetadata['decision_stage']) {
-                startTimer();
-            } else {
-                clearInterval(timerInterval);
-                document.getElementById('decision-timer').innerText = '00';
-                running = false;
-            }
-            savedDecisionStage = webGameMetadata['decision_stage'];
+        const scoreCompare = color === 'white' ? score > 0 : score < 0;
+        const scoreElement = document.createElement('div')
+        scoreElement.textContent = '+' + Math.abs(score);
+        if (scoreCompare) {
+            playerPieces.appendChild(scoreElement);
+        } else if (score !== 0) {
+            opponentPieces.appendChild(scoreElement);
         }
+    }
 
-        // Don't keep unnecessarily updating
-        if (equal_arrays) {
-            return;
-        } 
-        savedMoves = moves;
-        
-        movesListContainer.innerHTML = '';
-        
-        var parentHeader = document.createElement('div');
-        parentHeader.style.width = '100%';
-        parentHeader.classList.add('d-flex');
-        parentHeader.style.position = 'sticky';
-        parentHeader.style.top = '0';
-        parentHeader.style.backgroundColor = 'var(--command-center-background)';
+    var whitePlayed = JSON.parse(webGameMetadata.white_played);
+    var blackPlayed = JSON.parse(webGameMetadata.black_played);
+    const color = webGameMetadata.player_color;
+    var currentTurn = !whitePlayed && color === 'white' || !blackPlayed && color === 'black';
+    var theirTurn = !whitePlayed && color === 'black' || !blackPlayed && color === 'white';
+    var currentIndicator = document.getElementById('playerIndicator');
+    var opponentIndicator = document.getElementById('opponentIndicator');
+    if (currentTurn && !alternatingFavicon) {
+        const title = document.getElementById('title');
+        title.text = "Your Turn";
+        faviconIntervalId = setInterval(faviconInterval, 2000);
+        currentIndicator.classList.remove('hidden');
+        alternatingFavicon = true;
+    } else if (!currentTurn && alternatingFavicon) {
+        clearInterval(faviconIntervalId);
+        changeFavicon(0);
+        const title = document.getElementById('title');
+        title.text = "Playing"
+        currentIndicator.classList.add('hidden');
+        alternatingFavicon = false;
+    }
+    if (theirTurn && opponentIndicator.classList.contains('hidden')) {
+        opponentIndicator.classList.remove('hidden');
+    } else if (!theirTurn) {
+        opponentIndicator.classList.add('hidden');
+    }
 
-        var emptyDiv = document.createElement('div');
-        emptyDiv.style.width = '10%';
-
-        var leftHeader = document.createElement('div');
-        leftHeader.style.width = '45%';
-        leftHeader.style.color = 'var(--move-row-text)';
-        leftHeader.style.textAlign = 'left'
-        leftHeader.textContent = 'White'
-
-        var rightHeader = leftHeader.cloneNode(true);
-        rightHeader.textContent = 'Black'
-
-        var initialized = sessionStorage.getItem('initialized');
-        initialized = (initialized === 'true' ? true : false);
-        if (initialized && moves.length !== 0) {
-            parentHeader.appendChild(emptyDiv);
-            parentHeader.appendChild(leftHeader);
-            parentHeader.appendChild(rightHeader);
-            movesListContainer.appendChild(parentHeader);
-        }
-
-        var j = 1;
-        for (var i = 0; i < moves.length; i += 1) {
-            var move1 = ( Array.isArray(moves[i])) ? movePieceTranslation(moves[i][0]) : moves[i];
-            var move2 = (
-                moves[i] !== '1-0' && 
-                moves[i] !== '0-1' && 
-                moves[i] !== '1-1' &&
-                moves[i] !== '½–½'
-            ) ? moves[i][1] : '';
-            move2 = movePieceTranslation(move2);
-
-            var moveRow = document.createElement('div');
-            moveRow.className = 'move-row ' + (i % 2 === 0 ? '' : 'even-move-row');
-                        
-            var pairNumber = document.createElement('div');
-            pairNumber.style.width = '10%';
-            pairNumber.textContent = j;
-            pairNumber.style.textAlign = 'center'
-            pairNumber.style.backgroundColor = 'var(--command-center-background)';
-            pairNumber.className = 'move-number';
-            pairNumber.id = 'move-number-' + j;
-
-            var parent = document.createElement('button');
-            parent.style.width = '90%';
-            parent.className = 'move-button';
-            parent.classList.add('d-flex');
-            parent.setAttribute('move-index', j - 1);
-            parent.id = 'move-' + (j - 1)
-
-            var leftHalf = document.createElement('div');
-            leftHalf.style.width = '50%';
-            leftHalf.textContent = move1;
-            leftHalf.className = 'move-child';
-
-            var rightHalf = document.createElement('div');
-            rightHalf.style.width = '50%';
-            rightHalf.textContent = move2;
-            rightHalf.className = 'move-child';
-
-            if (!initialized) {
-                pairNumber.classList.add('hidden');
-                parent.classList.add('hidden');
-                leftHalf.classList.add('hidden');
-                rightHalf.classList.add('hidden');
-            }
-
-            if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '1-1' && move1 !== '½–½') {
-                moveRow.appendChild(pairNumber);
-                parent.appendChild(leftHalf);
-                parent.appendChild(rightHalf)
-                moveRow.appendChild(parent);
-
-                movesListContainer.appendChild(moveRow);
-                movesListContainer.scrollTop = movesListContainer.scrollHeight;
-                if (parent.id) {
-                    (function(id) {
-                        parent.addEventListener("click", function() {
-                            handleButton(id, "step");
-                        });
-                    })(parent.id);
-                }
-            }
-            j += 1;
-        }
-        movesListContainer.scrollTop = movesListContainer.scrollHeight;
-
-        if (endState === "\u00bd\u2013\u00bd") {
-            endState = '½–½';
-        }
-        var forcedEnd = webGameMetadata.forced_end;
-        var endMessagebox = document.getElementById('end-message');
-        var finalScorebox = document.getElementById('final-score');
-        var endmessage = '';
-        if (forcedEnd !== '') {
-            if (forcedEnd === 'Draw by mutual agreement' || forcedEnd === 'Stalemate by Threefold Repetition') {
-                endmessage += forcedEnd;
-                finalScorebox.innerHTML = '½–½';
-            } else {
-                endmessage += forcedEnd + ' • ';
-            }
-            finalScorebox.classList.add('mt-2');
-        }
-
-        if (endState === '1-0') {
-            endmessage += `White is Triumphant`;
-            endMessagebox.innerHTML = `White is Triumphant`;
-            finalScorebox.innerHTML = '1-0';
-        } else if (endState === '0-1') {
-            endmessage += `Black is Triumphant`;
-            finalScorebox.innerHTML = '0-1';
-        } else if (endState === '1-1') {
-            endmessage += `Both are Victorious`
-            finalScorebox.innerHTML = '1-1'
-        } else if (endState === '½–½' && forcedEnd !== 'Draw by mutual agreement' && forcedEnd !== 'Stalemate by Threefold Repetition') {
-            endmessage += `Stalemate was Reached`;
-            finalScorebox.innerHTML = '½–½';
-        }
-
-        if (endmessage !== '') {
-            endMessagebox.innerHTML = endmessage;
-            if (!gameSaved) { // Only execute this once
-                gameSaved = true
-                comp_moves = webGameMetadata.comp_moves;
-                var FEN_final = webGameMetadata.FEN_final_pos;
-                // saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd); // comp moves string needs to be joined again on elements
-            }
-            
-            if (!rematch_received) {
-                // Race/page visibility conditions can hit this second if page is returned to after hiding it
-                document.getElementById("rematchButton").classList.remove("hidden");
-            } 
-            document.getElementById("rematchButton").addEventListener("click", function() {
-                fetchUUID().then(data => {
-                    signed_uuid = data.uuid;
-                    sendMessage(signed_uuid, "rematch_request");
-                });
-                rematch_request = true;
-                document.getElementById("rematchButton").disabled = true;
-            }, {once: true});
-            const title = document.getElementById('title');
-            currentTurn = null;
-            title.text = "Game Over";
-            changeFavicon(0);
-            document.getElementById('playerIndicator').remove();
-            document.getElementById('opponentIndicator').remove();
-        }
+    if (savedStates.length === 0 || whitePlayed !== savedStates[0] || blackPlayed !== savedStates[1]) {
         if (selectedMoveId !== "") {
             var previousMove = document.getElementById(selectedMoveId);
             // Check for existence as undos can remove previously selected move elements
@@ -461,9 +270,269 @@ function updateCommandCenter() {
         move_index = comp_moves.length - 1;
         moveId = 'move-' + move_index;
         if (move_index !== -1) {
-            document.getElementById(moveId).disabled = true;
-            selectedMoveId = moveId;
+            selectedMove = document.getElementById(moveId);
+            if (selectedMove) {
+                selectedMove.disabled = true;
+                selectedMoveId = moveId;
+            }
         }
+        savedStates = [whitePlayed, blackPlayed];
+    }
+
+    if (webGameMetadata['decision_stage'] !== savedDecisionStage) {
+        if (webGameMetadata['decision_stage']) {
+            document.getElementById('decision-timer').classList.remove('hidden');
+            startTimer();
+        } else {
+            clearInterval(timerInterval);
+            document.getElementById('decision-timer').innerText = '0';
+            document.getElementById('decision-timer').classList.add('hidden');
+        }
+        savedDecisionStage = webGameMetadata['decision_stage'];
+    }
+
+    if (!webGameMetadata['playing_stage']) {
+        if (document.getElementById('displayed-move-black').textContent !== webGameMetadata['black_active_move']) {
+            document.getElementById('displayed-move-black').textContent = webGameMetadata['black_active_move'];
+            document.getElementById('displayed-move-white').textContent = webGameMetadata['white_active_move'];
+            document.getElementById('displayed-move-black').classList.remove('hidden');
+            document.getElementById('displayed-move-white').classList.remove('hidden');
+        }
+    } else if (document.getElementById('displayed-move-black').textContent !== '') {
+        document.getElementById('displayed-move-black').textContent = '';
+        document.getElementById('displayed-move-white').textContent = '';
+        document.getElementById('displayed-move-black').classList.add('hidden');
+        document.getElementById('displayed-move-white').classList.add('hidden');
+    }
+
+    if (webGameMetadata['decision_stage_enabled'] && document.getElementById('white-undo-1').classList.contains('hidden')) {
+        document.getElementById('circle-white').classList.remove('hidden');
+        document.getElementById('circle-black').classList.remove('hidden');
+        document.getElementById('white-undo-1').classList.remove('hidden');
+        document.getElementById('white-undo-2').classList.remove('hidden');
+        document.getElementById('white-undo-3').classList.remove('hidden');
+        document.getElementById('black-undo-1').classList.remove('hidden');
+        document.getElementById('black-undo-2').classList.remove('hidden');
+        document.getElementById('black-undo-3').classList.remove('hidden');
+    }
+    if (webGameMetadata['white_undo'] >= 1) {
+        if (window.getComputedStyle(document.getElementById('white-undo-1'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('white-undo-1').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['white_undo'] >= 2) {
+        if (window.getComputedStyle(document.getElementById('white-undo-2'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('white-undo-2').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['white_undo'] >= 3) {
+        if (window.getComputedStyle(document.getElementById('white-undo-3'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('white-undo-3').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['black_undo'] >= 1) {
+        if (window.getComputedStyle(document.getElementById('black-undo-1'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('black-undo-1').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['black_undo'] >= 2) {
+        if (window.getComputedStyle(document.getElementById('black-undo-2'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('black-undo-2').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['black_undo'] >= 3) {
+        if (window.getComputedStyle(document.getElementById('black-undo-3'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            document.getElementById('black-undo-3').style.backgroundColor = 'green';
+        }
+    } 
+    if (webGameMetadata['reveal_stage'] && document.getElementById('readyButton').classList.contains('hidden')) {
+        document.getElementById('readyButton').classList.remove('hidden');
+        document.getElementById('readyButton').disabled = false;
+    } else if (!webGameMetadata['reveal_stage'] && !document.getElementById('readyButton').classList.contains('hidden')) {
+        document.getElementById('readyButton').classList.add('hidden');
+        document.getElementById('readyButton').disabled = true;
+    }
+    if (webGameMetadata['decision_stage'] && document.getElementById('redoButton').classList.contains('hidden')) {
+        document.getElementById('redoButton').classList.remove('hidden');
+        document.getElementById('redoButton').disabled = false;
+    } else if (!webGameMetadata['decision_stage'] && !document.getElementById('redoButton').classList.contains('hidden')) {
+        document.getElementById('redoButton').classList.add('hidden');
+        document.getElementById('redoButton').disabled = true;
+    }
+    // Don't keep unnecessarily updating
+    if (equal_arrays) {
+        return;
+    } 
+    savedMoves = moves;
+    
+    movesListContainer.innerHTML = '';
+    
+    var parentHeader = document.createElement('div');
+    parentHeader.style.width = '100%';
+    parentHeader.classList.add('d-flex');
+    parentHeader.style.position = 'sticky';
+    parentHeader.style.top = '0';
+    parentHeader.style.backgroundColor = 'var(--command-center-background)';
+
+    var emptyDiv = document.createElement('div');
+    emptyDiv.style.width = '10%';
+
+    var leftHeader = document.createElement('div');
+    leftHeader.style.width = '45%';
+    leftHeader.style.color = 'var(--move-row-text)';
+    leftHeader.style.textAlign = 'left'
+    leftHeader.textContent = 'White'
+
+    var rightHeader = leftHeader.cloneNode(true);
+    rightHeader.textContent = 'Black'
+
+    var initialized = sessionStorage.getItem('initialized');
+    initialized = (initialized === 'true' ? true : false);
+    if (initialized && moves.length !== 0) {
+        parentHeader.appendChild(emptyDiv);
+        parentHeader.appendChild(leftHeader);
+        parentHeader.appendChild(rightHeader);
+        movesListContainer.appendChild(parentHeader);
+    }
+
+    var j = 1;
+    for (var i = 0; i < moves.length; i += 1) {
+        var move1 = ( Array.isArray(moves[i])) ? movePieceTranslation(moves[i][0]) : moves[i];
+        var move2 = (
+            moves[i] !== '1-0' && 
+            moves[i] !== '0-1' && 
+            moves[i] !== '1-1' &&
+            moves[i] !== '½–½'
+        ) ? moves[i][1] : '';
+        move2 = movePieceTranslation(move2);
+
+        var moveRow = document.createElement('div');
+        moveRow.className = 'move-row ' + (i % 2 === 0 ? '' : 'even-move-row');
+                    
+        var pairNumber = document.createElement('div');
+        pairNumber.style.width = '10%';
+        pairNumber.textContent = j;
+        pairNumber.style.textAlign = 'center'
+        pairNumber.style.backgroundColor = 'var(--command-center-background)';
+        pairNumber.className = 'move-number';
+        pairNumber.id = 'move-number-' + j;
+
+        var parent = document.createElement('button');
+        parent.style.width = '90%';
+        parent.className = 'move-button';
+        parent.classList.add('d-flex');
+        parent.setAttribute('move-index', j - 1);
+        parent.id = 'move-' + (j - 1)
+
+        var leftHalf = document.createElement('div');
+        leftHalf.style.width = '50%';
+        leftHalf.textContent = move1;
+        leftHalf.className = 'move-child';
+
+        var rightHalf = document.createElement('div');
+        rightHalf.style.width = '50%';
+        rightHalf.textContent = move2;
+        rightHalf.className = 'move-child';
+
+        if (!initialized) {
+            pairNumber.classList.add('hidden');
+            parent.classList.add('hidden');
+            leftHalf.classList.add('hidden');
+            rightHalf.classList.add('hidden');
+        }
+
+        if (move1 !== '1-0' && move1 !== '0-1' && move1 !== '1-1' && move1 !== '½–½') {
+            moveRow.appendChild(pairNumber);
+            parent.appendChild(leftHalf);
+            parent.appendChild(rightHalf)
+            moveRow.appendChild(parent);
+
+            movesListContainer.appendChild(moveRow);
+            movesListContainer.scrollTop = movesListContainer.scrollHeight;
+            if (parent.id) {
+                (function(id) {
+                    parent.addEventListener("click", function() {
+                        handleButton(id, "step");
+                    });
+                })(parent.id);
+            }
+        }
+        j += 1;
+    }
+    movesListContainer.scrollTop = movesListContainer.scrollHeight;
+
+    if (endState === "\u00bd\u2013\u00bd") {
+        endState = '½–½';
+    }
+    var forcedEnd = webGameMetadata.forced_end;
+    var endMessagebox = document.getElementById('end-message');
+    var finalScorebox = document.getElementById('final-score');
+    var endmessage = '';
+    if (forcedEnd !== '') {
+        if (forcedEnd === 'Draw by mutual agreement' || forcedEnd === 'Stalemate by Threefold Repetition') {
+            endmessage += forcedEnd;
+            finalScorebox.innerHTML = '½–½';
+        } else {
+            endmessage += forcedEnd + ' • ';
+        }
+        finalScorebox.classList.add('mt-2');
+    }
+
+    if (endState === '1-0') {
+        endmessage += `White is Triumphant`;
+        endMessagebox.innerHTML = `White is Triumphant`;
+        finalScorebox.innerHTML = '1-0';
+    } else if (endState === '0-1') {
+        endmessage += `Black is Triumphant`;
+        finalScorebox.innerHTML = '0-1';
+    } else if (endState === '1-1') {
+        endmessage += `Both are Victorious`
+        finalScorebox.innerHTML = '1-1'
+    } else if (endState === '½–½' && forcedEnd !== 'Draw by mutual agreement' && forcedEnd !== 'Stalemate by Threefold Repetition') {
+        endmessage += `Stalemate was Reached`;
+        finalScorebox.innerHTML = '½–½';
+    }
+
+    if (endmessage !== '') {
+        endMessagebox.innerHTML = endmessage;
+        if (!gameSaved) { // Only execute this once
+            gameSaved = true
+            comp_moves = webGameMetadata.comp_moves;
+            var FEN_final = webGameMetadata.FEN_final_pos;
+            // saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd); // comp moves string needs to be joined again on elements
+        }
+        
+        if (!rematch_received) {
+            // Race/page visibility conditions can hit this second if page is returned to after hiding it
+            document.getElementById("rematchButton").classList.remove("hidden");
+        } 
+        document.getElementById("rematchButton").addEventListener("click", function() {
+            fetchUUID().then(data => {
+                signed_uuid = data.uuid;
+                sendMessage(signed_uuid, "rematch_request");
+            });
+            rematch_request = true;
+            document.getElementById("rematchButton").disabled = true;
+        }, {once: true});
+        const title = document.getElementById('title');
+        currentTurn = null;
+        title.text = "Game Over";
+        changeFavicon(0);
+        document.getElementById('playerIndicator').remove();
+        document.getElementById('opponentIndicator').remove();
+    }
+    if (selectedMoveId !== "") {
+        var previousMove = document.getElementById(selectedMoveId);
+        // Check for existence as undos can remove previously selected move elements
+        if (previousMove) {
+            previousMove.disabled = false;
+        }
+    }
+    move_index = comp_moves.length - 1;
+    moveId = 'move-' + move_index;
+    if (move_index !== -1) {
+        document.getElementById(moveId).disabled = true;
+        selectedMoveId = moveId;
     }
 }
 
@@ -546,30 +615,23 @@ function updateTimer() {
     const now = new Date().getTime();
     remainingTime = countdownTime - (now - startTime);
 
-    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    var currentGameID = sessionStorage.getItem('current_game_id');
-    var webGameMetadata = existingWebGameMetadata[currentGameID];
+    var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     if (remainingTime <= 0 || webGameMetadata['reset_timer']) {
         clearInterval(timerInterval);
-        document.getElementById('decision-timer').innerText = '00';
+        document.getElementById('decision-timer').innerText = '0';
         if (!webGameMetadata['reset_timer']) {
             webGameMetadata['next_stage'] = true;
-            existingWebGameMetadata[currentGameID] = webGameMetadata;
-            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata))
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata))
         } else {
             webGameMetadata['reset_timer'] = false;
-            existingWebGameMetadata[currentGameID] = webGameMetadata;
-            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata))
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata))
         }
+        document.getElementById('decision-timer').classList.add('hidden');
         return;
     }
 
-    if (remainingTime <= 60000 && document.getElementById('decision-timer').style.backgroundColor !== 'red') {
-        document.getElementById('decision-timer').style.backgroundColor = 'red'
-    }
-
     const time = new Date(remainingTime);
-    const seconds = String(time.getUTCSeconds()).padStart(2, '0');
+    const seconds = String(time.getUTCSeconds());
     document.getElementById('decision-timer').innerText = `${seconds}`;
 }
 
@@ -629,50 +691,39 @@ $(".chat-input").on('keydown', function (e) {
 });
 
 function sendMessage(message, type = null) {
-    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    var currentGameID = sessionStorage.getItem('current_game_id');
-    currentGameID = (currentGameID === 'null' ? null : currentGameID);
-    if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
-        var webGameMetadata = existingWebGameMetadata[currentGameID];
-        var playerColor = webGameMetadata["player_color"];
-        var messageObj = {
-            message: {
-                text: message,
-                color: playerColor,
-                sender: sender,
-                end_state: webGameMetadata["end_state"]
-            }
-        };
-        if (type !== null) {
-            if (
-                type.includes("rematch") || 
-                type === "initialized" ||
-                type === "undo_sent" ||
-                type === "draw_sent"
-            ) {
-                messageObj["message"]["log"] = type;
-                if (type == "initialized") {
-                    messageObj["message"]["opponent"] = opponent;
-                }
+    var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+    var playerColor = webGameMetadata["player_color"];
+    var messageObj = {
+        message: {
+            text: message,
+            color: playerColor,
+            sender: sender,
+            end_state: webGameMetadata["end_state"]
+        }
+    };
+    if (type !== null) {
+        if (
+            type.includes("rematch") || 
+            type === "initialized" ||
+            type === "undo_sent" ||
+            type === "draw_sent"
+        ) {
+            messageObj["message"]["log"] = type;
+            if (type == "initialized") {
+                messageObj["message"]["opponent"] = opponent;
             }
         }
-        socket.send(JSON.stringify(messageObj));
-    } else {
-        console.warn("Cannot send message");
     }
+    socket.send(JSON.stringify(messageObj));
 }
 
 function handleMessage(data) {
     if (data.hasOwnProperty('log')) {
-        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+        var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
         var currentGameID = sessionStorage.getItem('current_game_id');
         var playerColor;
         currentGameID = (currentGameID === 'null' ? null : currentGameID);
-        if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
-            playerColor = existingWebGameMetadata[currentGameID]["player_color"];
-        } else {
-            return;
-        }
+        playerColor = webGameMetadata["player_color"];
         if (data["log"] === "connect") {
             connect_user = data["user"];
             // Exclude spectators by adding highlighted message
@@ -913,7 +964,7 @@ window.addEventListener('beforeunload', function () {
     sessionStorage.setItem('promoting', 'false');
 });
 
-function handlestep(webGameMetadata, sessionStorageObjectName, existingWebGameMetadata, currentGameID, buttonId) {
+function handlestep(webGameMetadata, sessionStorageObjectName, buttonId) {
     var early_exit = false;
     if (
         move_index + 1 >= comp_moves.length && buttonId.toLowerCase().includes("forward") || 
@@ -921,8 +972,7 @@ function handlestep(webGameMetadata, sessionStorageObjectName, existingWebGameMe
     ) {
         webGameMetadata[sessionStorageObjectName].execute = false;
         webGameMetadata[sessionStorageObjectName].index = null;
-        existingWebGameMetadata[currentGameID] = webGameMetadata;
-        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
         
         document.getElementById(buttonId).disabled = false;
         early_exit = true;
@@ -941,41 +991,30 @@ function handlestep(webGameMetadata, sessionStorageObjectName, existingWebGameMe
 }
 
 function handleWebtoGameAction(buttonId, sessionStorageObjectName, Options = null) {
-    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    var currentGameID = sessionStorage.getItem('current_game_id');
-    currentGameID = (currentGameID === 'null' ? null : currentGameID);
-    if (currentGameID !== null && existingWebGameMetadata.hasOwnProperty(currentGameID)) { 
-        var webGameMetadata = existingWebGameMetadata[currentGameID];
-        webGameMetadata[sessionStorageObjectName].execute = true;
-        existingWebGameMetadata[currentGameID] = webGameMetadata;
-        if (sessionStorageObjectName == "step") {
-            const stepResults = handlestep(
-                webGameMetadata, 
-                sessionStorageObjectName, 
-                existingWebGameMetadata, 
-                currentGameID, 
-                buttonId
-            );
-            if (stepResults.early_exit) {
-                return;
-            }
-            webGameMetadata[sessionStorageObjectName].index = stepResults.index_number;
+    var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+    webGameMetadata[sessionStorageObjectName].execute = true;
+    if (sessionStorageObjectName == "step") {
+        const stepResults = handlestep(
+            webGameMetadata, 
+            sessionStorageObjectName,
+            buttonId
+        );
+        if (stepResults.early_exit) {
+            return;
         }
-        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
-
-        if (sessionStorageObjectName === "undo_move") {
-            appendChatLog("Undo Offer Sent");
-        }
-
-        if (sessionStorageObjectName === "draw_offer") {
-            appendChatLog("Draw Offer Sent");
-        }
-
-        handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
-
-    } else {
-        console.warn("Failed to execute action");
+        webGameMetadata[sessionStorageObjectName].index = stepResults.index_number;
     }
+    sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+
+    if (sessionStorageObjectName === "undo_move") {
+        appendChatLog("Undo Offer Sent");
+    }
+
+    if (sessionStorageObjectName === "draw_offer") {
+        appendChatLog("Draw Offer Sent");
+    }
+
+    handleActionStatus(buttonId, sessionStorageObjectName, Options);
 }
 
 // This is filled in the handleButton function later
@@ -1008,6 +1047,8 @@ var inputList = [
     { buttonId: "resignButton", sessionStorageObjectName: "resign", Options: "followups"},
     { buttonId: "cycleThemeButton", sessionStorageObjectName: "cycle_theme"},
     { buttonId: "flipButton", sessionStorageObjectName: "flip_board"},
+    { buttonId: "readyButton", sessionStorageObjectName: "ready"},
+    { buttonId: "redoButton", sessionStorageObjectName: "redo_stages"}
 ];
 
 function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
@@ -1078,9 +1119,8 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
     return webGameMetadata;
 }
 
-function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options) {
-    var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    var webGameMetadata = existingWebGameMetadata[currentGameID];
+function handleActionStatus(buttonId, sessionStorageObjectName, Options) {
+    var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
     var actionCommandStatus = webGameMetadata[sessionStorageObjectName];
     
     // console.log(sessionStorageObjectName, actionCommandStatus) // Good dev log, very good boy
@@ -1094,7 +1134,7 @@ function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, O
         setTimeout(function () {
             // This can be too fast and execute again right before reset is set to false, 
             // hence the default condition check
-            handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, Options);
+            handleActionStatus(buttonId, sessionStorageObjectName, Options);
         }, 10);
     } else {
         var accept_response_sent = sessionStorageObjectName.includes("accept") && webGameMetadata[sessionStorageObjectName].update_executed;
@@ -1131,15 +1171,14 @@ function handleActionStatus(buttonId, currentGameID, sessionStorageObjectName, O
             offerQueue = [];
         }
 
-        existingWebGameMetadata[currentGameID] = webGameMetadata;
-        sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+        sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
         
         if (buttonId.includes("move")) {
             return;
         }
         // Resign or draw can quickly remove the button before this, even an undo offer if end game is reached
         element = document.getElementById(buttonId);
-        if (element) {
+        if (element && (buttonId !== 'readyButton' && buttonId !== 'redoButton')) {
             element.disabled = false;
         }
     }
@@ -1191,19 +1230,17 @@ var requestChangeTrackers = {};
 
 function requestDisplay(action, ButtonID, baseStorageName) {
     var currentValue = JSON.parse(sessionStorage.getItem(action));
-    var currentGameID = sessionStorage.getItem('current_game_id');
     var initialized = sessionStorage.getItem('initialized');
-    currentGameID = (currentGameID === 'null' ? null : currentGameID);
     initialized = (initialized === 'true' ? true : null);
     var resetDisplay = null
     
     var newOptions = (currentValue === true ? "responses": "followups")
-    if (currentGameID !== null && initialized === true) {
+    if (initialized === true) {
         const acceptObjectName = baseStorageName + "_accept";
         const denyObjectName = baseStorageName + "_deny";
-        var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-        var acceptReset = existingWebGameMetadata[currentGameID][acceptObjectName].reset;
-        var denyReset = existingWebGameMetadata[currentGameID][denyObjectName].reset;
+        var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
+        var acceptReset = webGameMetadata[acceptObjectName].reset;
+        var denyReset = webGameMetadata[denyObjectName].reset;
         var totalReset = JSON.parse(sessionStorage.getItem("total_reset"));
         resetDisplay = acceptReset || denyReset || totalReset;
     }
@@ -1277,9 +1314,7 @@ function handleButton(buttonId, sessionStorageObjectName, Options = null, resetD
                 }
             });
             var actionbuttons = document.querySelectorAll('[actions="true"]');
-            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-            var currentGameID = sessionStorage.getItem('current_game_id');
-            var webGameMetadata = existingWebGameMetadata[currentGameID];
+            var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             
             // On followup display only, main buttons are disabled. We need to re-enable them
             // This does not apply to executing or queued actions
@@ -1361,16 +1396,13 @@ function handleButton(buttonId, sessionStorageObjectName, Options = null, resetD
                 showNewOptions(offerQueue);
             }
 
-            var existingWebGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-            var currentGameID = sessionStorage.getItem('current_game_id');
-            var webGameMetadata = existingWebGameMetadata[currentGameID];
+            var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
             webGameMetadata[sessionStorageObjectName].reset = false;
             webGameMetadata[acceptObjectName].reset = false;
             webGameMetadata[denyObjectName].reset = false;
-            existingWebGameMetadata[currentGameID] = webGameMetadata;
             
             sessionStorage.setItem(currentAction, 'false');
-            sessionStorage.setItem('web_game_metadata', JSON.stringify(existingWebGameMetadata));
+            sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
             document.getElementById(buttonId).disabled = false;
         }
     } else {

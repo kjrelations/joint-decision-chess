@@ -91,6 +91,8 @@
     --move-button-text: white;
     --move-button-background-hover: #2589da;
     --move-button-disabled-background: #17568a;
+    --displayed-move-background: rgb(179, 179, 179);
+    --displayed-move-border: rgb(212, 212, 212);
     /* Profile */
     --bio-border: rgb(46, 46, 46);
     --bio-background: #2e4147;
