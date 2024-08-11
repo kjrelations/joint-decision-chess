@@ -150,38 +150,6 @@
 
 		document.getElementById('theme-toggle-button').addEventListener('click', toggleTheme);
 
-		function generateGameURL(position = "random") {
-			body = {position: position}
-			fetch('/create_new_game/', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': csrftoken,
-				},
-				body: JSON.stringify(body),
-			})
-			.then(response => {
-				if (response.status === 200) {
-                    return response.json();
-                } else {
-                    console.error('Error creating game:', response.statusText);
-                    return Promise.reject('Error creating game');
-                }
-			})
-			.then(data => {
-                if (data.redirect) {
-                    window.location.href = data.url;
-                }
-            })
-			.catch(error => {
-				console.error('Error:', error);
-			});
-		}
-		const newGameQuickStart = document.querySelectorAll('.nav-new-game');
-        newGameQuickStart.forEach(button => {
-            button.addEventListener('click', generateGameURL);
-        });
-
 		$(document).ready(function() {
 			$('#profileDropdown').click(function() {
 				$('#profileDropdown').toggleClass('selected');

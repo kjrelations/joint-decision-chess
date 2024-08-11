@@ -9,7 +9,7 @@ from constants import *
 from helpers import *
 
 debug_prints = True
-production = True
+production = False
 local = "http://127.0.0.1:8000"
 
 ## Network helper logic
@@ -167,7 +167,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         if init["starting_player"]:
                             played_condition = init["starting_player"] == init["starting_position"]["white_played"]
                         else:
-                            played_condition = init["starting_player"] == init["starting_position"]["black_played"]
+                            played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
                         init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
@@ -230,20 +230,20 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             if client_game._starting_player:
                                 played_condition = client_game._starting_player == client_game.white_played
                             else:
-                                played_condition = client_game._starting_player == client_game.black_played
+                                played_condition = not client_game._starting_player == client_game.black_played
                             init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
                         elif not game._sync and not client_game._sync and not init["desync"]:
                             confirmed_state = None
-                            # if not init["local_debug"]:
-                            #     try:
-                            #         confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                            #     except:
-                            #         err = 'Confirmed state retrieval failed. Quitting...'
-                            #         js_code = f"console.log('{err}')"
-                            #         window.eval(js_code)
-                            #         print(err)
+                            if not init["local_debug"]:
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                                except:
+                                    err = 'Confirmed state retrieval failed. Quitting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
                             if confirmed_state is not None:
                                 confirmed_state = json.loads(confirmed_state)
                                 confirmed_state["_starting_player"] = init["starting_player"]
@@ -307,14 +307,14 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         node.publish()
                 elif cmd == "_retrieve":
                     confirmed_state = None
-                    # if not init["local_debug"]:
-                    #     try:
-                    #         confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                    #     except:
-                    #         err = 'Confirmed state retrieval failed. Quitting...'
-                    #         js_code = f"console.log('{err}')"
-                    #         window.eval(js_code)
-                    #         print(err)
+                    if not init["local_debug"]:
+                        try:
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                        except:
+                            err = 'Confirmed state retrieval failed. Quitting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
                     if confirmed_state is not None:
                         confirmed_state = json.loads(confirmed_state)
                         confirmed_state["_starting_player"] = init["starting_player"]
@@ -322,7 +322,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         if client_game._starting_player:
                             played_condition = client_game._starting_player == client_game.white_played
                         else:
-                            played_condition = client_game._starting_player == client_game.black_played
+                            played_condition = not client_game._starting_player == client_game.black_played
                         init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
@@ -396,7 +396,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             if client_game._starting_player:
                                 played_condition = client_game._starting_player == client_game.white_played
                             else:
-                                played_condition = client_game._starting_player == client_game.black_played
+                                played_condition = not client_game._starting_player == client_game.black_played
                             init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
                         # Handle double desync first to prevent infinite syncs sent back and forth
@@ -474,7 +474,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         if client_game._starting_player:
                             played_condition = client_game._starting_player == client_game.white_played
                         else:
-                            played_condition = client_game._starting_player == client_game.black_played
+                            played_condition = not client_game._starting_player == client_game.black_played
                         init["sent"] = int(played_condition)
                     node.tx(init_message)
                     if client_game.reveal_stage:
@@ -513,7 +513,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         if client_game._starting_player:
                             played_condition = client_game._starting_player == client_game.white_played
                         else:
-                            played_condition = client_game._starting_player == client_game.black_played
+                            played_condition = not client_game._starting_player == client_game.black_played
                         init["sent"] = int(played_condition)
                         drawing_settings["recalc_selections"] = True
                         drawing_settings["clear_selections"] = True
@@ -557,6 +557,8 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 if u in node.users:
                     del node.users[u]
                 apply_resets(window, offers, client_state_actions)
+                if node.fork:
+                    node.fork = 0
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
@@ -567,7 +569,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if game_status != "true":
                         window.sessionStorage.setItem("connected", "true")
                     # publish if main
-                    if not node.fork:
+                    if not node.fork or node.fork != pid:
                         node.publish()
 
                 elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
@@ -618,7 +620,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             if client_game._starting_player:
                                 played_condition = client_game._starting_player == client_game.white_played
                             else:
-                                played_condition = client_game._starting_player == client_game.black_played
+                                played_condition = not client_game._starting_player == client_game.black_played
                             init["sent"] = int(played_condition)
                             drawing_settings["recalc_selections"] = True
                             drawing_settings["clear_selections"] = True

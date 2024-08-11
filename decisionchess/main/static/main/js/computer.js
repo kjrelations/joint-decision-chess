@@ -516,7 +516,8 @@ function generateRematchURL(position) {
     }
     body = {
         "position": position,
-        "computer_game": true
+        "computer_game": true,
+        "main_mode": "Classical"
     }
     fetch('/create_new_game/', {
         method: 'POST',

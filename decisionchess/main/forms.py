@@ -6,7 +6,19 @@ from django.utils.html import escape, mark_safe
 from .models import User
 
 class CreateNewGameForm(forms.Form):
+    main_mode_multiplayer = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
+        choices=[('Classical', 'Classical'), ('Decision', 'Decision')], 
+        attrs={'id': 'main-mode-multiplayer'}
+        ))
+    main_mode_private = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
+        choices=[('Classical', 'Classical'), ('Decision', 'Decision')], 
+        attrs={'id': 'main-mode-private'}
+        ))
     solo_play = forms.BooleanField(label="Solo Play", required=False, widget=forms.CheckboxInput(attrs={'id': 'solo-play-checkbox'}))
+    reveal_stage_multiplayer = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-multiplayer-checkbox'}))
+    reveal_stage_private = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-private-checkbox'}))
+    decision_stage_multiplayer = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-multiplayer-checkbox'}))
+    decision_stage_private = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-private-checkbox'}))
 
 class ChangeThemesForm(forms.Form):
     def __init__(self, *args, **kwargs):

@@ -4,14 +4,14 @@ import json
 
 class Game:
 
-    def __init__(self, board=None, starting_player=None, custom_params=None):
+    def __init__(self, board=None, starting_player=None, game_type=None, custom_params=None):
         if custom_params is None:
             if board is None or starting_player is None:
                 raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
             self.white_played = False
             self.black_played = False
-            self.reveal_stage_enabled = True
-            self.decision_stage_enabled = True
+            self.reveal_stage_enabled = True if game_type in [None, "Complete", "Relay"] else False
+            self.decision_stage_enabled = True if game_type in [None, "Complete", "Countdown"] else False
             self.playing_stage = True
             self.reveal_stage = False
             self.decision_stage = False

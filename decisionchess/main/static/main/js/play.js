@@ -677,7 +677,8 @@ function generateRematchURL(position, game_id) {
     }
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = currentGameID.replace(position + '-', '');
-    body = {"position": position, "rematch": currentGameID};
+    var gameType = sessionStorage.getItem('game_type');
+    body = {"position": position, "rematch": currentGameID, "main_mode": gameType};
     fetch('/create_new_game/' + game_id + '/', {
         method: 'POST',
         headers: {

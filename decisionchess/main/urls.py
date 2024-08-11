@@ -12,7 +12,6 @@ urlpatterns = [
     path('get_private_id/', views.create_signed_key, name='private_id'),
     path('get_lobby_games/', views.get_lobby_games, name='get_lobby_games'),
     path("config/<uuid:game_uuid>/", views.get_config, name='get_game_config'),
-    path('decision_play/<uuid:game_uuid>/', views.decision_play, name='join_new_decision_game'),
     path('play/<uuid:game_uuid>/', views.play, name='join_new_game'),
     path('update_connected/', views.update_connected, name='update_connected'),
     path("game-state/<uuid:game_uuid>/", views.get_or_update_state, name='get_or_update_state'),

@@ -247,6 +247,21 @@ html {
     outline-color: var(--block-text);
 }
 
+.main-mode {
+    display: flex;
+    justify-content: center;
+}
+
+.svg-scaled-circle {
+    width: 25%;
+    height: auto;
+}
+
+.svg-scaled-complete {
+    width: 35%;
+    height: auto;
+}
+
 body {
     background: linear-gradient(-45deg, var(--home-body-1), var(--home-body-2), var(--home-body-3), var(--home-body-4));
     background-size: 400% 400% !important;

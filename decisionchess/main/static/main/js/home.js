@@ -1,14 +1,33 @@
-function generateGame(position, private = null, computer_game = null, solo = null) {
-    body = {"position": position};
-    if (computer_game) {
-        body["computer_game"] = true;
+document.addEventListener('DOMContentLoaded', function () {
+    const mainModeMultiplayer = document.getElementById('main-mode-multiplayer');
+    const mainModePrivate = document.getElementById('main-mode-private');
+    const decisionContentMultiplayer = document.getElementById('decision-content-multiplayer');
+    const decisionContentPrivate = document.getElementById('decision-content-private');
+
+    showGameOptions(mainModeMultiplayer, decisionContentMultiplayer);
+    showGameOptions(mainModePrivate, decisionContentPrivate);
+
+    mainModeMultiplayer.addEventListener('change', function() {
+        showGameOptions(mainModeMultiplayer, decisionContentMultiplayer)
+    });
+    mainModePrivate.addEventListener('change', function() {
+        showGameOptions(mainModePrivate, decisionContentPrivate)
+    });
+});
+
+function showGameOptions(mainMode, decisionContent) {
+    const mode = mainMode.value;
+
+    if (mode === 'Classical') {
+        decisionContent.classList.add('d-none');
+        decisionContent.classList.remove('d-block');
+    } else if (mode === 'Decision') {
+        decisionContent.classList.add('d-block');
+        decisionContent.classList.remove('d-none');
     }
-    if (private||solo) {
-        body["private"] = true;
-        if (solo) {
-            body["solo"] = true;
-        }
-    }
+}
+
+function generateGame(body) {
     fetch('/create_new_game/', {
         method: 'POST',
         headers: {
@@ -34,29 +53,60 @@ function generateGame(position, private = null, computer_game = null, solo = nul
         console.error('Error:', error);
     });
 }
+
 const newGameButtons = document.querySelectorAll('[new-game="true"]');
 newGameButtons.forEach(button => {
     button.addEventListener('click', () => {
-        const position = button.dataset.position;
-        var soloPlayCheckbox = document.getElementById('solo-play-checkbox');
-        var soloPlay = soloPlayCheckbox.checked ? true : null;
-        generateGame(position, null, null, soloPlay);
+        body = {
+            "position": button.dataset.position,
+            "solo": document.getElementById('solo-play-checkbox').checked ? true : null,
+            "main_mode": document.getElementById('main-mode-multiplayer').value,
+            "reveal_stage": false,
+            "decision_stage": false,
+            "private": document.getElementById('solo-play-checkbox').checked ? true : null,
+            "computer_game": null
+        }
+        if (body["main_mode"] === "Decision") {
+            body["reveal_stage"] = document.getElementById('reveal-stage-multiplayer-checkbox').checked;
+            body["decision_stage"] = document.getElementById('decision-stage-multiplayer-checkbox').checked;
+        }
+        generateGame(body);
     });
 });
 
 const newComputerGameButtons = document.querySelectorAll('[new-computer-game="true"]');
 newComputerGameButtons.forEach(button => {
     button.addEventListener('click', () => {
-        const position = button.dataset.position;
-        generateGame(position, null, true);
+        body = {
+            "position": button.dataset.position,
+            "solo": null,
+            "main_mode": "Classical",
+            "reveal_stage": false,
+            "decision_stage": false,
+            "private": null,
+            "computer_game": true
+        }
+        generateGame(body);
     });
 });
 
 const newPrivateGameButtons = document.querySelectorAll('[new-private-game="true"]');
 newPrivateGameButtons.forEach(button => {
     button.addEventListener('click', () => {
-        const position = button.dataset.position;
-        generateGame(position, private = true);
+        body = {
+            "position": button.dataset.position,
+            "solo": null,
+            "main_mode": document.getElementById('main-mode-private').value,
+            "reveal_stage": false,
+            "decision_stage": false,
+            "private": true,
+            "computer_game": null
+        }
+        if (body["main_mode"] === "Decision") {
+            body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;
+            body["decision_stage"] = document.getElementById('decision-stage-private-checkbox').checked;
+        }
+        generateGame(body);
     });
 });
 
@@ -118,13 +168,32 @@ function updateLobby() {
                 lobbyRow.className = "lobby-row";
                 
                 var first = document.createElement('div');
-                first.textContent = game.side;
+                if (game.side === 'white') {
+                    first.innerHTML = whiteSideSVG;
+                } else if (game.side === 'black') {
+                    first.innerHTML = blackSideSVG;
+                } else {
+                    first.innerHTML = randomSideSVG;
+                }
                 first.style.minWidth = '10%';
-                first.style.textAlign = 'center';
+                first.style.width = '10%';
                 var username = document.createElement('div');
                 username.textContent = game.initiator_name;
-                username.style.minWidth = '40%';
-                username.style.textAlign = 'center';
+                username.style.minWidth = '30%';
+                username.style.textAlign = 'left';
+                var type = document.createElement('div');
+                if (game.game_type === 'Complete') {
+                    type.innerHTML = completeSVG;
+                } else if (game.game_type === 'Relay') {
+                    type.innerHTML = relaySVG;
+                } else if (game.game_type === 'Countdown') {
+                    type.innerHTML = countdownSVG;
+                } else if (game.game_type === 'Standard') {
+                    type.innerHTML = standardSVG;
+                }
+                type.style.minWidth = '10%';
+                type.style.width = '10%';
+                type.style.paddingBottom = '2px';
                 var rightHalf = document.createElement('div');
                 rightHalf.textContent = game.timestamp;
                 rightHalf.style.minWidth = '50%';
@@ -133,6 +202,7 @@ function updateLobby() {
                 
                 lobbyRow.appendChild(first);
                 lobbyRow.appendChild(username);
+                lobbyRow.appendChild(type);
                 lobbyRow.appendChild(rightHalf);
 
                 var gameLink = document.createElement('a');

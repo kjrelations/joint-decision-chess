@@ -74,6 +74,13 @@ def home(request):
     context['sides'] = sides
     context['opponents'] = opponents
     context['form'] = CreateNewGameForm()
+    context['white_side_svg'] = open(".\\static\\images\\side-white.svg").read()
+    context['black_side_svg'] = open(".\\static\\images\\side-black.svg").read()
+    context['random_side_svg'] = open(".\\static\\images\\side-random.svg").read()
+    context['complete_svg'] = open(".\\static\\images\\complete-variant-icon.svg").read()
+    context['relay_svg'] = open(".\\static\\images\\reveal-stage-icon.svg").read()
+    context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
+    context['standard_svg'] = open(".\\static\\images\\decision-icon.svg").read()
     return render(request, "main/home.html", context)
 
 def custom_404(request, exception):
@@ -160,8 +167,22 @@ def create_new_game(request, optional_uuid = None):
                 private = data.get('private')
                 if private:
                     new_open_game.private = True
-            new_open_game.save()
-            return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
+                if data.get('main_mode') in ['Decision', 'Classical']:
+                    if data.get('main_mode') == 'Decision':
+                        if data.get('reveal_stage') and data.get('decision_stage'):
+                            new_open_game.gametype = 'Complete'
+                        elif data.get('reveal_stage') and not data.get('decision_stage'):
+                            new_open_game.gametype = 'Relay'
+                        elif not data.get('reveal_stage') and data.get('decision_stage'):
+                            new_open_game.gametype = 'Countdown'
+                        else:
+                            new_open_game.gametype = 'Standard'
+                    else:
+                        new_open_game.gametype = data.get('main_mode')
+                else:
+                    return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                new_open_game.save()
+                return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
         elif optional_uuid:
             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
 
@@ -222,7 +243,8 @@ def get_lobby_games(request):
             "initiator_name": game.initiator_name,
             "game_uuid": game.lobby_id,
             "timestamp": game.timestamp.strftime("%H:%M:%S"),
-            "side": "white" if game.white_id is None else "black"
+            "side": "white" if game.white_id is None else "black",
+            "game_type": game.gametype
         }
         for game in lobby_games
     ]
@@ -288,36 +310,15 @@ def get_config(request, game_uuid):
             else:
                 return JsonResponse({"status": "error"}, status=401)
 
-            return JsonResponse({"message": {"starting_side": fill, "theme_names": theme_names}}, status=200)
+            return JsonResponse({"message": {"starting_side": fill, "game_type": game.gametype, "theme_names": theme_names}}, status=200)
         except ChessLobby.DoesNotExist:
             # TODO check historic games and send a special refresh message if available
             return JsonResponse({"status": "error"}, status=401)
     elif type == 'historic':
+        # TODO historic game type
         return JsonResponse({"message": {"theme_names": theme_names}}, status=200)
     else:
         return JsonResponse({"status": "error"}, status=401)
-
-def decision_play(request, game_uuid):
-    if request.user and request.user.id is not None:
-        user_id = request.user.id
-    else:
-        guest_uuid = request.session.get('guest_uuid')
-        if guest_uuid is None:
-            user_id = uuid.uuid4()
-            request.session["guest_uuid"] = str(user_id)
-        else:
-            user_id = uuid.UUID(guest_uuid)
-    sessionVariables = {
-        'game_uuid': game_uuid,
-        'connected': 'false',
-        'current_game_id': str(game_uuid),
-        'initialized': 'null',
-        'draw_request': 'false',
-        'undo_request': 'false',
-        'total_reset': 'false'
-    }
-    sessionVariables.update({'opponent': "black"})
-    return render(request, "main/play/decision_play.html", sessionVariables)
 
 def play(request, game_uuid):
     if request.user and request.user.id is not None:
@@ -343,6 +344,7 @@ def play(request, game_uuid):
     # For now, temporarily disallow multiple people from loading the same game
     try:
         game = ChessLobby.objects.get(lobby_id=game_uuid)
+        play_html = "main/play.html" if game.gametype == 'Classical' else "main/play/decision_play.html"
         
         player = "Anonymous"
         if request.user.is_authenticated:
@@ -396,7 +398,7 @@ def play(request, game_uuid):
                     game.save()
             game_chat_messages = ActiveChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
-            return render(request, "main/play.html", sessionVariables)
+            return render(request, play_html, sessionVariables)
         else:
             column_to_fill = "black_id"
             if game.white_id is None:
@@ -405,7 +407,7 @@ def play(request, game_uuid):
             game.opponent_name = player
             setattr(game, column_to_fill, user_id)
             game.save()
-            return render(request, "main/play.html", sessionVariables)
+            return render(request, play_html, sessionVariables)
     except ChessLobby.DoesNotExist:
         try:
             historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
@@ -526,7 +528,7 @@ def update_connected(request):
                         active_game_id = connect_game_uuid,
                         white_id = game.white_id,
                         black_id = game.black_id,
-                        gametype = "classical"
+                        gametype = game.gametype
                     )
                     active_game.save()
             return JsonResponse(message, status=200)

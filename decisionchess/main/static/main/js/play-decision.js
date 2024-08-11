@@ -130,7 +130,7 @@ function movePieceTranslation(move) {
 
 function updateCommandCenter() {
     var webGameMetadata = JSON.parse(sessionStorage.getItem('web_game_metadata'));
-    if (Object.keys(webGameMetadata).length === 0) {
+    if (webGameMetadata === null || Object.keys(webGameMetadata).length === 0) {
         return;
     }
     var moves = webGameMetadata.alg_moves;
@@ -239,13 +239,13 @@ function updateCommandCenter() {
     var theirTurn = !whitePlayed && color === 'black' || !blackPlayed && color === 'white';
     var currentIndicator = document.getElementById('playerIndicator');
     var opponentIndicator = document.getElementById('opponentIndicator');
-    if (currentTurn && !alternatingFavicon) {
+    if (currentIndicator !== null && currentTurn && !alternatingFavicon) {
         const title = document.getElementById('title');
         title.text = "Your Turn";
         faviconIntervalId = setInterval(faviconInterval, 2000);
         currentIndicator.classList.remove('hidden');
         alternatingFavicon = true;
-    } else if (!currentTurn && alternatingFavicon) {
+    } else if (currentIndicator !== null && !currentTurn && alternatingFavicon) {
         clearInterval(faviconIntervalId);
         changeFavicon(0);
         const title = document.getElementById('title');
@@ -253,9 +253,9 @@ function updateCommandCenter() {
         currentIndicator.classList.add('hidden');
         alternatingFavicon = false;
     }
-    if (theirTurn && opponentIndicator.classList.contains('hidden')) {
+    if (opponentIndicator !== null && theirTurn && opponentIndicator.classList.contains('hidden')) {
         opponentIndicator.classList.remove('hidden');
-    } else if (!theirTurn) {
+    } else if (opponentIndicator !== null && !theirTurn) {
         opponentIndicator.classList.add('hidden');
     }
 
@@ -314,6 +314,15 @@ function updateCommandCenter() {
         document.getElementById('black-undo-1').classList.remove('hidden');
         document.getElementById('black-undo-2').classList.remove('hidden');
         document.getElementById('black-undo-3').classList.remove('hidden');
+    } else if (!webGameMetadata['decision_stage_enabled'] && !document.getElementById('white-undo-1').classList.contains('hidden')) {
+        document.getElementById('circle-white').classList.add('hidden');
+        document.getElementById('circle-black').classList.add('hidden');
+        document.getElementById('white-undo-1').classList.add('hidden');
+        document.getElementById('white-undo-2').classList.add('hidden');
+        document.getElementById('white-undo-3').classList.add('hidden');
+        document.getElementById('black-undo-1').classList.add('hidden');
+        document.getElementById('black-undo-2').classList.add('hidden');
+        document.getElementById('black-undo-3').classList.add('hidden');
     }
     if (webGameMetadata['white_undo'] >= 1) {
         if (window.getComputedStyle(document.getElementById('white-undo-1'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
@@ -345,19 +354,23 @@ function updateCommandCenter() {
             document.getElementById('black-undo-3').style.backgroundColor = 'green';
         }
     } 
-    if (webGameMetadata['reveal_stage'] && document.getElementById('readyButton').classList.contains('hidden')) {
-        document.getElementById('readyButton').classList.remove('hidden');
-        document.getElementById('readyButton').disabled = false;
-    } else if (!webGameMetadata['reveal_stage'] && !document.getElementById('readyButton').classList.contains('hidden')) {
-        document.getElementById('readyButton').classList.add('hidden');
-        document.getElementById('readyButton').disabled = true;
+    if (document.getElementById('readyButton') !== null) {
+        if (webGameMetadata['reveal_stage'] && document.getElementById('readyButton').classList.contains('hidden')) {
+            document.getElementById('readyButton').classList.remove('hidden');
+            document.getElementById('readyButton').disabled = false;
+        } else if (!webGameMetadata['reveal_stage'] && !document.getElementById('readyButton').classList.contains('hidden')) {
+            document.getElementById('readyButton').classList.add('hidden');
+            document.getElementById('readyButton').disabled = true;
+        }
     }
-    if (webGameMetadata['decision_stage'] && document.getElementById('redoButton').classList.contains('hidden')) {
-        document.getElementById('redoButton').classList.remove('hidden');
-        document.getElementById('redoButton').disabled = false;
-    } else if (!webGameMetadata['decision_stage'] && !document.getElementById('redoButton').classList.contains('hidden')) {
-        document.getElementById('redoButton').classList.add('hidden');
-        document.getElementById('redoButton').disabled = true;
+    if (document.getElementById('redoButton') !== null) {
+        if (webGameMetadata['decision_stage'] && document.getElementById('redoButton').classList.contains('hidden')) {
+            document.getElementById('redoButton').classList.remove('hidden');
+            document.getElementById('redoButton').disabled = false;
+        } else if (!webGameMetadata['decision_stage'] && !document.getElementById('redoButton').classList.contains('hidden')) {
+            document.getElementById('redoButton').classList.add('hidden');
+            document.getElementById('redoButton').disabled = true;
+        }
     }
     // Don't keep unnecessarily updating
     if (equal_arrays) {
@@ -836,7 +849,8 @@ function generateRematchURL(position, game_id) {
     }
     var currentGameID = sessionStorage.getItem('current_game_id');
     currentGameID = currentGameID.replace(position + '-', '');
-    body = {"position": position, "rematch": currentGameID};
+    var gameType = sessionStorage.getItem('game_type');
+    body = {"position": position, "rematch": currentGameID, "main_mode": gameType};
     fetch('/create_new_game/' + game_id + '/', {
         method: 'POST',
         headers: {

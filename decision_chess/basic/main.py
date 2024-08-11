@@ -11,9 +11,9 @@ from constants import *
 from helpers import *
 from network import *
 
-production = True
+production = False
 local = "http://127.0.0.1:8000"
-local_debug = True
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -63,7 +63,7 @@ def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     
     return first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square
 
-def handle_piece_move(game, selected_piece, row, col, update_positions=False, allow_promote=True):
+def handle_piece_move(game, selected_piece, row, col, init, update_positions=False, allow_promote=True):
     # Initialize Variables
     promotion_square = None
     promotion_required = False
@@ -92,6 +92,8 @@ def handle_piece_move(game, selected_piece, row, col, update_positions=False, al
         selected_piece = None
 
         if update:
+            init["sent"] = 0
+            init["updated_board"] = True
             checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
             checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
             checkmate = checkmate_white or checkmate_black
@@ -120,7 +122,7 @@ def handle_piece_move(game, selected_piece, row, col, update_positions=False, al
 
     return promotion_square, promotion_required
 
-def handle_piece_special_move(game, selected_piece, row, col, update_positions=False):
+def handle_piece_special_move(game, selected_piece, row, col, init, update_positions=False):
     # Need to be considering the selected piece for this section not an old piece
     piece = game.board[selected_piece[0]][selected_piece[1]]
     is_white = piece.isupper()
@@ -137,6 +139,8 @@ def handle_piece_special_move(game, selected_piece, row, col, update_positions=F
         handle_play(window, error_sound)
 
     if update:
+        init["sent"] = 0
+        init["updated_board"] = True
         checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
         checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
         checkmate = checkmate_white or checkmate_black
@@ -422,9 +426,17 @@ def initialize_game(init, game_id, node, drawing_settings):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"])
     else:
         client_game = Game(custom_params=init["starting_position"])
+    if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
+        init["game_type"] = "Complete"
+    elif client_game.reveal_stage_enabled and not client_game.decision_stage_enabled:
+        init["game_type"] = "Relay"
+    elif not client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
+        init["game_type"] = "Countdown"
+    else:
+        init["game_type"] = "Standard"
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
@@ -457,6 +469,7 @@ def initialize_game(init, game_id, node, drawing_settings):
                 "white_undo": 0,
                 "black_undo": 0,
                 "decision_stage_enabled": client_game.decision_stage_enabled,
+                "game_type": init["game_type"],
                 "step": {
                     "execute": False,
                     "update_executed": False,
@@ -606,6 +619,7 @@ async def main():
         "initialized": False,
         "config_retrieved": False,
         "starting_player": None,
+        "game_type": None,
         "starting_position": None,
         "sent": None,
         "drawings_sent": 1,
@@ -749,31 +763,101 @@ async def main():
             client_game, game_tab_id = initialize_game(init, game_id, node, drawing_settings)
 
         elif not init["loaded"]:
+            if not init["config_retrieved"] and not init["local_debug"]:
+                access_keys = load_keys("secrets.txt")
+                init["access_keys"] = access_keys
+                # TODO Consider whether to merge with retreival
+                try:
+                    domain = 'https://decisionchess.com' if production else local
+                    url = f'{domain}/config/' + game_id + '/?type=live'
+                    handler = fetch.RequestHandler()
+                    while not init["config_retrieved"]:
+                        try:
+                            response = await asyncio.wait_for(handler.get(url), timeout = 5)
+                            data = json.loads(response)
+                            init["config_retrieved"] = True
+                        except Exception as e:
+                            err = 'Game config retreival failed. Reattempting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
+                    if data.get("status") and data["status"] == "error":
+                        raise Exception(f'Request failed {data}')
+                    if data["message"]["starting_side"] == "white":
+                        init["starting_player"] = True 
+                    elif data["message"]["starting_side"] == "black":
+                        init["starting_player"] = False 
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["theme_names"]:
+                        theme_names = data["message"]["theme_names"]
+                        global themes
+                        themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["game_type"]:
+                        init["game_type"] = data["message"]["game_type"]
+                    else:
+                        raise Exception("Bad request")
+                    window.sessionStorage.setItem("color", data["message"]["starting_side"])
+                except Exception as e:
+                    log_err_and_print(e, window)
+                    raise Exception(str(e))
+            retrieved_state = None
             if init["local_debug"]:
                 init["starting_player"] = True
                 window.sessionStorage.setItem("color", "white")
                 window.sessionStorage.setItem("muted", "false")
+            else:
+                retrieved = False
+                while not retrieved:
+                    try:
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+                        retrieved = True
+                    except Exception as e:
+                        err = 'Game State retreival Failed. Reattempting...'
+                        js_code = f"console.log('{err}')"
+                        window.eval(js_code)
+                        print(err)
+            
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
-            client_game = Game(new_board.copy(), init["starting_player"])
-            init["player"] = "white"
-            init["opponent"] = "black"
-            init["loaded"] = True
-            continue
+            if retrieved_state is None:
+                client_game = Game(new_board.copy(), init["starting_player"])
+                init["player"] = "white"
+                init["opponent"] = "black"
+                init["loaded"] = True
+            else:
+                init["starting_position"] = json.loads(retrieved_state)
+                init["starting_position"]["_starting_player"] = init["starting_player"]
+                client_game = Game(custom_params=init["starting_position"])
+                init["player"] = "white" if init["starting_player"] else "black"
+                init["opponent"] = "black" if init["starting_player"] else "white"
+                if init["starting_player"]:
+                    played_condition = init["starting_player"] == init["starting_position"]["white_played"]
+                else:
+                    played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
+                init["sent"] = int(played_condition)
+                init["initializing"] = True
+                init["loaded"] = True
+                continue
 
         if init["waiting"]:
             await waiting_screen(init, game_window, client_game, drawing_settings)
             continue
 
-        # if not init["reloaded"] and not init["reconnecting"]:
-        #     if init["retrieved"] is None:
-        #         asyncio.create_task(reconnect(window, game_id, access_keys, init))
-        #     else:
-        #         client_game = init["retrieved"]
-        #         init["retrieved"] = None
-        #         init["reloaded"] = True
-        #         drawing_settings["recalc_selections"] = True
-        #         drawing_settings["clear_selections"] = True
+        if not init["reloaded"] and not init["reconnecting"]:
+            if init["retrieved"] is None:
+                asyncio.create_task(reconnect(window, game_id, access_keys, init))
+            else:
+                client_game = init["retrieved"]
+                init["retrieved"] = None
+                init["reloaded"] = True
+                drawing_settings["recalc_selections"] = True
+                drawing_settings["clear_selections"] = True
 
         if node.offline and init["network_reset_ready"]:
             apply_resets(window, offers, client_state_actions)
@@ -803,7 +887,6 @@ async def main():
                 node.tx(offer_data)
                 client_state_actions["undo_sent"] = True
             # The sender will sync, only need to apply for receiver
-            # TODO complete with locks removed maybe in the undo function itself
             if client_state_actions["undo_accept"] and client_state_actions["undo_received"]:
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
@@ -1020,7 +1103,7 @@ async def main():
                                 if (row, col) in valid_moves:
                                     update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                     promotion_square, promotion_required = \
-                                        handle_piece_move(client_game, selected_piece, row, col, update_positions=update_positions)
+                                        handle_piece_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                     
                                     # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                     valid_moves, valid_captures, valid_specials = [], [], []
@@ -1033,7 +1116,7 @@ async def main():
                                 ## Specials
                                 elif (row, col) in valid_specials:
                                     update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
-                                    piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, update_positions=update_positions)
+                                    piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                     
                                     # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                     valid_moves, valid_captures, valid_specials = [], [], []
@@ -1108,7 +1191,7 @@ async def main():
                             if (row, col) in valid_moves:
                                 update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                 promotion_square, promotion_required = \
-                                    handle_piece_move(client_game, selected_piece, row, col, update_positions=update_positions)
+                                    handle_piece_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                 
                                 # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                 valid_moves, valid_captures, valid_specials = [], [], []
@@ -1121,7 +1204,7 @@ async def main():
                             ## Specials
                             elif (row, col) in valid_specials:
                                 update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
-                                piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, update_positions=update_positions)
+                                piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                 
                                 # Clear valid moves so it doesn't re-enter the loop and potentially replace the square with an empty piece
                                 valid_moves, valid_captures, valid_specials = [], [], []
@@ -1196,11 +1279,9 @@ async def main():
             piece_row, piece_col = client_game.white_active_move[0]
             row, col = client_game.white_active_move[1]
             if client_game.white_active_move[-1] == '':
-                _, _ = handle_piece_move(client_game, (piece_row, piece_col), row, col, update_positions=True, allow_promote=False)
+                _, _ = handle_piece_move(client_game, (piece_row, piece_col), row, col, init, update_positions=True, allow_promote=False)
             else:
-                _, _ = handle_piece_special_move(client_game, (piece_row, piece_col), row, col, update_positions=True)
-            init["updated_board"] = True
-            init["sent"] = 0
+                _, _ = handle_piece_special_move(client_game, (piece_row, piece_col), row, col, init, update_positions=True)
 
         if promotion_required:
             # Lock the game state (disable other input)
@@ -1362,8 +1443,8 @@ async def main():
                 for potential_request in ["draw", "undo"]:
                     reset_request(potential_request, init, node, client_state_actions, window)
                 if not init["sent"]:
-                    # if not init["local_debug"]:
-                    #     await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
+                    if not init["local_debug"]:
+                        await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                     node.tx(txdata)
                     init["sent"] = 1 if not init["updated_board"] else 0
                     init["updated_board"] = False
@@ -1408,8 +1489,8 @@ async def main():
                 send_game = client_game.to_json()
                 txdata.update({"game": send_game})
                 try:
-                    # if not init["local_debug"]:
-                    #     await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
+                    if not init["local_debug"]:
+                        await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                     node.tx(txdata)
                 except:
                     node.offline = True

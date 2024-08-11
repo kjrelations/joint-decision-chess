@@ -86,7 +86,8 @@ Decision Chess
                           <div class="tab-pane fade show active" id="lobbyContent">
                             <div class="lobby-header">
                                 <div style="text-align: center; width: 10%; overflow: hidden;"></div>
-                                <div style="text-align: center; width: 50%; overflow: hidden;">User</div>
+                                <div style="text-align: left; width: 30%; overflow: hidden;">User</div>
+                                <div style="text-align: center; width: 10%; overflow: hidden;">Type</div>
                                 <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
                             </div>
                             <div id="lobby-content"></div>
@@ -150,7 +151,14 @@ Decision Chess
                           </button>
                         </div>
                         <div class="modal-body">
+                            <div class="main-mode">
+                              {{ form.main_mode_multiplayer|as_crispy_field }}
+                            </div>
                             {{ form.solo_play|as_crispy_field }}
+                            <div class="d-none" id="decision-content-multiplayer">
+                              {{ form.reveal_stage_multiplayer|as_crispy_field }}
+                              {{ form.decision_stage_multiplayer|as_crispy_field }}
+                            </div>
                             <div class="text-center">Choose Starting Side</div>
                             <div class="d-flex justify-content-center align-items-center">
                                 <button class="position-placeholder mr-2" data-position="white" new-game="true">
@@ -203,19 +211,26 @@ Decision Chess
                           </button>
                         </div>
                         <div class="modal-body">
-                            <div class="text-center">Choose Starting Side</div>
-                            <div class="text-center" style="font-size: small;">Once the game is loaded share the url with your opponent.</div>
-                            <div class="d-flex justify-content-center align-items-center">
-                                <button class="position-placeholder mr-2" data-position="white" new-private-game="true">
-                                    <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
-                                </button>
-                                <button class="position-placeholder mr-2" data-position="random" new-private-game="true">
-                                    <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
-                                </button>
-                                <button class="position-placeholder mr-2" data-position="black" new-private-game="true">
-                                    <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
-                                </button>
-                            </div>
+                          <div class="text-center" style="font-size: small;">Once the game is loaded share the url with your opponent.</div>
+                          <div class="main-mode">
+                            {{ form.main_mode_private|as_crispy_field }} 
+                          </div>
+                          <div class="d-none" id="decision-content-private">
+                            {{ form.reveal_stage_private|as_crispy_field }}
+                            {{ form.decision_stage_private|as_crispy_field }}
+                          </div>
+                          <div class="text-center">Choose Starting Side</div>
+                          <div class="d-flex justify-content-center align-items-center">
+                              <button class="position-placeholder mr-2" data-position="white" new-private-game="true">
+                                  <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                              </button>
+                              <button class="position-placeholder mr-2" data-position="random" new-private-game="true">
+                                  <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                              </button>
+                              <button class="position-placeholder mr-2" data-position="black" new-private-game="true">
+                                  <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                              </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -287,6 +302,13 @@ Decision Chess
     </div>
     <script>
         var csrftoken = "{{ csrf_token|escapejs }}";
+        var whiteSideSVG = '{{ white_side_svg|safe }}';
+        var blackSideSVG = '{{ black_side_svg|safe }}';
+        var randomSideSVG = '{{ random_side_svg|safe }}';
+        var completeSVG = '{{ complete_svg|safe }}';
+        var relaySVG = '{{ relay_svg|safe }}';
+        var countdownSVG = '{{ countdown_svg|safe }}';
+        var standardSVG = '{{ standard_svg|safe }}';
     </script>
     <script src="{% static 'main/js/home.js' %}"></script>
 </div>

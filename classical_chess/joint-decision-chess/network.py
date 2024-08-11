@@ -497,7 +497,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if game_status != "true":
                         window.sessionStorage.setItem("connected", "true")
                     # publish if main
-                    if not node.fork:
+                    if not node.fork or node.fork != pid:
                         node.publish()
 
                 elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):

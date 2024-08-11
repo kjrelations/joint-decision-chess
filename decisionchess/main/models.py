@@ -49,6 +49,7 @@ class ChessLobby(models.Model):
 	computer_game = models.BooleanField(default=False)
 	solo_game = models.BooleanField(default=False)
 	status = models.CharField(max_length=50, blank=False, null=False, default="waiting") # "playing" or "completed"
+	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
