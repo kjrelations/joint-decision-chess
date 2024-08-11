@@ -395,7 +395,7 @@ class Game:
             return board
         
         # Update a temp_board first for correct algebraic moves
-        temp_board = self.board
+        temp_board = copy.deepcopy(self.board)
         temp_board = update_board(
             self, 
             temp_board, 
