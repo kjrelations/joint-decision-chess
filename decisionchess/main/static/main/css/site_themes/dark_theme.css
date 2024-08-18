@@ -34,11 +34,13 @@
     --new-game-background: #00110f;
     --new-game-text-hover: #7685d8;
     --new-game-background-hover: #34383c;
+    --icon-primary: white;
     --quick-pair-outline: white;
     --quick-pair-text: white;
     --quick-pair-background: #2f3133;
     --quick-pair-text-hover: #f2a708;
     --quick-pair-background-hover: #917843;
+    --quick-pair-content: rgb(72, 72, 80);
     --lobby-text: white;
     --lobby-background: #2f3133;
     --lobby-outline: white;

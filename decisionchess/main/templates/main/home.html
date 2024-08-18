@@ -93,7 +93,203 @@ Decision Chess
                             <div id="lobby-content"></div>
                           </div>
                           <div class="tab-pane fade" id="quickPairContent">
-                            <button id="quick-pair" class="quick-pair-button">Join <br> Game</button>
+                            <div class="quick-pair-header w-100 d-flex">
+                              <div class="d-flex align-items-center justify-content-center" style="text-align: center; width: 25%; border: thin solid var(--lobby-outline);">Mode</div>
+                              <div class="w-100" style="border: thin solid var(--lobby-outline);">
+                                <div class="d-flex w-100" style="padding-bottom: 3px;">
+                                  <div style="text-align: center; width: 15%"></div>
+                                  <div style="text-align: center; width: 25%">Playing Stage</div>
+                                  <div style="text-align: center; width: 25%">Reveal Stage</div>
+                                  <div style="text-align: center; width: 25%">Decision Stage</div>
+                                  <div style="width: 10%"></div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="accordion w-100" id="standardAccordion">
+                              <button class="quick-pair-row w-100 d-flex collapsed" type="button" data-toggle="collapse" data-target="#standard" aria-expanded="true" aria-controls="standard" style="height: 32px;">
+                                <div class="d-flex mode align-items-center justify-content-center mode">Standard</div>
+                                <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                  <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                    <div class="d-flex justify-content-center" style="width: 15%">{{ standard_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ standard_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ x_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ x_svg|safe }}</div>
+                                    <div class="dropdownArrow d-flex justify-content-center align-items-center" style="width: 10%"><i class="fa fa-caret-down" aria-hidden="true"></i></div>
+                                  </div>
+                                </div>
+                              </button>
+                              <div id="standard" class="collapse" aria-labelledby="standardQuickSelect" data-parent="#standardAccordion">
+                                <button id="normalQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Standard" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Normal</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex h-100 w-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ envelope_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">No limit</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="classicalQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Standard" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Classical</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ hourglass_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">30m</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="rapidQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Standard" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Rapid</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ bird_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">10m</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="blitzQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Standard" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Blitz</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ lightning_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">5m</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="accordion w-100" id="completeAccordion">
+                              <button class="quick-pair-row w-100 d-flex collapsed" type="button" data-toggle="collapse" data-target="#complete" aria-expanded="true" aria-controls="complete" style="height: 32px;">
+                                <div class="d-flex mode align-items-center justify-content-center">Complete</div>
+                                <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                  <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                    <div class="d-flex justify-content-center" style="width: 15%">{{ complete_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ standard_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ relay_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ countdown_svg|safe }}</div>
+                                    <div class="dropdownArrow d-flex justify-content-center align-items-center" style="width: 10%"><i class="fa fa-caret-down" aria-hidden="true"></i></div>
+                                  </div>
+                                </div>
+                              </button>
+                              <div id="complete" class="collapse" aria-labelledby="completeQuickSelect" data-parent="#completeAccordion">
+                                <button id="completeSimpleQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Complete" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Simple</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ eye_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">5s</div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="completeSuggestiveQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Complete" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Suggestive</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ masks_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ b1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">5s</div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="accordion w-100" id="relayAccordion">
+                              <button class="quick-pair-row w-100 d-flex collapsed" type="button" data-toggle="collapse" data-target="#relay" aria-expanded="true" aria-controls="relay" style="height: 32px;">
+                                <div class="d-flex mode align-items-center justify-content-center">Relay</div>
+                                <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                  <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                    <div class="d-flex justify-content-center" style="width: 15%">{{ relay_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ standard_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ relay_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ x_svg|safe }}</div>
+                                    <div class="dropdownArrow d-flex justify-content-center align-items-center" style="width: 10%"><i class="fa fa-caret-down" aria-hidden="true"></i></div>
+                                  </div>
+                                </div>
+                              </button>
+                              <div id="relay" class="collapse" aria-labelledby="relayQuickSelect" data-parent="#relayAccordion">
+                                <button id="relaySimpleQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Relay" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Simple</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ eye_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="relaySuggestiveQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Relay" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Suggestive</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ masks_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ b1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%"></div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
+                            <div class="accordion w-100" id="countdownAccordion">
+                              <button class="quick-pair-row w-100 d-flex collapsed" type="button" data-toggle="collapse" data-target="#countdown" aria-expanded="true" aria-controls="countdown" style="height: 32px;">
+                                <div class="d-flex mode align-items-center justify-content-center">Countdown</div>
+                                <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                  <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                    <div class="d-flex justify-content-center" style="width: 15%">{{ countdown_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ standard_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ x_svg|safe }}</div>
+                                    <div class="d-flex justify-content-center" style="width: 25%">{{ countdown_svg|safe }}</div>
+                                    <div class="dropdownArrow d-flex justify-content-center align-items-center" style="width: 10%"><i class="fa fa-caret-down" aria-hidden="true"></i></div>
+                                  </div>
+                                </div>
+                              </button>
+                              <div id="countdown" class="collapse" aria-labelledby="countdownQuickSelect" data-parent="#countdownAccordion">
+                                <button id="countdownSimpleQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="Countdown" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Simple</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ eye_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">5s</div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                                <button id="countdownSuggestiveQuickPair" class="accordion-content w-100 d-flex" type="button" data-gametype="countdown" style="height: 32px;">
+                                  <div class="d-flex mode align-items-center justify-content-center">Suggestive</div>
+                                  <div class="w-100 h-100" style="border: thin solid var(--lobby-outline);">
+                                    <div class="d-flex w-100 h-100" style="padding-top: 3px; padding-bottom: 3px;">
+                                      <div class="d-flex justify-content-center" style="width: 15%">{{ masks_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ a1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">{{ b1_svg|safe }}</div>
+                                      <div class="d-flex justify-content-center" style="width: 25%">5s</div>
+                                      <div style="width: 10%"></div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            </div>
                           </div>
                           {% if has_games_in_play %}
                             <div class="tab-pane fade" id="inPlayContent">

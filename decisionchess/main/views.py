@@ -80,14 +80,29 @@ def home(request):
     context['complete_svg'] = open(".\\static\\images\\complete-variant-icon.svg").read()
     context['relay_svg'] = open(".\\static\\images\\reveal-stage-icon.svg").read()
     context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
-    context['standard_svg'] = open(".\\static\\images\\decision-icon.svg").read()
+    context['standard_svg'] = open(".\\static\\images\\decision-icon-colored.svg").read()
+    context['x_svg'] = open(".\\static\\images\\x.svg").read()
+    context['envelope_svg'] = open(".\\static\\images\\envelope.svg").read()
+    context['hourglass_svg'] = open(".\\static\\images\\hourglass.svg").read()
+    context['bird_svg'] = open(".\\static\\images\\bird.svg").read()
+    context['lightning_svg'] = open(".\\static\\images\\lightning.svg").read()
+    context['eye_svg'] = open(".\\static\\images\\eye.svg").read()
+    context['masks_svg'] = open(".\\static\\images\\masks.svg").read()
+    context['a1_svg'] = open(".\\static\\images\\a1.svg").read()
+    context['b1_svg'] = open(".\\static\\images\\b1.svg").read()
     return render(request, "main/home.html", context)
 
 def custom_404(request, exception):
     return render(request, 'main/404.html', {'exception': exception}, status=404)
 
 def quick_pair(request):
-    game = ChessLobby.objects.filter(is_open=True).order_by('-timestamp').first()
+    try:
+        body = json.loads(request.body)
+        gametype = body.get('gametype', '')
+    except json.JSONDecodeError:
+        return JsonResponse({'redirect': False, 'error': 'Invalid JSON'}, status=400)
+    
+    game = ChessLobby.objects.filter(is_open=True, gametype=gametype).order_by('-timestamp').first()
     if game is not None:
         return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game.lobby_id)])})
     else:

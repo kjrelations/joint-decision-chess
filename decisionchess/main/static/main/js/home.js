@@ -110,8 +110,16 @@ newPrivateGameButtons.forEach(button => {
     });
 });
 
-function quickPair() {
-    fetch('/quick_pair')
+function quickPair(event) {
+    const gametype = event.currentTarget.dataset.gametype;
+    fetch('/quick_pair/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify( { gametype: gametype })
+    })
     .then(response => {
         if (response.status === 200) {
             return response.json();
@@ -130,8 +138,16 @@ function quickPair() {
     });
 }
 
-const quickPairButton = document.getElementById("quick-pair")
-quickPairButton.addEventListener('click', quickPair)
+const quickPairButtonIds = [
+    'normalQuickPair', 'classicalQuickPair', 'rapidQuickPair', 'blitzQuickPair', 
+    'completeSimpleQuickPair', 'completeSuggestiveQuickPair', 
+    'relaySimpleQuickPair', 'relaySuggestiveQuickPair',
+    'countdownSimpleQuickPair', 'countdownSuggestiveQuickPair'
+];
+quickPairButtonIds.forEach(id => {
+    const button = document.getElementById(id);
+    button.addEventListener('click', quickPair);
+});
 
 function updateLobby() {
     var lobbyListContainer = document.getElementById('lobby-content');

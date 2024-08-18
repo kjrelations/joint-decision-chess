@@ -100,6 +100,33 @@ html {
     max-height: 100%;
     overflow-y: auto;
     z-index: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--lobby-background) white;
+    overflow-x: hidden;
+}
+
+.scrollable-lobby-list::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+}
+
+.scrollable-lobby-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.scrollable-lobby-list::-webkit-scrollbar-track { 
+    background: white;
+    border-radius: 10px;
+}
+
+.scrollable-lobby-list::-webkit-scrollbar-thumb { 
+    background: var(--lobby-background);
+    border-radius: 10px;
+}
+
+.scrollable-lobby-list::-webkit-scrollbar-thumb:hover { 
+    background: white;
+    border-radius: 10px;
 }
 
 .lobby-row {
@@ -170,6 +197,73 @@ html {
     color: var(--lobby-row-hover-text);
     background-color: var(--lobby-row-empty-background);
 }
+
+.accordion-content {
+    border: none;
+    color: var(--lobby-row-text);
+    background-color: var(--quick-pair-content);
+    transition: background-color 0.3s ease;
+    transition: color 0.1s ease;
+    padding: 0;
+    font-size: 1vw;
+}
+
+.accordion-content:focus {
+    outline-style: none;
+    outline-width: none;
+    outline-color: none;
+}
+
+.accordion-content:hover {
+    color: var(--lobby-row-hover-text);
+    background-color: var(--lobby-row-hover-background);
+}
+
+.quick-pair-header {
+    font-size: 1vw;
+}
+
+.quick-pair-row {
+    border: none;
+    color: var(--lobby-row-text);
+    background-color: transparent;
+    transition: background-color 0.3s ease;
+    transition: color 0.1s ease;
+    padding: 0;
+    font-size: 1vw;
+}
+
+.quick-pair-row:hover {
+    color: var(--lobby-row-hover-text);
+    background-color: var(--lobby-row-hover-background) !important;
+}
+
+.quick-pair-row:focus {
+    outline-style: none;
+    outline-width: none;
+    outline-color: none;
+}
+
+.dropdownArrow {
+    font-size: 1.2rem;
+    transition: transform 0.3s;
+}
+
+.quick-pair-row.collapsed .dropdownArrow {
+    transform: rotate(0deg);
+}
+
+.quick-pair-row:not(.collapsed) .dropdownArrow {
+    transform: rotate(180deg);
+}
+
+.mode {
+    text-align: center; 
+    width: 25%; 
+    border: thin solid var(--lobby-outline); 
+    height: 100%;
+}
+
 
 .highlights-column {
     border: none;
@@ -343,6 +437,14 @@ body {
     }
     .intro {
         margin-left: 0px;
+    }
+}
+
+@media (max-width: 767px) {
+    .accordion-content,
+    .quick-pair-header,
+    .quick-pair-row {
+        font-size: 2vw;
     }
 }
 
