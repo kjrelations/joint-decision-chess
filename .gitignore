@@ -11,6 +11,10 @@ classical_chess/simple_ai/*
 classical_chess/solo_play/*
 !classical_chess/solo_play/main.py
 !classical_chess/solo_play/network.py
+decision_chess/decision_ai/*
+!decision_chess/decision_ai/main.py
+!decision_chess/decision_ai/ai.py
+!decision_chess/decision_ai/network.py
 secrets.txt
 *.pyc
 *.env

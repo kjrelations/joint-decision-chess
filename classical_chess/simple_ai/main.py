@@ -300,7 +300,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         web_game_metadata_dict = json.loads(web_game_metadata)
 
-        # Undo move, resign, draw offer, cycle theme, flip command handle
+        # Undo move, resign, cycle theme, flip command handle
         for status_names in command_status_names:
             handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
 
@@ -388,6 +388,7 @@ async def main():
     game_id = window.sessionStorage.getItem("current_game_id")
     if game_id is None:
         raise Exception("No game id set")
+    
     init = {
         "running": True,
         "initializing": False,
@@ -406,6 +407,7 @@ async def main():
         "final_updates": False
     }
     client_game = None
+    
     # Web Browser actions affect these only. Even if players try to alter it, 
     # It simply enables the buttons or does a local harmless action
     client_state_actions = {
@@ -516,6 +518,7 @@ async def main():
                         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         if retrieved_state is not None:
                             init["starting_position"] = json.loads(retrieved_state)
+                            init["sent"] = int(init["starting_position"]["_starting_player"] != init["starting_position"]["whites_turn"])
                         retrieved = True
                     except:
                         err = 'Game State retreival Failed. Reattempting...'
@@ -573,6 +576,7 @@ async def main():
                 # We always undo from our turn, so we undo twice
                 client_game.undo_move()
                 client_game.undo_move()
+                init["sent"] = 0
                 # These two are useless in AI mode but we keep a clean state anyway
                 client_game._sync = True
                 client_game._move_undone = False

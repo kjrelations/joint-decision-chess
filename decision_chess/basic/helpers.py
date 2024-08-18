@@ -107,8 +107,15 @@ def print_d(*args, debug=False, **kwargs):
         return
 
 # Helper function for generating bespoke Game moves
-def output_move(piece, selected_piece, new_row, new_col, potential_capture, priority, special_string= ''):
-    return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, priority, special_string]
+def output_move(piece, selected_piece, new_row, new_col, potential_capture, priority, annihilation_superposition, special_string= ''):
+    return [
+        piece+str(selected_piece[0])+str(selected_piece[1]), 
+        piece+str(new_row)+str(new_col), 
+        potential_capture, 
+        priority, 
+        annihilation_superposition,
+        special_string
+        ]
 
 # Helper function for translating a simple FEN into a board position
 def translate_FEN_into_board(FEN):
@@ -283,6 +290,9 @@ def pawn_moves(board, row, col, is_white):
     captures = []
 
     forwards = -1 if is_white else 1
+
+    if row in [0, 7]:
+        return moves, captures
 
     # Pawn moves one square forward
     if board[row + forwards][col] == ' ':
@@ -662,9 +672,6 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                         temp_board[king_row][placement_col] = ' '
                     # Empty squares are clear of checks
                     if all(not is_check(temp, is_white) for temp in temp_boards):
-                        for board in temp_boards:
-                            for row in board:
-                                print(row)
                         special_moves.append((king_row, 2))
             if not right_rook_moved:
                 # Empty squares between king and rook
@@ -680,9 +687,6 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                         temp_board[king_row][placement_col] = ' '
                     # Empty squares are clear of checks
                     if all(not is_check(temp, is_white) for temp in temp_boards):
-                        for board in temp_boards:
-                            for row in board:
-                                print(row)
                         special_moves.append((king_row, 6))
 
     return moves, captures, special_moves

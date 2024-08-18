@@ -229,6 +229,8 @@ class Game:
                 self.black_active_move = [selected_piece, (new_row, new_col), move_priority, special_string]
         
         if not self.white_played or not self.black_played:
+            self._move_undone = False
+            self._sync = True
             return False, False
 
         pieces_info = {
@@ -262,6 +264,8 @@ class Game:
         potential_black_capture = pieces_info['potential_black_capture']
         black_captured = pieces_info['black_captured']
 
+        annihilation_superposition = None
+
         # Illegal guarding moves
         if self.board[new_row_white][new_col_white].isupper() \
            and (new_row_white, new_col_white) != (white_initial_pos[0], white_initial_pos[1]) \
@@ -284,6 +288,7 @@ class Game:
                 potential_white_capture = black_piece if capture.isupper() else [capture, black_piece]
                 black_captured = True
                 white_captured = False
+                annihilation_superposition = capture
             elif black_piece == 'k' and (new_row_black, new_col_black) == (new_row_white, new_col_white):
                 if first == 'white':
                     self.black_active_move = None
@@ -295,23 +300,27 @@ class Game:
         elif black_piece == 'k' and (new_row_white, new_col_white) == (new_row_black, new_col_black):
             # Covers superposition or king superposition
             capture = self.board[new_row_white][new_col_white]
-            potential_white_capture = capture if capture.islower() else [capture, white_piece]
-            potential_black_capture = white_piece
+            potential_white_capture = capture if capture.islower() else ' '
+            potential_black_capture = white_piece if capture.islower() else [capture, white_piece]
             white_captured = True
             black_captured = False
+            annihilation_superposition = capture
         # Annihilation and Superposition moves
         elif (new_row_white, new_col_white) == (new_row_black, new_col_black):
             if self.board[new_row_white][new_col_white].isupper():
                 potential_white_capture = black_piece
                 black_captured = True
+                annihilation_superposition = self.board[new_row_white][new_col_white]
             elif self.board[new_row_black][new_col_black].islower():
                 potential_black_capture = white_piece
                 white_captured = True
+                annihilation_superposition = self.board[new_row_black][new_col_black]
             else:
                 potential_white_capture = black_piece
                 potential_black_capture = white_piece
                 white_captured = True
                 black_captured = True
+                annihilation_superposition = self.board[new_row_white][new_col_white]
 
         enpassant_white, enpassant_black, castle_white, castle_black = False, False, False, False
         if self.white_active_move[-1] == 'enpassant':
@@ -342,11 +351,11 @@ class Game:
             else:
                 potential_black_capture = self._promotion_white
 
-
-        def update_specials(board, new_row, new_col, enpassant, castle):
+        def update_specials(board, new_row, new_col, enpassant, castle, captured):
             if enpassant:
                 capture_row = 3 if new_row == 2 else 4
-                board[capture_row][new_col] = ' '
+                if not captured:
+                    board[capture_row][new_col] = ' '
             elif castle:
                 if (new_row, new_col) == (7, 2):
                     board[7][3] = 'R'
@@ -390,8 +399,8 @@ class Game:
             if not black_captured:
                 board[new_row_black][new_col_black] = black_piece if self._promotion_black is None else self._promotion_black
 
-            board = update_specials(board, new_row_white, new_col_white, enpassant_white, castle_white)
-            board = update_specials(board, new_row_black, new_col_black, enpassant_black, castle_black)
+            board = update_specials(board, new_row_white, new_col_white, enpassant_white, castle_white, white_captured)
+            board = update_specials(board, new_row_black, new_col_black, enpassant_black, castle_black, black_captured)
             return board
         
         # Update a temp_board first for correct algebraic moves
@@ -456,8 +465,26 @@ class Game:
             self.black_current_position = (new_row_black, new_col_black) if not black_captured or same_position else None
             self.black_previous_position = (black_initial_pos[0], black_initial_pos[1])
 
-            white_move = output_move(white_piece, white_initial_pos, new_row_white, new_col_white, potential_white_capture, self.white_active_move[2], self.white_active_move[-1])
-            black_move = output_move(black_piece, black_initial_pos, new_row_black, new_col_black, potential_black_capture, self.black_active_move[2], self.black_active_move[-1])
+            white_move = output_move(
+                white_piece, 
+                white_initial_pos, 
+                new_row_white, 
+                new_col_white, 
+                potential_white_capture, 
+                self.white_active_move[2], 
+                annihilation_superposition,
+                self.white_active_move[-1]
+                )
+            black_move = output_move(
+                black_piece, 
+                black_initial_pos, 
+                new_row_black, 
+                new_col_black, 
+                potential_black_capture, 
+                self.black_active_move[2], 
+                annihilation_superposition,
+                self.black_active_move[-1]
+                )
             # This will handle out of sychronized promotion states in the synchronize function
             if self._promotion_white is not None:
                 string_list = list(white_move[1])
@@ -541,6 +568,7 @@ class Game:
                         # least accessed state based on Python 3.7+ storing dictionary items by insertion order
                         least_accessed = min(self.board_states, key=self.board_states.get)
                         del self.board_states[least_accessed]
+
         return update_positions, False
 
     def update_blocking_positions(self, pieces_info):
@@ -575,7 +603,7 @@ class Game:
 
         # Entanglement or collapse
         if (first_new_row, first_new_col) == (second_init_row, second_init_col):
-            potential_capture = ' ' if (second_new_row, second_new_col) != (first_init_row, first_init_col) else first_piece
+            potential_capture = None if (second_new_row, second_new_col) != (first_init_row, first_init_col) else first_piece
             if first == 'white':
                 potential_black_capture = potential_capture
                 black_captured = True
@@ -635,7 +663,7 @@ class Game:
         if not blocked:
             # Entanglement or collapse
             if (second_new_row, second_new_col) == (first_init_row, first_init_col):
-                potential_capture = ' ' if (first_new_row, first_new_col) != (second_init_row, second_init_col) else second_piece
+                potential_capture = None if (first_new_row, first_new_col) != (second_init_row, second_init_col) else second_piece
                 if first == 'white':
                     potential_white_capture = potential_capture
                     white_captured = True
@@ -746,7 +774,7 @@ class Game:
         elif added_file != '' and added_rank != '':
             alg_move += added_file + added_rank
         
-        if potential_capture != ' ':
+        if potential_capture not in [' ', None]:
             if piece.upper() == 'P' and added_file == '':
                 alg_move += str(file_conversion[selected_piece[1]])
             alg_move += 'x'
@@ -800,7 +828,15 @@ class Game:
         self._promotion_black = piece if not is_white else None
         move_index = 0 if is_white else 1
         if self._set_last_move:
-            self.board[current_row][current_col] = piece
+            if is_white:
+                prev_pos = (int(self.moves[-1][0][0][1]), int(self.moves[-1][0][0][2]))
+                other_curr_pos = (int(self.moves[-1][1][1][1]), int(self.moves[-1][1][1][2]))
+            else:
+                prev_pos = (int(self.moves[-1][1][0][1]), int(self.moves[-1][1][0][2]))
+                other_curr_pos = (int(self.moves[-1][0][1][1]), int(self.moves[-1][0][1][2]))
+            captured = prev_pos == other_curr_pos
+            if not captured:
+                self.board[current_row][current_col] = piece
             # Need to edit the temporary last moves/alg_moves in state once a decision is made
             string_list = list(self.moves[-1][move_index][1])
             string_list[0] = piece
@@ -879,10 +915,13 @@ class Game:
             
             self.white_active_move = None
             self.black_active_move = None
+            self.white_played = False
+            self.black_played = False
             self.white_lock = False
             self.black_lock = False
 
             moves = self.moves[-1]
+            annihilation_superposition = moves[0][4]
 
             white_prev_pos = list(moves[0][0])
             white_curr_pos = list(moves[0][1])
@@ -902,17 +941,25 @@ class Game:
 
             self.board[white_prev_row][white_prev_col] = white_piece
             self.board[black_prev_row][black_prev_col] = black_piece
-            if black_curr_pos != white_curr_pos:
+            if (black_curr_row, black_curr_col) != (white_curr_row, white_curr_col):
+                white_null_condition = isinstance(white_potential_capture, list) and None in white_potential_capture
                 if special_white != 'enpassant':
-                    self.board[white_curr_row][white_curr_col] = white_potential_capture
+                    if (white_curr_row, white_curr_col) != (white_prev_row, white_prev_col) \
+                       and white_potential_capture is not None:
+                        self.board[white_curr_row][white_curr_col] = white_potential_capture
                 else:
-                    self.board[white_curr_row][white_curr_col] = ' '
-                    self.board[white_prev_row][white_curr_col] = white_potential_capture
+                    if white_potential_capture is not None and not white_null_condition:
+                        self.board[white_curr_row][white_curr_col] = ' '
+                        self.board[white_prev_row][white_curr_col] = white_potential_capture
+                black_null_condition = isinstance(black_potential_capture, list) and None in black_potential_capture
                 if special_black != 'enpassant':
-                    self.board[black_curr_row][black_curr_col] = black_potential_capture
+                    if (black_curr_row, black_curr_col) != (black_prev_row, black_prev_col) \
+                       and black_potential_capture is not None:
+                        self.board[black_curr_row][black_curr_col] = black_potential_capture
                 else:
-                    self.board[black_curr_row][black_curr_col] = ' '
-                    self.board[black_prev_row][black_curr_col] = black_potential_capture
+                    if black_potential_capture is not None and not black_null_condition:
+                        self.board[black_curr_row][black_curr_col] = ' '
+                        self.board[black_prev_row][black_curr_col] = black_potential_capture
             else:
                 if isinstance(black_potential_capture, list):
                     potential_capture = black_potential_capture[0]
@@ -928,6 +975,8 @@ class Game:
                     self.board[black_prev_row][black_curr_col] = potential_capture
                 else:
                     self.board[white_curr_row][white_curr_col] = potential_capture
+                if annihilation_superposition is not None:
+                    self.board[white_curr_row][white_curr_col] = annihilation_superposition
             
             if special_white == 'castle':
                 if (white_curr_row, white_curr_col) == (7, 2):
@@ -966,6 +1015,8 @@ class Game:
             self._move_index -= 1
             self._move_undone = True
             self._sync = False
+            self._promotion_white = None
+            self._promotion_black = None
 
             if len(self.moves) != 0:
                 new_recent_positions = self.moves[-1]
@@ -992,6 +1043,15 @@ class Game:
         else:
             self.white_active_move = None
             self.black_active_move = None
+            self.white_played = False
+            self.black_played = False
+            self.white_lock = False
+            self.black_lock = False
+            self.playing_stage = True
+            self.reveal_stage = False
+            self.decision_stage = False
+            self._move_undone = True
+            self._sync = False
     
     def step_to_move(self, move_index):
         increment = -1
@@ -1006,6 +1066,7 @@ class Game:
         while self._move_index != target_index:
             current_move_index = self._move_index + move_index_offset
             moves = self.moves[current_move_index]
+            annihilation_superposition = moves[0][4]
 
             white_prev_pos = list(moves[0][0])
             white_curr_pos = list(moves[0][1])
@@ -1038,6 +1099,8 @@ class Game:
                 color_piece, 
                 other_color_piece
             ):
+                if (prev_row, prev_col) == (curr_row, curr_col):
+                    return board
                 is_white = color_piece.isupper()
                 allied_king = 'K' if is_white else 'k'
                 opposing_king = 'k' if is_white else 'K'
@@ -1062,12 +1125,14 @@ class Game:
                         update = False
                     replacement = potential_capture if increment < 0 else new_piece
                     fill = color_piece if increment < 0 else ' '
-                    if update:
+                    if update and replacement is not None:
                         board[curr_row][curr_col] = replacement
                     board[prev_row][prev_col] = fill
                 else:
+                    null_condition = False
                     potential_capture = color_potential_capture
                     if isinstance(color_potential_capture, list):
+                        null_condition = None in potential_capture
                         potential_capture = color_potential_capture[0]
                     new_piece = color_piece
                     if (curr_row, curr_col) == (other_curr_row, other_curr_col):
@@ -1075,7 +1140,8 @@ class Game:
                     move_replacement = ' ' if increment < 0 else new_piece
                     capture_replacement = potential_capture if increment < 0 else ' '
                     board[curr_row][curr_col] = move_replacement
-                    board[prev_row][curr_col] = capture_replacement
+                    if capture_replacement is not None and not null_condition:
+                        board[prev_row][curr_col] = capture_replacement
                 return board
             
             self.board = step_move(
@@ -1104,6 +1170,8 @@ class Game:
                 black_piece,
                 white_piece
                 )
+            if annihilation_superposition and increment < 0:
+                self.board[white_curr_row][white_curr_col] = annihilation_superposition
             
             if special_white == 'castle':
                 if (white_curr_row, white_curr_col) == (7, 2):

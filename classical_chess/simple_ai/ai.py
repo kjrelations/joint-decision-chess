@@ -1,5 +1,5 @@
-# In progress simple ai 
 import time
+import pygame
 from game import *
 
 global_pos = {"position_count": 0}
@@ -7,22 +7,18 @@ global_pos = {"position_count": 0}
 def ai_move(game, init, drawing_settings):
     if game._starting_player == game.whites_turn:
         return
-    
-    opponent_positions = []
-    for row in range(len(game.board)):
-        for col in range(8):
-            piece = game.board[row][col]
-            is_white = piece.isupper()
-            if piece != ' ' and game.whites_turn != is_white:
-                opponent_positions.append((row, col))
 
-    selected_piece, best_move, promotion_piece, special = get_best_move(game, global_pos)
-    row, col = best_move
+    try:
+        selected_piece, best_move, promotion_piece, special = get_best_move(game, global_pos)
+        row, col = best_move
+    except Exception as e:
+        if str(e) == "Quit":
+            init["running"] = False
+            return
     
     ai_handle_piece_move(game, selected_piece, row, col, special=special, promotion_piece=promotion_piece)
 
-    if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)):
-        print("ALG_MOVES:", game.alg_moves)
+    print("ALG_MOVES:", game.alg_moves)
 
     drawing_settings["recalc_selections"] = True
     if game.alg_moves != []:
@@ -108,7 +104,7 @@ def get_best_move(game, pos):
     pos["position_count"] = 0
     depth = 3
     start = time.time()
-    best_piece, best_move, best_promotion, special = minimax_root(depth, game, True, pos)
+    best_piece, best_move, best_promotion, special = minimax_root(depth, game, not game._starting_player, pos)
     end = time.time()
     move_time = end - start
     print("Move time: ", move_time)
@@ -120,13 +116,16 @@ def get_best_move(game, pos):
 def minimax_root(depth, game, is_maximizing_player, pos):
 
     new_valid_game_moves, special_index = new_game_board_moves(game)
-    best_move = -9999
+    best_move = -9999 if is_maximizing_player else 9999
     best_piece = None
     best_move_found = None
     best_promotion = None
     special = False
 
     for i in range(len(new_valid_game_moves)):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                raise Exception("Quit")
         selected_piece = new_valid_game_moves[i][0]
         moves = new_valid_game_moves[i][1]
         for move in moves:
@@ -138,7 +137,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                     ai_handle_piece_move(game, selected_piece, row, col, special=special_move, promotion_piece = promotion)
                     value = minimax(depth - 1, game, -10000, 10000, not is_maximizing_player, pos)
                     game.undo_move()
-                    if value >= best_move:
+                    if is_maximizing_player and value >= best_move or not is_maximizing_player and value <= best_move:
                         best_move = value
                         best_piece = selected_piece
                         best_move_found = move
@@ -149,7 +148,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                 ai_handle_piece_move(game, selected_piece, row, col, special=special_move)
                 value = minimax(depth - 1, game, -10000, 10000, not is_maximizing_player, pos)
                 game.undo_move()
-                if value >= best_move:
+                if is_maximizing_player and value >= best_move or not is_maximizing_player and value <= best_move:
                     best_move = value
                     best_piece = selected_piece
                     best_move_found = move
@@ -169,6 +168,9 @@ def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
         selected_piece = new_valid_game_moves[i][0]
         moves = new_valid_game_moves[i][1]
         for move in moves:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    raise Exception("Quit")
             special_move = False if i < special_index else True
             if isinstance(move, list):
                 row, col = move[0]

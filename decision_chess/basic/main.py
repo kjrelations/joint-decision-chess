@@ -256,14 +256,17 @@ async def promotion_state(
             window.sessionStorage.setItem("undo_request", "false")
 
         if client_state_actions["resign"]:
-            if client_game._starting_player:
-                client_game.white_active_move = None
-                client_game.white_played = False
-            else:
-                client_game.black_active_move = None
-                client_game.black_played = False
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data)
+            client_game.white_active_move = None
+            client_game.black_active_move = None
+            client_game.white_played = False
+            client_game.black_played = False
+            client_game.white_lock = False
+            client_game.black_lock = False
+            client_game.reveal_stage = False
+            client_game.decision_stage = False
+            client_game.playing_stage = True
             client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
             print(client_game.forced_end)
             client_game.end_position = True
@@ -926,6 +929,15 @@ async def main():
                     client_game.step_to_move(len(client_game.moves) - 1)
                 reset_data = {node.CMD: "reset"}
                 node.tx(reset_data)
+                client_game.white_active_move = None
+                client_game.black_active_move = None
+                client_game.white_played = False
+                client_game.black_played = False
+                client_game.white_lock = False
+                client_game.black_lock = False
+                client_game.reveal_stage = False
+                client_game.decision_stage = False
+                client_game.playing_stage = True
                 client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
                 print(client_game.forced_end)
                 client_game.end_position = True
