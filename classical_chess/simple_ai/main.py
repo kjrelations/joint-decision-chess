@@ -501,6 +501,8 @@ async def main():
                         global themes
                         themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
                         current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     else:
                         raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])

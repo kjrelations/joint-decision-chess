@@ -15,6 +15,12 @@ decision_chess/decision_ai/*
 !decision_chess/decision_ai/main.py
 !decision_chess/decision_ai/ai.py
 !decision_chess/decision_ai/network.py
+decision_chess/decision_historic/*
+!decision_chess/decision_historic/main.py
+decision_chess/decision_solo_play/*
+!decision_chess/decision_solo_play/main.py
+!decision_chess/decision_solo_play/helpers.py
+!decision_chess/decision_solo_play/network.py
 secrets.txt
 *.pyc
 *.env

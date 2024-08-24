@@ -452,7 +452,6 @@ def main():
         "game_type": None,
         "starting_position": None,
         "sent": None,
-        "drawings_sent": 1,
         "updated_board": False,
         "player": None,
         "opponent": None,
@@ -618,6 +617,17 @@ def main():
         ## TODO ai move here
         if client_game._latest and not init["final_updates"] and init["reloaded"]:
             ai_move(client_game, init, drawing_settings, "minimax_ai")
+
+        if drawing_settings["clear_selections"]:
+            if selected_piece:
+                row, col = selected_piece
+                piece = client_game.board[row][col]
+                is_white = piece.isupper()
+                first_intent, selected_piece, selected_piece_image, \
+                valid_moves, valid_captures, valid_specials, hovered_square = \
+                    handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
+                selected_piece_image = None
+            drawing_settings["clear_selections"] = False
 
         # Web browser actions/commands are received in previous loop iterations
         # if client_state_actions["step"]:
@@ -885,8 +895,6 @@ def main():
                                 drawing_settings["right_clicked_squares"].append((row, col))
                             else:
                                 drawing_settings["right_clicked_squares"].remove((row, col))
-                            if client_game.reveal_stage:
-                                init["drawings_sent"] = 0
                         elif current_right_clicked_square is not None:
                             x, y = pygame.mouse.get_pos()
                             row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
@@ -898,12 +906,8 @@ def main():
                                 # Disallow out of bound arrows
                                 if 0 <= end_right_released_square[0] < 8 and 0 <= end_right_released_square[1] < 8:
                                     drawing_settings["drawn_arrows"].append([current_right_clicked_square, end_right_released_square])
-                                    if client_game.reveal_stage:
-                                        init["drawings_sent"] = 0
                             else:
                                 drawing_settings["drawn_arrows"].remove([current_right_clicked_square, end_right_released_square])
-                                if client_game.reveal_stage:
-                                    init["drawings_sent"] = 0
                 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_t:
@@ -1031,7 +1035,7 @@ def main():
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
 
         drawing_settings['new_state'] = {
-            'board': client_game.board,
+            'board': copy.deepcopy(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
         if drawing_settings['new_state'] != drawing_settings['state']:
@@ -1090,7 +1094,7 @@ def main():
             #     web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
             #     web_game_metadata_dict['forced_end'] = client_game.forced_end
             #     web_game_metadata_dict['alg_moves'] = client_game.alg_moves
-            #     web_game_metadata_dict['comp_moves'] = flattened_comp_moves(client_game.moves)
+            #     web_game_metadata_dict['comp_moves'] = client_game.moves
             #     web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
             #     web_game_metadata_dict['net_pieces'] = net_pieces
 
@@ -1134,14 +1138,14 @@ def main():
                 'selected_piece_image': selected_piece_image
             })
         drawing_settings['state'] = {
-            'board': client_game.board,
+            'board': copy.deepcopy(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
 
         pygame.display.flip()
         # await asyncio.sleep(0)
 
-        #  # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        # # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
         # web_game_metadata_dict = json.loads(web_game_metadata)
@@ -1167,7 +1171,7 @@ def main():
 
         # if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
         #     web_game_metadata_dict['alg_moves'] = client_game.alg_moves
-        #     web_game_metadata_dict['comp_moves'] = flattened_comp_moves(client_game.moves)
+        #     web_game_metadata_dict['comp_moves'] = client_game.moves
         #     metadata_update = True
         
         # starting_player_color = 'white' if client_game._starting_player else 'black'

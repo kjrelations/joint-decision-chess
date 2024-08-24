@@ -386,18 +386,22 @@ function updateCommandCenter() {
     parentHeader.style.position = 'sticky';
     parentHeader.style.top = '0';
     parentHeader.style.backgroundColor = 'var(--command-center-background)';
+    parentHeader.setAttribute('name', 'initHiddenDflex');
 
     var emptyDiv = document.createElement('div');
     emptyDiv.style.width = '10%';
+    emptyDiv.setAttribute('name', 'initHidden');
 
     var leftHeader = document.createElement('div');
     leftHeader.style.width = '45%';
     leftHeader.style.color = 'var(--move-row-text)';
-    leftHeader.style.textAlign = 'left'
-    leftHeader.textContent = 'White'
+    leftHeader.style.textAlign = 'left';
+    leftHeader.textContent = 'White';
+    leftHeader.setAttribute('name', 'initHidden');
 
     var rightHeader = leftHeader.cloneNode(true);
-    rightHeader.textContent = 'Black'
+    rightHeader.textContent = 'Black';
+    rightHeader.setAttribute('name', 'initHidden');
 
     var initialized = sessionStorage.getItem('initialized');
     initialized = (initialized === 'true' ? true : false);
@@ -421,6 +425,7 @@ function updateCommandCenter() {
 
         var moveRow = document.createElement('div');
         moveRow.className = 'move-row ' + (i % 2 === 0 ? '' : 'even-move-row');
+        moveRow.setAttribute('name', 'initHidden');
                     
         var pairNumber = document.createElement('div');
         pairNumber.style.width = '10%';
@@ -429,27 +434,31 @@ function updateCommandCenter() {
         pairNumber.style.backgroundColor = 'var(--command-center-background)';
         pairNumber.className = 'move-number';
         pairNumber.id = 'move-number-' + j;
+        pairNumber.setAttribute('name', 'initHidden');
 
         var parent = document.createElement('button');
         parent.style.width = '90%';
         parent.className = 'move-button';
         parent.classList.add('d-flex');
         parent.setAttribute('move-index', j - 1);
-        parent.id = 'move-' + (j - 1)
+        parent.id = 'move-' + (j - 1);
+        parent.setAttribute('name', 'initHiddenDflex');
 
         var leftHalf = document.createElement('div');
         leftHalf.style.width = '50%';
         leftHalf.textContent = move1;
         leftHalf.className = 'move-child';
+        leftHalf.setAttribute('name', 'initHidden');
 
         var rightHalf = document.createElement('div');
         rightHalf.style.width = '50%';
         rightHalf.textContent = move2;
         rightHalf.className = 'move-child';
+        rightHalf.setAttribute('name', 'initHidden');
 
         if (!initialized) {
             pairNumber.classList.add('hidden');
-            parent.classList.add('hidden');
+            parent.style.setProperty('display', 'none', 'important');
             leftHalf.classList.add('hidden');
             rightHalf.classList.add('hidden');
         }
@@ -512,7 +521,7 @@ function updateCommandCenter() {
             gameSaved = true
             comp_moves = webGameMetadata.comp_moves;
             var FEN_final = webGameMetadata.FEN_final_pos;
-            // saveHistoricGame(moves.join(','), comp_moves.join('-'), endState, FEN_final, forcedEnd); // comp moves string needs to be joined again on elements
+            saveHistoricGame(JSON.stringify(moves), JSON.stringify(comp_moves), endState, FEN_final, forcedEnd);
         }
         
         if (!rematch_received) {
@@ -934,15 +943,15 @@ function checkNewConnect() {
             "flipButton"
         ];
 
-        var buttonsWithMoveIndex = document.querySelectorAll('.move-button');
-        buttonsWithMoveIndex.forEach(button => {
-            idStrings.push(button.id);
+        var hiddenDflexElements = document.getElementsByName('initHiddenDflex');
+        hiddenDflexElements.forEach(element => {
+            element.style.display = '';
         });
 
-        var elementsWithMoveNumber = document.querySelectorAll('.move-number');
-        elementsWithMoveNumber.forEach(element => {
-            idStrings.push(element.id);
-        });
+        var hiddenElements = document.getElementsByName('initHidden');
+        hiddenElements.forEach(element => {
+            element.classList.remove('hidden');
+        })
 
         idStrings.forEach(idString => {
             document.getElementById(idString).classList.remove("hidden");

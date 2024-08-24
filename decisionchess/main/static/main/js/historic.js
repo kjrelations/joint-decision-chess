@@ -77,6 +77,7 @@ function areEqual(obj1, obj2, type) {
 
 var savedMoves = [];
 var savedPieces = {};
+var comp_moves = [];
 var flipped = false;
 
 function movePieceTranslation(move) {
@@ -173,6 +174,7 @@ function updateCommandCenter() {
         savedMoves = moves
         var movesListContainer = document.getElementById('moves-list');
         var endState = webGameMetadata.end_state;
+        comp_moves = webGameMetadata.comp_moves;
         
         movesListContainer.innerHTML = '';
         

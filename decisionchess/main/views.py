@@ -372,8 +372,9 @@ def play(request, game_uuid):
         sessionVariables.update({'opponent': opponent})
 
         if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
+            solo_html = "main/play/computer.html" if game.gametype == 'Classical' else "main/play/decision_computer.html"
             sessionVariables['computer_game'] = True if game.computer_game else False
-            return render(request, "main/play/computer.html", sessionVariables)
+            return render(request, solo_html, sessionVariables) ## TODO rename html file name and this variable so it's agnostic for solo or computer games
         elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
             # This should later redirect spectators to a spectator view if it's an active game, otherwise to home, maybe also to home for private games
             return redirect('home')
@@ -426,6 +427,7 @@ def play(request, game_uuid):
     except ChessLobby.DoesNotExist:
         try:
             historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
+            historic_html = "main/historic.html" if historic.gametype == 'Classical' else "main/play/decision_historic.html"
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -433,7 +435,8 @@ def play(request, game_uuid):
                 'comp_moves': historic.computed_moves,
                 'FEN': historic.FEN_outcome,
                 'outcome': historic.outcome,
-                'forced_end': historic.termination_reason
+                'forced_end': historic.termination_reason,
+                'game_type': historic.gametype
             }
             try:
                 white_user = User.objects.get(id=historic.white_id)
@@ -455,9 +458,11 @@ def play(request, game_uuid):
             sessionVariables.update({'player': player_side, 'opponent': opponent_side, 'init_flip': flip})
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
-            return render(request, "main/play/historic.html", sessionVariables)
-        except:
+            return render(request, historic_html, sessionVariables)
+        except GameHistoryTable.DoesNotExist:
             return redirect('home')
+        except:
+            JsonResponse({"status": "error"}, status=401)
 
 def update_connected(request):
     # Have this handle live disconnects later

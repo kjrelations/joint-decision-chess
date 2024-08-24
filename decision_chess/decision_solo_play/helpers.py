@@ -1232,10 +1232,10 @@ def draw_board(params):
         # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
-    if white_active_position is not None and starting_player:
+    if white_active_position is not None:
         x, y = theme.GRID_SIZE * white_active_position[1], theme.GRID_SIZE * white_active_position[0]
         window.blit(white_selected_piece_image, (x, y))
-    if black_active_position is not None and not starting_player:
+    if black_active_position is not None:
         x, y = theme.GRID_SIZE * black_active_position[1], theme.GRID_SIZE * black_active_position[0]
         window.blit(black_selected_piece_image, (x, y))
     # On mousedown and a piece is selected draw a transparent copy of the piece

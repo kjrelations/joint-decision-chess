@@ -161,9 +161,9 @@ def load_historic_game(json_game):
         elif piece == 'k' and not _castle_attributes['black_king_moved'][0]:
             _castle_attributes['black_king_moved'] = [True, move_index]
         elif piece == 'R' and prev_pos in [(7, 0), (7, 7)]:
-            _castle_attributes['left_black_rook_moved' if prev_pos == (7, 0) else 'right_black_rook_moved'] = [True, move_index]
+            _castle_attributes['left_white_rook_moved' if prev_pos == (7, 0) else 'right_white_rook_moved'] = [True, move_index]
         elif piece == 'r' and prev_pos in [(0, 0), (0, 7)]:
-            _castle_attributes['left_white_rook_moved' if prev_pos == (0, 0) else 'right_white_rook_moved'] = [True, move_index]
+            _castle_attributes['left_black_rook_moved' if prev_pos == (0, 0) else 'right_black_rook_moved'] = [True, move_index]
 
     game_param_dict = {
         "whites_turn": whites_turn,

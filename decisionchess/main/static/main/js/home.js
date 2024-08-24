@@ -54,6 +54,21 @@ function generateGame(body) {
     });
 }
 
+const soloCheckbox = document.getElementById('solo-play-checkbox');
+soloCheckbox.addEventListener('change', function(event) {
+    const revealStageCheckbox = document.getElementById('reveal-stage-multiplayer-checkbox');
+    const decisionStageCheckbox = document.getElementById('decision-stage-multiplayer-checkbox');
+    if (event.target.checked) {
+        revealStageCheckbox.checked = false;
+        decisionStageCheckbox.checked = false;
+        revealStageCheckbox.disabled = true;
+        decisionStageCheckbox.disabled = true;
+    } else {
+        revealStageCheckbox.disabled = false;
+        decisionStageCheckbox.disabled = false;
+    }
+});
+
 const newGameButtons = document.querySelectorAll('[new-game="true"]');
 newGameButtons.forEach(button => {
     button.addEventListener('click', () => {
