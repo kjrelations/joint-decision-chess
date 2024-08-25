@@ -235,12 +235,12 @@ class Game:
 
         pieces_info = {
             'first': 'white' if self.white_active_move[2] == '1' else 'black',
-            'white_initial_pos': self.white_active_move[0],
+            'white_initial_pos': tuple(self.white_active_move[0]),
             'white_piece': self.board[self.white_active_move[0][0]][self.white_active_move[0][1]],
             'new_row_white': self.white_active_move[1][0], 
             'new_col_white': self.white_active_move[1][1],
             'potential_white_capture': self.board[self.white_active_move[1][0]][self.white_active_move[1][1]],
-            'black_initial_pos': self.black_active_move[0],
+            'black_initial_pos': tuple(self.black_active_move[0]),
             'black_piece': self.board[self.black_active_move[0][0]][self.black_active_move[0][1]],
             'new_row_black': self.black_active_move[1][0],
             'new_col_black': self.black_active_move[1][1],
@@ -496,6 +496,20 @@ class Game:
                 string_list[0] = self._promotion_black
                 black_move[1] = ''.join(string_list)
                 black_algebraic_move += self._promotion_black.upper()
+            if self._promotion_white is not None or self._promotion_black is not None:
+                white_algebraic_move = white_algebraic_move.replace('#', '').replace('+', '')
+                black_algebraic_move = black_algebraic_move.replace('#', '').replace('+', '')
+                for is_white in [True, False]:
+                    if is_checkmate_or_stalemate(self.board, is_white, self.moves)[0]:
+                        if is_white:
+                            black_algebraic_move += '#'
+                        else:
+                            white_algebraic_move += '#'
+                    elif is_check(self.board, is_white):
+                        if is_white:
+                            black_algebraic_move += '+'
+                        else:
+                            white_algebraic_move += '+'
             self.moves.append([white_move, black_move])
             self.alg_moves.append([white_algebraic_move, black_algebraic_move])
             self._move_index += 1
@@ -847,10 +861,13 @@ class Game:
             self._promotion_black = None
             self._set_last_move = False
         
-            if is_checkmate_or_stalemate(self.board, not is_white, self.moves)[0]:
-                self.alg_moves[-1][move_index] += '#'
-            elif is_check(self.board, not is_white):
-                self.alg_moves[-1][move_index] += '+'
+            self.alg_moves[-1][0].replace('#', '').replace('+', '')
+            self.alg_moves[-1][1].replace('#', '').replace('+', '')
+            for is_white, index in [[True, 1], [False, 0]]:
+                if is_checkmate_or_stalemate(self.board, is_white, self.moves)[0]:
+                    self.alg_moves[-1][index] += '#'
+                elif is_check(self.board, is_white):
+                    self.alg_moves[-1][index] += '+'
 
         self._move_undone = False
         self._sync = True

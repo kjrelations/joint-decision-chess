@@ -347,7 +347,9 @@ def promotion_state(
         #     handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")     
 
         pygame.display.flip()
+        # await asyncio.sleep(0)
 
+    # window.sessionStorage.setItem("promoting", "false")
     # await asyncio.sleep(0)
     return promoted
 

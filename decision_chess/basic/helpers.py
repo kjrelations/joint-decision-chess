@@ -471,7 +471,7 @@ def knight_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a bishop
-def bishop_moves(board, row, col):   ### TODO remove is_whites now
+def bishop_moves(board, row, col):
     moves = []
     captures = []
     directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
@@ -551,8 +551,8 @@ def king_moves(board, row, col):
                   (row, col - 1),                     (row, col + 1),
                   (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)]
 
-    # Remove moves that are out of bounds
-    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
+    # Remove moves that are out of bounds and capture kings
+    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8 and board[move[0]][move[1]].lower() != 'k']
 
     # Valid captures
     captures = [move for move in valid_king_moves if board[move[0]][move[1]] != " "]
