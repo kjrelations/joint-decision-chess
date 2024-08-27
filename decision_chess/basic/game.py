@@ -553,7 +553,7 @@ class Game:
             self.black_active_move = None
 
             # Update state once standard moves are played, not during a pawn promotion
-            if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
+            if not self._set_last_move:
                 self._move_undone = False
                 self._sync = True
                 
@@ -869,33 +869,34 @@ class Game:
                 elif is_check(self.board, is_white):
                     self.alg_moves[-1][index] += '+'
 
+            # Update dictionary of board states
+            current_special_moves = []
+            for row in range(8):
+                for col in range(8):
+                    other_piece = self.board[row][col]
+                    if other_piece != ' ':
+                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                        current_special_moves.extend(specials)
+            _current_board_state = tuple(tuple(r) for r in self.board)
+            special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+            _current_board_state = _current_board_state + special_tuple
+            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
+
+            if _current_board_state in self.board_states:
+                self.board_states[_current_board_state] += 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
+            else:
+                self.board_states[_current_board_state] = 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                if len(self.board_states) > self.max_states:
+                    # Find and remove the least accessed board state, this also happens to be the oldest 
+                    # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                    least_accessed = min(self.board_states, key=self.board_states.get)
+                    del self.board_states[least_accessed]
+        
         self._move_undone = False
         self._sync = True
-        # Update dictionary of board states
-        current_special_moves = []
-        for row in range(8):
-            for col in range(8):
-                other_piece = self.board[row][col]
-                if other_piece != ' ':
-                    _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
-                    current_special_moves.extend(specials)
-        _current_board_state = tuple(tuple(r) for r in self.board)
-        special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
-        _current_board_state = _current_board_state + special_tuple
-        flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
-        _current_board_state = _current_board_state + (tuple(flat_castle_values),)
-
-        if _current_board_state in self.board_states:
-            self.board_states[_current_board_state] += 1
-            self._state_update[_current_board_state] = self.board_states[_current_board_state]
-        else:
-            self.board_states[_current_board_state] = 1
-            self._state_update[_current_board_state] = self.board_states[_current_board_state]
-            if len(self.board_states) > self.max_states:
-                # Find and remove the least accessed board state, this also happens to be the oldest 
-                # least accessed state based on Python 3.7+ storing dictionary items by insertion order
-                least_accessed = min(self.board_states, key=self.board_states.get)
-                del self.board_states[least_accessed]
         return self._set_last_move
 
     def threefold_check(self):
