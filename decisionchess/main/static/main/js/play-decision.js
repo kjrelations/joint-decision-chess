@@ -1057,7 +1057,9 @@ var offerEventList = [
 var actionEventList = [
     {mainButtonName: "drawOfferButton", eventNames: ["draw_offer", "draw_offer_accept", "draw_offer_deny"]},
     {mainButtonName: "undoOfferButton", eventNames: ["undo_move", "undo_move_accept", "undo_move_deny"]},
-    {mainButtonName: "resignButton", eventNames: ["resign"]}
+    {mainButtonName: "resignButton", eventNames: ["resign"]},
+    {mainButtonName: "readyButton", eventNames: ["ready"]},
+    {mainButtonName: "redoButton", eventNames: ["redo_stages"]}
 ]
 
 var inputList = [
