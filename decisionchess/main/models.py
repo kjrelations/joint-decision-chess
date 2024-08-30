@@ -91,6 +91,7 @@ class GameHistoryTable(models.Model):
 	computed_moves = models.TextField(blank=False, null=False, default="")
 	FEN_outcome = models.CharField(max_length=85, blank=False, null=False, default="")
 	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
+	state = models.TextField(default="")
 
 class ActiveChatMessages(models.Model):
 	active_message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

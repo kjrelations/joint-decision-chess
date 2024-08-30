@@ -90,8 +90,10 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
             # handle_play(window, move_sound)
             move_sound.play()
         elif illegal:
-            # handle_play(window, error_sound)
-            error_sound.play()
+            if game._starting_player and game.black_active_move is not None or \
+               not game._starting_player and game.white_active_move is not None:
+                # handle_play(window, error_sound)
+                error_sound.play()
         
         selected_piece = None
 

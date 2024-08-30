@@ -40,7 +40,7 @@ class Game:
             self.board_states = { _current_board_state: 1}
             # Apparently highest move count for a legal game so far is like 269 moves, not sure if only for one player or not
             # hence 500 is reasonable
-            self.max_states = 500 
+            self.max_states = 500
             self.end_position = False
             self.forced_end = ""
             self.white_lock = False
@@ -58,6 +58,7 @@ class Game:
             self._promotion_black = None
             self._set_last_move = False
             self._temp_actives = None
+            self._max_states_reached = False
         else:
             self.white_played = custom_params["white_played"]
             self.black_played = custom_params["black_played"]
@@ -107,6 +108,7 @@ class Game:
             self._promotion_black = custom_params["_promotion_black"]
             self._set_last_move = custom_params["_set_last_move"]
             self._temp_actives = None
+            self._max_states_reached = custom_params["_max_states_reached"]
 
     def synchronize(self, new_game):
         self.board = new_game.board
@@ -167,6 +169,7 @@ class Game:
         self._move_index = new_game._move_index
         self._latest = True
         self._state_update = {}
+        self._max_states_reached = new_game._max_states_reached
         return illegal
 
     def validate_moves(self, row, col):
@@ -582,7 +585,8 @@ class Game:
                         # least accessed state based on Python 3.7+ storing dictionary items by insertion order
                         least_accessed = min(self.board_states, key=self.board_states.get)
                         del self.board_states[least_accessed]
-
+                self._max_states_reached = len(self.board_states.keys()) == self.max_states
+        
         return update_positions, False
 
     def update_blocking_positions(self, pieces_info):
@@ -894,7 +898,8 @@ class Game:
                     # least accessed state based on Python 3.7+ storing dictionary items by insertion order
                     least_accessed = min(self.board_states, key=self.board_states.get)
                     del self.board_states[least_accessed]
-        
+            self._max_states_reached = len(self.board_states.keys()) == self.max_states
+
         self._move_undone = False
         self._sync = True
         return self._set_last_move
@@ -924,12 +929,13 @@ class Game:
                 flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
                 _current_board_state = _current_board_state + (tuple(flat_castle_values),)
                 
-                if self.board_states[_current_board_state] == 1:
-                    del self.board_states[_current_board_state]
-                    self._state_update[_current_board_state] = None
-                else:
-                    self.board_states[_current_board_state] -= 1
-                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                if self.board_states.get(_current_board_state) or not self._max_states_reached:
+                    if self.board_states[_current_board_state] == 1:
+                        del self.board_states[_current_board_state]
+                        self._state_update[_current_board_state] = None
+                    else:
+                        self.board_states[_current_board_state] -= 1
+                        self._state_update[_current_board_state] = self.board_states[_current_board_state]
             
             self.white_active_move = None
             self.black_active_move = None
@@ -1312,7 +1318,8 @@ class GameEncoder(json.JSONEncoder):
                 "_state_update": [{"key": k, "value": v} for k, v in obj._state_update.items()],
                 "_promotion_white": obj._promotion_white,
                 "_promotion_black": obj._promotion_black,
-                "_set_last_move": obj._set_last_move
+                "_set_last_move": obj._set_last_move,
+                "_max_states_reached": obj._max_states_reached
             }
             if self.include_states:
                 data["board_states"] = [{"key": k, "value": v} for k, v in obj.board_states.items()]

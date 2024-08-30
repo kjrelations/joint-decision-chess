@@ -594,7 +594,12 @@ def get_or_update_state(request, game_uuid):
             token = jwt.encode(json.loads(active_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
             return JsonResponse({"token": token}, status=200)
         except ActiveGames.DoesNotExist:
-            return JsonResponse({"message": "DNE"}, status=200)
+            try:
+                finished_game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
+                token = jwt.encode(json.loads(finished_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
+                return JsonResponse({"token": token}, status=200)
+            except GameHistoryTable.DoesNotExist:
+                return JsonResponse({"message": "DNE"}, status=200)
 
 def save_game(request):
     if request.method == 'PUT':
@@ -659,7 +664,8 @@ def save_chat_and_game(active_game, data):
         outcome=data.get('outcome'),
         computed_moves=data.get('comp_moves'),
         FEN_outcome=data.get('FEN'),
-        termination_reason=data.get('termination_reason')
+        termination_reason=data.get('termination_reason'),
+        state = active_game.state
     )
     completed_game.save()
 

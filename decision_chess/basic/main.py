@@ -859,8 +859,9 @@ async def main():
                 asyncio.create_task(reconnect(window, game_id, access_keys, init))
             else:
                 client_game = init["retrieved"]
-                init["retrieved"] = None
-                init["reloaded"] = True
+                if not node.offline:
+                    init["retrieved"] = None
+                    init["reloaded"] = True
                 drawing_settings["recalc_selections"] = True
                 drawing_settings["clear_selections"] = True
 
@@ -1474,6 +1475,9 @@ async def main():
                     init["sent"] = 1 if not init["updated_board"] else 0
                     init["updated_board"] = False
         except Exception as err:
+            js_code = f"console.log('{err}')"
+            window.eval(js_code)
+            print(err)
             node.offline = True
             init["reloaded"] = False
             init["sent"] = 1
@@ -1517,7 +1521,12 @@ async def main():
                     if not init["local_debug"]:
                         await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
                     node.tx(txdata)
-                except:
+                except Exception as err:
+                    if isinstance(err, asyncio.TimeoutError):
+                        print("Timeout occurred")
+                    js_code = f"console.log('{err}')"
+                    window.eval(js_code)
+                    print(err)
                     node.offline = True
                     init["reloaded"] = False
                     init["sent"] = 1

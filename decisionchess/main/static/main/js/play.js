@@ -384,6 +384,7 @@ function updateCommandCenter() {
             const title = document.getElementById('title');
             currentTurn = null;
             title.text = "Game Over";
+            clearInterval(faviconIntervalId);
             changeFavicon(0);
             document.getElementById('playerIndicator').remove();
             document.getElementById('opponentIndicator').remove();

@@ -117,7 +117,7 @@ async def reconnect(window, game_id, access_keys, init):
     try:
         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
         if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"])
+            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"])
         else:
             retrieved_state = json.loads(retrieved_state)
             init["retrieved"] = Game(custom_params=retrieved_state)

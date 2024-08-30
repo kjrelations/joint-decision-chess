@@ -16,6 +16,8 @@ class Theme:
         self.FONT_SIZE = 36
         self.HIGHLIGHT_WHITE = (255, 215, 105)
         self.HIGHLIGHT_BLACK = (75, 215, 230)
+        self.HIGHLIGHT_WHITE_BLACK = (170, 144, 70)
+        self.HIGHLIGHT_BLACK_BLACK = (43, 124, 132)
         self.HIGHLIGHT_WHITE_RCLICK = (255, 100, 70)
         self.HIGHLIGHT_BLACK_RCLICK = (150, 60, 40)
         self.HIGHLIGHT_WHITE_RCLICK_OPPONENT = (126, 171, 116)
@@ -41,6 +43,8 @@ class Theme:
         self.FONT_SIZE = theme.get("font_size", self.FONT_SIZE)
         self.HIGHLIGHT_WHITE = theme.get("highlight_white", self.HIGHLIGHT_WHITE)
         self.HIGHLIGHT_BLACK = theme.get("highlight_black", self.HIGHLIGHT_BLACK)
+        self.HIGHLIGHT_WHITE_BLACK = theme.get("highlight_white_black", self.HIGHLIGHT_WHITE_BLACK)
+        self.HIGHLIGHT_BLACK_BLACK = theme.get("highlight_black_black", self.HIGHLIGHT_BLACK_BLACK)
         self.HIGHLIGHT_WHITE_RCLICK = theme.get("highlight_white_rclick", self.HIGHLIGHT_WHITE_RCLICK)
         self.HIGHLIGHT_BLACK_RCLICK = theme.get("highlight_black_rclick", self.HIGHLIGHT_BLACK_RCLICK)
         self.HIGHLIGHT_WHITE_RCLICK_OPPONENT = theme.get("highlight_white_rclick_opponent", self.HIGHLIGHT_WHITE_RCLICK_OPPONENT)

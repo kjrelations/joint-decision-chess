@@ -222,6 +222,9 @@ class Node:
                     rr, rw, re = select.select([sock.socket], [], [], 0)
                 except:
                     break
+                if self.offline:
+                    print("HANGUP")
+                    await self.reconnect_node(host)
                 if rr or rw or re:
                     while not aio.exit and self.aiosock:
                         try:
@@ -245,26 +248,30 @@ class Node:
                                 # lost con.
                                 print("HANGUP", self.peek)
                                 self.offline = True
-                                while self.offline:
-                                    try:
-                                        if not self.reconnecting:
-                                            print("Reconnecting...")
-                                            self.aiosock = None
-                                            self.users = {}
-                                            self.fork = -1
-                                            # alarm_set, rxq, txq, topics, joined, uid is not used
-                                            self.reconnecting = True
-                                            await aio.create_task(self.connect(host)) # Infinite nesting
-                                    except Exception as e:
-                                        print(f"Reconnect failed, Re-attempting in 5... : {str(e)}")
-                                        self.reconnecting = False
-                                    await aio.sleep(5)
+                                await self.reconnect_node(host)
                                 return # This is never hit
                         except BlockingIOError as e:
+                            print("here", self.offline)
                             if e.errno == 6:
                                 await aio.sleep(0)
                 else:
                     await aio.sleep(0)
+
+    async def reconnect_node(self, host):
+        while self.offline:
+            try:
+                if not self.reconnecting:
+                    print("Reconnecting...")
+                    self.aiosock = None
+                    self.users = {}
+                    self.fork = -1
+                    # alarm_set, rxq, txq, topics, joined, uid is not used
+                    self.reconnecting = True
+                    await aio.create_task(self.connect(host)) # Infinite nesting
+            except Exception as e:
+                print(f"Reconnect failed, Re-attempting in 5... : {str(e)}")
+                self.reconnecting = False
+            await aio.sleep(5)
 
     def publish(self):
         self.lobby_cmd(
