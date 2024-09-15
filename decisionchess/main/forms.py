@@ -7,11 +7,11 @@ from .models import User
 
 class CreateNewGameForm(forms.Form):
     main_mode_multiplayer = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
-        choices=[('Classical', 'Classical'), ('Decision', 'Decision')], 
+        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
         attrs={'id': 'main-mode-multiplayer'}
         ))
     main_mode_private = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
-        choices=[('Classical', 'Classical'), ('Decision', 'Decision')], 
+        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
         attrs={'id': 'main-mode-private'}
         ))
     solo_play = forms.BooleanField(label="Solo Play", required=False, widget=forms.CheckboxInput(attrs={'id': 'solo-play-checkbox'}))

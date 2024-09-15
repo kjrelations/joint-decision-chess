@@ -23,6 +23,7 @@ channels-redis = "*"
 twisted = "*"
 django-debug-toolbar = "*"
 django-livereload-server = "*"
+cython = "*"
 
 [dev-packages]
 pytest = "*"

@@ -2,7 +2,6 @@ import pygame
 import sys
 import asyncio
 import json
-import copy
 from constants import *
 
 ## General Helpers
@@ -296,6 +295,16 @@ def load_drawings(drawings):
             opposing_drawn_arrows.append([(arrow[0][0], arrow[0][1]), (arrow[1][0], arrow[1][1])])
     return right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows
 
+# Helper for fast deepcopy of list of lists of strings
+def deepcopy_list_of_lists(original):
+    n = len(original)
+    copy = [None] * n
+    
+    for i in range(n):
+        copy[i] = original[i][:]
+    
+    return copy
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
@@ -357,38 +366,42 @@ def rook_moves(board, row, col):
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].lower() != 'k':
+            if piece.lower() != 'k':
                 moves.append((row, i))
                 captures.append((row, i))
             break
 
     for i in range(col - 1, -1, -1):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].lower() != 'k':
+            if piece.lower() != 'k':
                 moves.append((row, i))
                 captures.append((row, i))
             break
 
     # Rook moves vertically
     for i in range(row + 1, 8):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].lower() != 'k':
+            if piece.lower() != 'k':
                 moves.append((i, col))
                 captures.append((i, col))
             break
 
     for i in range(row - 1, -1, -1):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].lower() != 'k':
+            if piece.lower() != 'k':
                 moves.append((i, col))
                 captures.append((i, col))
             break
@@ -401,7 +414,8 @@ def rook_captures_king(board, row, col, is_white):
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             continue
         elif board[row][i] == opposite_king:
             return True
@@ -409,26 +423,29 @@ def rook_captures_king(board, row, col, is_white):
             break
 
     for i in range(col - 1, -1, -1):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             continue
-        elif board[row][i] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
 
     # Rook moves vertically
     for i in range(row + 1, 8):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             continue
-        elif board[i][col] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
 
     for i in range(row - 1, -1, -1):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             continue
-        elif board[i][col] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
@@ -679,7 +696,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     for placement_col in [4, 3, 2]:
                         temp_board[king_row][4] = ' '
                         temp_board[king_row][placement_col] = king_piece
-                        temp_boards.append(copy.deepcopy(temp_board))
+                        temp_boards.append(deepcopy_list_of_lists(temp_board))
                         # Undo
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
@@ -694,7 +711,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     for placement_col in [4, 5, 6]:
                         temp_board[king_row][4] = ' '
                         temp_board[king_row][placement_col] = king_piece
-                        temp_boards.append(copy.deepcopy(temp_board))
+                        temp_boards.append(deepcopy_list_of_lists(temp_board))
                         # Undo
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
@@ -705,32 +722,25 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     return moves, captures, special_moves
 
 # Helper function to check if the opposite king can be captured
-def king_is_captured(board, row, col, piece, piece_type):
-    is_white = piece.isupper()
+def king_is_captured(board, row, col, piece_type, is_white):
 
     if piece_type == 'p':
-        if pawn_captures_king(board, row, col, is_white):
-            return True
+        return pawn_captures_king(board, row, col, is_white)
 
     elif piece_type == 'r':
-        if rook_captures_king(board, row, col, is_white):
-            return True
+        return rook_captures_king(board, row, col, is_white)
 
     elif piece_type == 'n':
-        if knight_captures_king(board, row, col, is_white):
-            return True
+        return knight_captures_king(board, row, col, is_white)
 
     elif piece_type == 'b':
-        if bishop_captures_king(board, row, col, is_white):
-            return True
+        return bishop_captures_king(board, row, col, is_white)
 
     elif piece_type == 'q':
-        if queen_captures_king(board, row, col, is_white):
-            return True
+        return queen_captures_king(board, row, col, is_white)
 
     elif piece_type == 'k':
-        if king_captures_king(board, row, col, is_white):
-            return True
+        return king_captures_king(board, row, col, is_white)
         
     elif piece_type == ' ':
         return False
@@ -739,13 +749,15 @@ def king_is_captured(board, row, col, piece, piece_type):
 
 ## Board State Check Logic
 # Helper function to search for checks
-def is_check(board, is_color):
+def is_check(board, is_white):
     # Check if any of the opponent's pieces can attack the king
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
-            if piece != ' ' and piece.islower() == is_color:
-                king_captured = king_is_captured(board, row, col, piece, piece.lower())
+            piece_is_black = piece.islower()
+            is_opposite_piece = piece_is_black == is_white
+            if piece != ' ' and is_opposite_piece:
+                king_captured = king_is_captured(board, row, col, piece.lower(), not piece_is_black)
                 if king_captured:
                     return True
     return False

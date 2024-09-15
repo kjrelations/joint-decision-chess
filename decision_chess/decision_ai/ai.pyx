@@ -1,7 +1,9 @@
+# cython: profile=True
 import time
 import random
 import math
 import pygame
+import cython
 import cProfile
 import pstats
 from game import *
@@ -192,30 +194,40 @@ def select_best_move(moves_score_dict, is_maximizing_player):
             best_move = move
     return best_move
 
-def get_absolute_value(piece, is_white, row, col):
-    type = piece.lower()
-    if type == 'p':
-        return 10 + (pawn_eval_white[row][col] if is_white else pawn_eval_black[row][col])
-    elif type == 'n':
-        return 30 + knight_eval[row][col]
-    elif type == 'b':
-        return 30 + (bishop_eval_white[row][col] if is_white else bishop_eval_black[row][col])
-    elif type == 'r':
-        return 50 + (rook_eval_white[row][col] if is_white else rook_eval_black[row][col])
-    elif type == 'q':
-        return 90 + queen_eval[row][col]
-    elif type == 'k':
-        return 900 + (king_eval_white[row][col] if is_white else king_eval_black[row][col])
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef double get_value(str piece, double sign, int row, int col):
+    cdef str type = piece.lower()
     
-def get_piece_value(piece, is_white, row, col):
+    if type == 'p':
+        return sign * 10
+    elif type == 'n':
+        return sign * 30
+    elif type == 'b':
+        return sign * 30
+    elif type == 'r':
+        return sign * 50
+    elif type == 'q':
+        return sign * 90
+    elif type == 'k':
+        return sign * 900
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef double get_piece_value(str piece, bint is_white, int row, int col):
     if piece == ' ':
         return 0
-    abs_val = get_absolute_value(piece, is_white, row, col)
-    piece_value = abs_val if is_white else -1 * abs_val
+    cdef double sign = 1 if is_white else -1
+    cdef double piece_value = get_value(piece, sign, row, col)
     return piece_value
 
-def evaluate_board(board):
-    total_value = 0
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef float evaluate_board(list[list[str]] board):
+    cdef int row, col
+    cdef str piece
+    cdef bint is_white
+    cdef float total_value = 0.0
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
@@ -225,7 +237,8 @@ def evaluate_board(board):
             total_value += get_piece_value(piece, is_white, row, col)
     return total_value
 
-def ai_play_move(game, move, selected_piece, special = False, promotion_piece = None):
+def ai_play_move(game: object, move: tuple[int, int], selected_piece: tuple[int, int], special: bool = False, promotion_piece: str = None) -> tuple[bool, bool]:
+    cdef bint update, illegal
     update, illegal = game.update_state(move[0], move[1], selected_piece, special = special)
     if promotion_piece:
         game.promote_to_piece(move[0], move[1], promotion_piece)
@@ -335,7 +348,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                     if isinstance(white_move, list) and isinstance(black_move, list):
                         for white_promotion in white_promotion_choices:
                             for black_promotion in black_promotion_choices:
-                                illegal = ai_handle_piece_move(
+                                illegal, _ = ai_handle_piece_move(
                                     game, 
                                     white_selected_piece, 
                                     white_move_new, 
@@ -358,7 +371,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                                     moves_score_dict[(black_selected_piece, black_move[0], black_special_move, black_promotion)] = value
                     elif not isinstance(white_move, list) and isinstance(black_move, list):
                         for black_promotion in black_promotion_choices:
-                            illegal = ai_handle_piece_move(
+                            illegal, _ = ai_handle_piece_move(
                                 game, 
                                 white_selected_piece, 
                                 white_move_new, 
@@ -381,7 +394,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                                 moves_score_dict[(black_selected_piece, black_move[0], black_special_move, black_promotion)] = value
                     elif isinstance(white_move, list) and not isinstance(black_move, list):
                         for white_promotion in white_promotion_choices:
-                            illegal = ai_handle_piece_move(
+                            illegal, _ = ai_handle_piece_move(
                                 game, 
                                 white_selected_piece, 
                                 white_move_new, 
@@ -403,7 +416,7 @@ def minimax_root(depth, game, is_maximizing_player, pos):
                             elif not is_maximizing_player and value <= moves_score_dict[(black_selected_piece, black_move, black_special_move)]:
                                 moves_score_dict[(black_selected_piece, black_move, black_special_move)] = value
                     else:
-                        illegal = ai_handle_piece_move(
+                        illegal, _ = ai_handle_piece_move(
                             game, 
                             white_selected_piece, 
                             white_move_new, 
@@ -435,11 +448,12 @@ def reset_state(game, stored):
     game._promotion_white = stored["stored_white_promote"]
     game._promotion_black = stored["stored_black_promote"]
 
-def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
+def minimax(depth: int, game: object, alpha: float, beta: float, is_maximizing_player: bool, pos: dict[str, int]) -> float:
     pos["position_count"] += 1
     if depth == 0:
         return -evaluate_board(game.board)
     
+    cdef int i, j
     stored = {
         "stored_white_active_move": None,
         "stored_white_promote": None,
@@ -472,7 +486,7 @@ def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
                     if isinstance(white_move, list) and isinstance(black_move, list):
                         for white_promotion in white_promotion_choices:
                             for black_promotion in black_promotion_choices:
-                                illegal = ai_handle_piece_move(
+                                illegal, _ = ai_handle_piece_move(
                                     game, 
                                     white_selected_piece, 
                                     white_move_new, 
@@ -494,7 +508,7 @@ def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
                                     return best_move
                     elif not isinstance(white_move, list) and isinstance(black_move, list):
                         for black_promotion in black_promotion_choices:
-                            illegal = ai_handle_piece_move(
+                            illegal, _ = ai_handle_piece_move(
                                 game, 
                                 white_selected_piece, 
                                 white_move_new, 
@@ -516,7 +530,7 @@ def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
                                 return best_move
                     elif isinstance(white_move, list) and not isinstance(black_move, list):
                         for white_promotion in white_promotion_choices:
-                            illegal = ai_handle_piece_move(
+                            illegal, _ = ai_handle_piece_move(
                                 game, 
                                 white_selected_piece, 
                                 white_move_new, 
@@ -537,7 +551,7 @@ def minimax(depth, game, alpha, beta, is_maximizing_player, pos):
                             if beta <= alpha:
                                 return best_move
                     else:
-                        illegal = ai_handle_piece_move(
+                        illegal, _ = ai_handle_piece_move(
                             game, 
                             white_selected_piece, 
                             white_move_new, 
@@ -570,7 +584,7 @@ def alpha_beta_calc(alpha, beta, best_move, is_maximizing_player):
         return max(alpha, best_move), beta
     else:
         return alpha, min(beta, best_move)
-    
+
 pawn_eval_white =[
     [0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
     [5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0,  5.0],
@@ -657,7 +671,7 @@ def generate_all_moves(game, white_side):
     all_valid_moves = []
     all_valid_specials = []
     
-    for row in range(len(game.board)):
+    for row in range(8):
         for col in range(8):
             piece = game.board[row][col]
             is_white = piece.isupper()
@@ -700,11 +714,11 @@ def game_over_outcome(game):
     elif no_remaining_moves:
         return 500
     return ValueError('Game not over')
-
+    
 def apply_node(game, node):
     ai_move = node.move
     if game._starting_player:
-        ai_handle_piece_move(
+        illegal, _ = ai_handle_piece_move(
             game, 
             ai_move['player_piece'], 
             ai_move['player_move'], 
@@ -716,7 +730,7 @@ def apply_node(game, node):
             black_promotion_piece = ai_move['promotion_piece']
             )
     else:
-        ai_handle_piece_move(
+        illegal, _ = ai_handle_piece_move(
             game, 
             ai_move['selected_piece'], 
             ai_move['move'], 
@@ -1046,7 +1060,7 @@ def mcts(root, pos, game, iterations=10, simulation_sets=26, sim_depth=10):
     for i in range(iterations):
         node = root
         while node.children:
-            node = select_best_node(node)
+            node = select_best_node(node, result, game, boards)
             apply_node(game, node)
         if not game_is_over(game):
             expand_node(node, game, pos)

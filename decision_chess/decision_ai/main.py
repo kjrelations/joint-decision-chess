@@ -620,7 +620,7 @@ def main():
 
         ## TODO ai move here
         if client_game._latest and not init["final_updates"] and init["reloaded"]:
-            ai_move(client_game, init, drawing_settings, "minimax_ai")
+            ai_move(client_game, init, drawing_settings, "mcts_ai")
 
         if drawing_settings["clear_selections"]:
             if selected_piece:
@@ -965,8 +965,7 @@ def main():
                 draw_board_params, # These are mutated on first draw then flipped again
                 client_state_actions,
                 command_status_names,
-                drawing_settings,
-                init
+                drawing_settings
             )
             promotion_required, promotion_square = False, None
 
@@ -1039,7 +1038,7 @@ def main():
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
 
         drawing_settings['new_state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
         if drawing_settings['new_state'] != drawing_settings['state']:
@@ -1142,7 +1141,7 @@ def main():
                 'selected_piece_image': selected_piece_image
             })
         drawing_settings['state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
 

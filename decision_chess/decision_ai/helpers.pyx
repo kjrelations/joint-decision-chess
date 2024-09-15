@@ -1,7 +1,9 @@
+# cython: profile=True
 import pygame
 import sys
 import asyncio
 import json
+import cython
 from constants import *
 
 ## General Helpers
@@ -296,10 +298,10 @@ def load_drawings(drawings):
     return right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows
 
 # Helper for fast deepcopy of list of lists of strings
-def deepcopy_list_of_lists(original):
-    n = len(original)
-    copy = [None] * n
-    
+cpdef list deepcopy_list_of_lists(list original):
+    cdef int i, n = len(original)
+    cdef list copy = [None] * n
+
     for i in range(n):
         copy[i] = original[i][:]
     
@@ -307,11 +309,13 @@ def deepcopy_list_of_lists(original):
 
 ## Move logic
 # Helper function to calculate moves for a pawn
-def pawn_moves(board, row, col, is_white):
-    moves = []
-    captures = []
+cdef tuple[list[tuple[int, int]], list[tuple[int, int]]] pawn_moves(list[list[str]] board, int row, int col, bint is_white):
+    cdef list[tuple[int, int]] moves = []
+    cdef list[tuple[int, int]] captures = []
 
-    forwards = -1 if is_white else 1
+    cdef int forwards = -1 if is_white else 1
+    cdef int c, new_col
+    cdef str piece
 
     if row in [0, 7]:
         return moves, captures
@@ -341,9 +345,11 @@ def pawn_moves(board, row, col, is_white):
     return moves, captures
 
 # Helper to calculate if the pawn can capture the opposite king
-def pawn_captures_king(board, row, col, is_white):
-    forwards = -1 if is_white else 1
-    opposite_king = 'k' if is_white else 'K'
+cdef bint pawn_captures_king(list[list[str]] board, int row, int col, bint is_white):
+    cdef int forwards = -1 if is_white else 1
+    cdef str opposite_king = 'k' if is_white else 'K'
+    cdef int c, new_col
+    cdef str piece
 
     # No captures possible when pawns reach the end, otherwise list index out of range
     if is_white and row == 0 or not is_white and row == 7:
@@ -360,9 +366,11 @@ def pawn_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a rook
-def rook_moves(board, row, col):
-    moves = []
-    captures = []
+cdef tuple[list[tuple[int, int]], list[tuple[int, int]]] rook_moves(list[list[str]] board, int row, int col):
+    cdef list[tuple[int, int]] moves = []
+    cdef list[tuple[int, int]] captures = []
+    cdef int i
+    cdef str piece
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
@@ -409,8 +417,10 @@ def rook_moves(board, row, col):
     return moves, captures
 
 # Helper to calculate if the rook can capture the opposite king
-def rook_captures_king(board, row, col, is_white):
-    opposite_king = 'k' if is_white else 'K'
+cdef bint rook_captures_king(list[list[str]] board, int row, int col, bint is_white):
+    cdef str opposite_king = 'k' if is_white else 'K'
+    cdef int i
+    cdef str piece
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
@@ -453,42 +463,64 @@ def rook_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a knight
-def knight_moves(board, row, col):
-    moves = []
-    captures = []
+cdef tuple[list[tuple[int, int]], list[tuple[int, int]]] knight_moves(list[list[str]] board, int row, int col):
+    cdef list[tuple[int, int]] moves = []
+    cdef list[tuple[int, int]] captures = []
+    cdef int dr[8]
+    cdef int dc[8]
+    cdef int r, c, i
 
-    knight_moves = [(row - 2, col - 1), (row - 2, col + 1), (row - 1, col - 2), (row - 1, col + 2),
-                    (row + 1, col - 2), (row + 1, col + 2), (row + 2, col - 1), (row + 2, col + 1)]
+    dr[0], dc[0] = -2, -1
+    dr[1], dc[1] = -2, 1
+    dr[2], dc[2] = -1, -2
+    dr[3], dc[3] = -1, 2
+    dr[4], dc[4] = 1, -2
+    dr[5], dc[5] = 1, 2
+    dr[6], dc[6] = 2, -1
+    dr[7], dc[7] = 2, 1
 
-    # Remove moves that are out of bounds
-    valid_knight_moves = [(move[0], move[1]) for move in knight_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
-
-    # Cannot superimpose with own king or capture enemy king
-    valid_knight_moves = [(move[0], move[1]) for move in valid_knight_moves if board[move[0]][move[1]].lower() != 'k']
-
-    # Valid captures
-    captures = [move for move in valid_knight_moves if board[move[0]][move[1]] != " "]
-
-    moves.extend(valid_knight_moves)
+    for i in range(8):
+        r = row + dr[i]
+        c = col + dc[i]
+        # Remove moves that are out of bounds
+        if 0 <= r < 8 and 0 <= c < 8:
+            piece = board[r][c]
+            # Cannot superimpose with own king or capture enemy king
+            if piece.lower() != 'k':
+                moves.append((r, c))
+                # Valid captures
+                if piece != " ":
+                    captures.append((r, c))
 
     return moves, captures
 
 # Helper to calculate if the knight can capture the opposite king
-def knight_captures_king(board, row, col, is_white):
-    opposite_king = 'k' if is_white else 'K'
-    knight_moves = [(row - 2, col - 1), (row - 2, col + 1), (row - 1, col - 2), (row - 1, col + 2),
-                    (row + 1, col - 2), (row + 1, col + 2), (row + 2, col - 1), (row + 2, col + 1)]
+cdef bint knight_captures_king(list[list[str]] board, int row, int col, bint is_white):
+    cdef str opposite_king = 'k' if is_white else 'K'
+    cdef int i, move_row, move_col
+    cdef int knight_moves[8][2]
+    
+    knight_moves[0][0], knight_moves[0][1] = row - 2, col - 1
+    knight_moves[1][0], knight_moves[1][1] = row - 2, col + 1
+    knight_moves[2][0], knight_moves[2][1] = row - 1, col - 2
+    knight_moves[3][0], knight_moves[3][1] = row - 1, col + 2
+    knight_moves[4][0], knight_moves[4][1] = row + 1, col - 2
+    knight_moves[5][0], knight_moves[5][1] = row + 1, col + 2
+    knight_moves[6][0], knight_moves[6][1] = row + 2, col - 1
+    knight_moves[7][0], knight_moves[7][1] = row + 2, col + 1
 
-    valid_knight_moves = [(move[0], move[1]) for move in knight_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
-
-    for move_row, move_col in valid_knight_moves:
-        if board[move_row][move_col] == opposite_king:
-            return True
+    for i in range(8):
+        move_row = knight_moves[i][0]
+        move_col = knight_moves[i][1]
+        # Remove moves that are out of bounds
+        if 0 <= move_row < 8 and 0 <= move_col < 8:
+            if board[move_row][move_col] == opposite_king:
+                return True
 
     return False
 
 # Helper function to calculate moves for a bishop
-def bishop_moves(board, row, col):
+def bishop_moves(board: list[list[str]], row: int, col: int) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     moves = []
     captures = []
     directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
@@ -510,17 +542,20 @@ def bishop_moves(board, row, col):
     return moves, captures
 
 # Helper to calculate if the bishop can capture the opposite king
-def bishop_captures_king(board, row, col, is_white):
-    opposite_king = 'k' if is_white else 'K'
+cdef bint bishop_captures_king(list[list[str]] board, int row, int col, bint is_white):
+    cdef str opposite_king = 'k' if is_white else 'K'
+    cdef str piece
+    cdef int dr, dc, i, new_row, new_col
     directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
 
     for dr, dc in directions:
         for i in range(1, 8):
             new_row, new_col = row + dr * i, col + dc * i
             if 0 <= new_row < 8 and 0 <= new_col < 8:
-                if board[new_row][new_col] == ' ':
+                piece = board[new_row][new_col]
+                if piece == ' ':
                     continue
-                elif board[new_row][new_col] == opposite_king:
+                elif piece == opposite_king:
                     return True
                 else:
                     break
@@ -530,7 +565,7 @@ def bishop_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a queen
-def queen_moves(board, row, col):
+def queen_moves(board: list[list[str]], row: int, col: int) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     moves = []
     captures = []
 
@@ -547,7 +582,7 @@ def queen_moves(board, row, col):
     return moves, captures
 
 # Helper to calculate if the queen can capture the opposite king
-def queen_captures_king(board, row, col, is_white):
+cdef bint queen_captures_king(list[list[str]] board, int row, int col, bint is_white):
     # Bishop-like moves
     if bishop_captures_king(board, row, col, is_white):
         return True
@@ -559,7 +594,7 @@ def queen_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a king
-def king_moves(board, row, col):
+def king_moves(board: list[list[str]], row: int, col: int) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     moves = []
     captures = []
 
@@ -579,35 +614,56 @@ def king_moves(board, row, col):
     return moves, captures
 
 # Helper to calculate if the king can capture the opposite king, redundant since illegal
-def king_captures_king(board, row, col, is_white):
-    opposite_king = 'k' if is_white else 'K'
+def king_captures_king(board: list[list[str]], row: int, col: int, is_white: bool) -> bool:
+    cdef str opposite_king = 'k' if is_white else 'K'
 
-    king_moves = [
-        (row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
-        (row, col - 1),                     (row, col + 1),
-        (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)
-    ]
+    cdef int king_moves[8][2] 
+    
+    king_moves[0][0], king_moves[0][1] = row - 1, col - 1
+    king_moves[1][0], king_moves[1][1] = row - 1, col
+    king_moves[2][0], king_moves[2][1] = row - 1, col + 1
+    king_moves[3][0], king_moves[3][1] = row, col - 1
+    king_moves[4][0], king_moves[4][1] = row, col + 1
+    king_moves[5][0], king_moves[5][1] = row + 1, col - 1
+    king_moves[6][0], king_moves[6][1] = row + 1, col
+    king_moves[7][0], king_moves[7][1] = row + 1, col + 1
 
-    # Remove moves that are out of bounds
-    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
-
-    for move_row, move_col in valid_king_moves:
-        if board[move_row][move_col] == opposite_king:
-            return True
+    for i in range(8):
+        move_row = king_moves[i][0]
+        move_col = king_moves[i][1]
+        # Remove moves that are out of bounds
+        if 0 <= move_row < 8 and 0 <= move_col < 8:
+            if board[move_row][move_col] == opposite_king:
+                return True
 
     return False
 
 # Helper function to return moves for the selected piece
-def calculate_moves(board, row, col, game_history, castle_attributes=None, only_specials=False):
+def calculate_moves(
+    board: list[list[str]], 
+    row: int, 
+    col: int, 
+    game_history: list[list[list[str]]], 
+    castle_attributes: dict[str, list[Union[bool, int]]]=None, 
+    only_specials: bool=False
+    ) -> tuple[list[tuple[int, int]], list[tuple[int, int]], list[tuple[int, int]]]:
     # only_specials input for only calculating special moves, this is used when updating the dictionary of board states
     # of the game class. Special available moves are one attribute of a unique state
-    piece = board[row][col]
-    piece_type = piece.lower()
-    moves = []
-    captures = []
-    special_moves = []
-
-    is_white = piece.isupper()
+    cdef str piece = board[row][col]
+    cdef str piece_type = piece.lower()
+    cdef list[tuple[int, int]] moves = []
+    cdef list[tuple[int, int]] captures = []
+    cdef list[tuple[int, int]] special_moves = []
+    cdef bint is_white = piece.isupper()
+    cdef str previous_pawn, previous_start_row, previous_end_row
+    cdef int destination_row
+    cdef bint add_enpassant = False
+    cdef bint moved_king, left_rook_moved, right_rook_moved
+    cdef int king_row
+    cdef str king_piece, element
+    cdef list[list[str]] temp_board
+    cdef bint all_empty, king_under_check
+    cdef list[str] start, end 
 
     if not only_specials:
         if piece_type == 'p':
@@ -673,6 +729,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     # Using these attributes instead of a game copy eliminates the need to deepcopy the game below
     # and instead use a temp board
     if piece_type == 'k' and castle_attributes is not None:
+
         if is_white:
             moved_king = castle_attributes['white_king_moved'][0]
             left_rook_moved = castle_attributes['left_white_rook_moved'][0]
@@ -690,7 +747,12 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
         if not moved_king:
             if not left_rook_moved:
                 # Empty squares between king and rook
-                if all(element == ' ' for element in board[king_row][1:4]):
+                all_empty = True
+                for element in board[king_row][1:4]:
+                    if element != ' ':
+                        all_empty = False 
+                        break
+                if all_empty:
                     # Not moving through/into check and not currently under check
                     temp_boards = []
                     for placement_col in [4, 3, 2]:
@@ -701,11 +763,21 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
                     # Empty squares are clear of checks
-                    if all(not is_check(temp, is_white) for temp in temp_boards):
+                    king_under_check = False
+                    for temp_board in temp_boards:
+                        if is_check(temp_board, is_white):
+                            king_under_check = True
+                            break
+                    if king_under_check:
                         special_moves.append((king_row, 2))
             if not right_rook_moved:
                 # Empty squares between king and rook
-                if all(element == ' ' for element in board[king_row][5:7]):
+                all_empty = True
+                for element in board[king_row][5:7]:
+                    if element != ' ':
+                        all_empty = False 
+                        break
+                if all_empty:
                     # Not moving through/into check and not currently under check
                     temp_boards = []
                     for placement_col in [4, 5, 6]:
@@ -716,13 +788,18 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
                     # Empty squares are clear of checks
-                    if all(not is_check(temp, is_white) for temp in temp_boards):
+                    king_under_check = False
+                    for temp_board in temp_boards:
+                        if is_check(temp_board, is_white):
+                            king_under_check = True
+                            break
+                    if king_under_check:
                         special_moves.append((king_row, 6))
 
     return moves, captures, special_moves
 
 # Helper function to check if the opposite king can be captured
-def king_is_captured(board, row, col, piece_type, is_white):
+cdef bint king_is_captured(list[list[str]] board, int row, int col, str piece_type, bint is_white):
 
     if piece_type == 'p':
         return pawn_captures_king(board, row, col, is_white)
@@ -749,7 +826,12 @@ def king_is_captured(board, row, col, piece_type, is_white):
 
 ## Board State Check Logic
 # Helper function to search for checks
-def is_check(board, is_white):
+cpdef bint is_check(list[list[str]] board, bint is_white):
+    cdef int row, col
+    cdef str piece
+    cdef bint piece_is_black
+    cdef bint is_opposite_piece
+    cdef bint king_captured
     # Check if any of the opponent's pieces can attack the king
     for row in range(8):
         for col in range(8):
@@ -763,12 +845,18 @@ def is_check(board, is_white):
     return False
 
 # Helper function to search for end-game state
-def is_checkmate_or_stalemate(board, is_color, moves):
-    possible_moves = 0
+def is_checkmate_or_stalemate(board: list[list[str]], is_color: bool, moves: list[list[list[str]]]) -> tuple[bool, int]:
+    cdef int possible_moves = 0
     # Consider this as a potential checkmate if under check
-    checkmate = is_check(board, is_color)
-    
-    temp_board = [rank[:] for rank in board]  
+    cdef bint checkmate = is_check(board, is_color)
+
+    cdef list[list[str]] temp_board = [rank[:] for rank in board]
+
+    cdef int row, col
+    cdef str piece, old_position, old_pawn
+    cdef list[tuple[int, int]] other_moves
+    cdef list[tuple[int, int]] other_specials
+    cdef tuple[int, int] move
     # Iterate through all the player's pieces
     for row in range(8):
         for col in range(8):
@@ -1247,10 +1335,10 @@ def draw_board(params):
         # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
-    if white_active_position is not None:
+    if white_active_position is not None and starting_player:
         x, y = theme.GRID_SIZE * white_active_position[1], theme.GRID_SIZE * white_active_position[0]
         window.blit(white_selected_piece_image, (x, y))
-    if black_active_position is not None:
+    if black_active_position is not None and not starting_player:
         x, y = theme.GRID_SIZE * black_active_position[1], theme.GRID_SIZE * black_active_position[0]
         window.blit(black_selected_piece_image, (x, y))
     # On mousedown and a piece is selected draw a transparent copy of the piece
