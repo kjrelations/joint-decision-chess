@@ -10,6 +10,10 @@ class CreateNewGameForm(forms.Form):
         choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
         attrs={'id': 'main-mode-multiplayer'}
         ))
+    main_mode_computer = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
+        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
+        attrs={'id': 'main-mode-computer'}
+        ))
     main_mode_private = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
         choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
         attrs={'id': 'main-mode-private'}

@@ -95,7 +95,7 @@ newComputerGameButtons.forEach(button => {
         body = {
             "position": button.dataset.position,
             "solo": null,
-            "main_mode": "Classical",
+            "main_mode": document.getElementById('main-mode-computer').value,
             "reveal_stage": false,
             "decision_stage": false,
             "private": null,

@@ -407,7 +407,7 @@ class Game:
             return board
         
         # Update a temp_board first for correct algebraic moves
-        temp_board = copy.deepcopy(self.board)
+        temp_board = deepcopy_list_of_lists(self.board)
         temp_board = update_board(
             self, 
             temp_board, 
@@ -551,6 +551,21 @@ class Game:
                 self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
             elif black_piece == 'r' and black_initial_pos == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
                 self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
+
+            if (new_row_white, new_col_white) == (0, 0) and potential_white_capture is not None and \
+               'r' in potential_white_capture and not self.castle_attributes['left_black_rook_moved'][0]:
+                self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
+            elif (new_row_white, new_col_white) == (0, 7) and potential_white_capture is not None and \
+                 'r' in potential_white_capture and not self.castle_attributes['right_black_rook_moved'][0]:
+                self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
+            
+            if (new_row_black, new_col_black) == (7, 0) and potential_black_capture is not None and \
+               'R' in potential_black_capture and not self.castle_attributes['left_white_rook_moved'][0]:
+                self.castle_attributes['left_white_rook_moved'] = [True, self._move_index]
+            elif (new_row_black, new_col_black) == (7, 7) and potential_black_capture is not None and \
+                 'R' in potential_black_capture and not self.castle_attributes['right_white_rook_moved'][0]:
+                self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
+
             
             self.white_active_move = None
             self.black_active_move = None

@@ -17,8 +17,8 @@ local = "http://127.0.0.1:8000"
 local_debug = True
 
 # Handle Persistent Storage
-# if __import__("sys").platform == "emscripten":
-#     from platform import window
+if __import__("sys").platform == "emscripten":
+    from platform import window
 
 # Initialize Pygame
 pygame.init()
@@ -84,16 +84,13 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
         if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
-            # handle_play(window, capture_sound)
-            capture_sound.play()
+            handle_play(window, capture_sound)
         elif update:
-            # handle_play(window, move_sound)
-            move_sound.play()
+            handle_play(window, move_sound)
         elif illegal:
             if game._starting_player and game.black_active_move is not None or \
                not game._starting_player and game.white_active_move is not None:
-                # handle_play(window, error_sound)
-                error_sound.play()
+                handle_play(window, error_sound)
         
         selected_piece = None
 
@@ -138,14 +135,11 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
     if update:
         print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
     if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
-        capture_sound.play()
-        # handle_play(window, capture_sound)
+        handle_play(window, capture_sound)
     elif update:
-        move_sound.play()
-        # handle_play(window, move_sound)
+        handle_play(window, move_sound)
     elif illegal:
-        error_sound.play()
-        # handle_play(window, error_sound)
+        handle_play(window, error_sound)
 
     if update:
         init["sent"] = 0
@@ -173,43 +167,43 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
 
     return piece, is_white
 
-# def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
-#     command_name, client_action_name, client_executed_name, *remaining = status_names
-#     if len(status_names) == 3:
-#         client_reset_name = None 
-#     else:
-#         client_reset_name = remaining[0]
-#     client_executed_status, client_reset_status = \
-#         client_state_actions[client_executed_name], client_state_actions.get(client_reset_name)
+def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
+    command_name, client_action_name, client_executed_name, *remaining = status_names
+    if len(status_names) == 3:
+        client_reset_name = None 
+    else:
+        client_reset_name = remaining[0]
+    client_executed_status, client_reset_status = \
+        client_state_actions[client_executed_name], client_state_actions.get(client_reset_name)
     
-#     if web_metadata_dict.get(command_name) is not None:
-#         if web_metadata_dict[command_name]['execute'] and not web_metadata_dict[command_name]['update_executed'] and not client_reset_status:
-#             if client_state_actions[client_action_name] != True:
-#                 client_state_actions[client_action_name] = True
-#             if client_executed_status:
-#                 web_metadata_dict[command_name]['update_executed'] = True
-#                 web_metadata_dict = web_metadata_dict
-#                 json_metadata = json.dumps(web_metadata_dict)
+    if web_metadata_dict.get(command_name) is not None:
+        if web_metadata_dict[command_name]['execute'] and not web_metadata_dict[command_name]['update_executed'] and not client_reset_status:
+            if client_state_actions[client_action_name] != True:
+                client_state_actions[client_action_name] = True
+            if client_executed_status:
+                web_metadata_dict[command_name]['update_executed'] = True
+                web_metadata_dict = web_metadata_dict
+                json_metadata = json.dumps(web_metadata_dict)
                 
-#                 window.sessionStorage.setItem(games_metadata_name, json_metadata)
-#                 client_state_actions[client_action_name] = False
+                window.sessionStorage.setItem(games_metadata_name, json_metadata)
+                client_state_actions[client_action_name] = False
 
-#         # Handling race conditions assuming speed differences and sychronizing states with this.
-#         # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
-#         if client_executed_status and not web_metadata_dict[command_name]['execute']:
-#             client_state_actions[client_executed_name] = False    
+        # Handling race conditions assuming speed differences and sychronizing states with this.
+        # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
+        if client_executed_status and not web_metadata_dict[command_name]['execute']:
+            client_state_actions[client_executed_name] = False    
 
-#         if client_reset_status is not None and client_reset_status == True and not web_metadata_dict[command_name]['reset']:
-#             web_metadata_dict[command_name]['reset'] = True
-#             web_metadata_dict[command_name]['execute'] = False
-#             json_metadata = json.dumps(web_metadata_dict)
+        if client_reset_status is not None and client_reset_status == True and not web_metadata_dict[command_name]['reset']:
+            web_metadata_dict[command_name]['reset'] = True
+            web_metadata_dict[command_name]['execute'] = False
+            json_metadata = json.dumps(web_metadata_dict)
             
-#             window.sessionStorage.setItem(games_metadata_name, json_metadata)
-#             client_state_actions[client_reset_name] = False
-#             client_state_actions[client_action_name] = False
+            window.sessionStorage.setItem(games_metadata_name, json_metadata)
+            client_state_actions[client_reset_name] = False
+            client_state_actions[client_action_name] = False
 
 # Game State loop for promotion
-def promotion_state(
+async def promotion_state(
         promotion_square, 
         client_game, 
         row, col, 
@@ -221,7 +215,7 @@ def promotion_state(
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
     promoted, promotion_required = False, True
 
-    # window.sessionStorage.setItem("promoting", "true")
+    window.sessionStorage.setItem("promoting", "true")
 
     while promotion_required:
 
@@ -340,19 +334,19 @@ def promotion_state(
                 img_x, img_y = button.scaled_x, button.scaled_y
             game_window.blit(img, (img_x, img_y))
 
-        # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
-        # web_game_metadata_dict = json.loads(web_game_metadata)
+        web_game_metadata_dict = json.loads(web_game_metadata)
 
         # Undo move, resign, cycle theme, flip command handle
-        # for status_names in command_status_names:
-        #     handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")     
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")     
 
         pygame.display.flip()
-        # await asyncio.sleep(0)
+        await asyncio.sleep(0)
 
-    # window.sessionStorage.setItem("promoting", "false")
-    # await asyncio.sleep(0)
+    window.sessionStorage.setItem("promoting", "false")
+    await asyncio.sleep(0)
     return promoted
 
 def initialize_game(init, game_id, drawing_settings):
@@ -377,73 +371,70 @@ def initialize_game(init, game_id, drawing_settings):
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
     init["opponent"] = "black" if init["starting_player"] else "white"
-    # window.sessionStorage.setItem("draw_request", "false")
-    # window.sessionStorage.setItem("undo_request", "false")
-    # window.sessionStorage.setItem("total_reset", "false")
-    # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
-    # if web_game_metadata is not None:
-    #     web_game_metadata_dict = json.loads(web_game_metadata)
-    # else:
-    #     web_game_metadata_dict = {}
+    web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+    if web_game_metadata is not None:
+        web_game_metadata_dict = json.loads(web_game_metadata)
+    else:
+        web_game_metadata_dict = {}
     game_tab_id =  init["player"] + "-" + game_id
-    # window.sessionStorage.setItem("current_game_id", game_tab_id)
+    window.sessionStorage.setItem("current_game_id", game_tab_id)
     if not init["initialized"]:
-        # if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
-        #     web_game_metadata_dict = {
-        #         "end_state": '',
-        #         "forced_end": '',
-        #         "player_color": init["player"],
-        #         "alg_moves": [],
-        #         "comp_moves": [],
-        #         "FEN_final_pos": "",
-        #         "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
-        #         "white_played": False,
-        #         "black_played": False,
-        #         "playing_stage": True,
-        #         "game_type": init["game_type"],
-        #         "step": {
-        #             "execute": False,
-        #             "update_executed": False,
-        #             "index": None
-        #         },
-        #         "undo_move": {
-        #             "execute": False,
-        #             "update_executed": False,
-        #             "reset": False
-        #         },
-        #         "resign": {
-        #             "execute": False,
-        #             "update_executed": False
-        #         },
-        #         "cycle_theme": {
-        #             "execute": False,
-        #             "update_executed": False
-        #         },
-        #         "flip_board": {
-        #             "execute": False,
-        #             "update_executed": False
-        #         }
-        #     }
-        # else:
-        #     raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
-        # web_game_metadata = json.dumps(web_game_metadata_dict)
-        # window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
-        # web_ready = False
-        # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
-        # if web_game_metadata is not None:
-        #     web_game_metadata_dict = json.loads(web_game_metadata)
-        #     web_ready = True
-        init["initializing"], init["initialized"] = False, True
-        #     window.sessionStorage.setItem("initialized", "true")
-        # if not web_ready:
-        #     raise Exception("Failed to set web value")
+        if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
+            web_game_metadata_dict = {
+                "end_state": '',
+                "forced_end": '',
+                "player_color": init["player"],
+                "alg_moves": [],
+                "comp_moves": [],
+                "FEN_final_pos": "",
+                "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
+                "white_played": False,
+                "black_played": False,
+                "playing_stage": True,
+                "game_type": init["game_type"],
+                "step": {
+                    "execute": False,
+                    "update_executed": False,
+                    "index": None
+                },
+                "undo_move": {
+                    "execute": False,
+                    "update_executed": False,
+                    "reset": False
+                },
+                "resign": {
+                    "execute": False,
+                    "update_executed": False
+                },
+                "cycle_theme": {
+                    "execute": False,
+                    "update_executed": False
+                },
+                "flip_board": {
+                    "execute": False,
+                    "update_executed": False
+                }
+            }
+        else:
+            raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
+        web_game_metadata = json.dumps(web_game_metadata_dict)
+        window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+        web_ready = False
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+        if web_game_metadata is not None:
+            web_game_metadata_dict = json.loads(web_game_metadata)
+            web_ready = True
+            init["initializing"], init["initialized"] = False, True
+            window.sessionStorage.setItem("initialized", "true")
+        if not web_ready:
+            raise Exception("Failed to set web value")
     else:
         init["initializing"] = False
     return client_game, game_tab_id
 
 # Main loop
-def main():
-    game_id = "222"#window.sessionStorage.getItem("current_game_id")
+async def main():
+    game_id = window.sessionStorage.getItem("current_game_id")
     if game_id is None:
         raise Exception("No game id set")
     
@@ -535,92 +526,91 @@ def main():
             client_game, game_tab_id = initialize_game(init, game_id, drawing_settings)
 
         elif not init["initialized"]:
-            # if not init["config_retrieved"] and not init["local_debug"]:
-            #     access_keys = load_keys("secrets.txt")
-            #     init["access_keys"] = access_keys
-            #     # TODO Consider whether to merge with retreival
-            #     try:
-            #         domain = 'https://decisionchess.com' if production else local
-            #         url = f'{domain}/config/' + game_id + '/?type=live'
-            #         handler = fetch.RequestHandler()
-            #         while not init["config_retrieved"]:
-            #             try:
-            #                 response = await asyncio.wait_for(handler.get(url), timeout = 5)
-            #                 data = json.loads(response)
-            #                 init["config_retrieved"] = True
-            #             except Exception as e:
-            #                 err = 'Game config retreival failed. Reattempting...'
-            #                 js_code = f"console.log('{err}')"
-            #                 window.eval(js_code)
-            #                 print(err)
-            #         if data.get("status") and data["status"] == "error":
-            #             raise Exception(f'Request failed {data}')
-            #         if data["message"]["starting_side"] == "white":
-            #             init["starting_player"] = True 
-            #         elif data["message"]["starting_side"] == "black":
-            #             init["starting_player"] = False 
-            #         else:
-            #             raise Exception("Bad request")
-            #         if data["message"]["theme_names"]:
-            #             theme_names = data["message"]["theme_names"]
-            #             global themes
-            #             themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
-            #             current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
-            #             drawing_settings["chessboard"] = generate_chessboard(current_theme)
-            #             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
-            #         else:
-            #             raise Exception("Bad request")
-            #         if data["message"]["game_type"]:
-            #             init["game_type"] = data["message"]["game_type"]
-            #         else:
-            #             raise Exception("Bad request")
-            #         window.sessionStorage.setItem("color", data["message"]["starting_side"])
-            #     except Exception as e:
-            #         log_err_and_print(e, window)
-            #         raise Exception(str(e))
-            # retrieved_state = None
+            if not init["config_retrieved"] and not init["local_debug"]:
+                access_keys = load_keys("secrets.txt")
+                init["access_keys"] = access_keys
+                # TODO Consider whether to merge with retreival
+                try:
+                    domain = 'https://decisionchess.com' if production else local
+                    url = f'{domain}/config/' + game_id + '/?type=live'
+                    handler = fetch.RequestHandler()
+                    while not init["config_retrieved"]:
+                        try:
+                            response = await asyncio.wait_for(handler.get(url), timeout = 5)
+                            data = json.loads(response)
+                            init["config_retrieved"] = True
+                        except Exception as e:
+                            err = 'Game config retreival failed. Reattempting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
+                    if data.get("status") and data["status"] == "error":
+                        raise Exception(f'Request failed {data}')
+                    if data["message"]["starting_side"] == "white":
+                        init["starting_player"] = True 
+                    elif data["message"]["starting_side"] == "black":
+                        init["starting_player"] = False 
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["theme_names"]:
+                        theme_names = data["message"]["theme_names"]
+                        global themes
+                        themes = [next(theme for theme in themes if theme['name'] == name) for name in theme_names]
+                        current_theme.apply_theme(themes[0], current_theme.INVERSE_PLAYER_VIEW)
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["game_type"]:
+                        init["game_type"] = data["message"]["game_type"]
+                    else:
+                        raise Exception("Bad request")
+                    window.sessionStorage.setItem("color", data["message"]["starting_side"])
+                except Exception as e:
+                    log_err_and_print(e, window)
+                    raise Exception(str(e))
+            retrieved_state = None
             if init["local_debug"]:
                 init["starting_player"] = True
                 init["game_type"] = "Standard"
-                # window.sessionStorage.setItem("color", "white")
-                # window.sessionStorage.setItem("muted", "false")
+                window.sessionStorage.setItem("color", "white")
+                window.sessionStorage.setItem("muted", "false")
             else:
                 retrieved = False
-                # while not retrieved:
-                #     try:
-                #         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
-                #         init["starting_position"] = json.loads(retrieved_state)
-                #         if init["starting_player"]:
-                #             played_condition = init["starting_player"] == init["starting_position"]["white_played"]
-                #         else:
-                #             played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
-                #         init["sent"] = int(played_condition)
-                #         retrieved = True
-                #     except Exception as e:
-                #         err = 'Game State retreival Failed. Reattempting...'
-                #         js_code = f"console.log('{err}')"
-                #         window.eval(js_code)
-                #         print(err)
+                while not retrieved:
+                    try:
+                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+                        init["starting_position"] = json.loads(retrieved_state)
+                        if init["starting_player"]:
+                            played_condition = init["starting_player"] == init["starting_position"]["white_played"]
+                        else:
+                            played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
+                        init["sent"] = int(played_condition)
+                        retrieved = True
+                    except Exception as e:
+                        err = 'Game State retreival Failed. Reattempting...'
+                        js_code = f"console.log('{err}')"
+                        window.eval(js_code)
+                        print(err)
             
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Setting Up")
-            # window.sessionStorage.setItem("connected", "true")
+            window.sessionStorage.setItem("connected", "true")
             init["initializing"] = True
             continue
 
-        # if not init["reloaded"] and not init["reconnecting"]:
-        #     if init["retrieved"] is None:
-        #         asyncio.create_task(reconnect(window, game_id, access_keys, init))
-        #     else:
-        #         client_game = init["retrieved"]
-        #         init["retrieved"] = None
-        #         init["reloaded"] = True
-        #         drawing_settings["recalc_selections"] = True
-        #         drawing_settings["clear_selections"] = True
+        if not init["reloaded"] and not init["reconnecting"]:
+            if init["retrieved"] is None:
+                asyncio.create_task(reconnect(window, game_id, access_keys, init))
+            else:
+                client_game = init["retrieved"]
+                init["retrieved"] = None
+                init["reloaded"] = True
+                drawing_settings["recalc_selections"] = True
+                drawing_settings["clear_selections"] = True
 
-        ## TODO ai move here
         if client_game._latest and not init["final_updates"] and init["reloaded"]:
-            ai_move(client_game, init, drawing_settings, "mcts_ai")
+            ai_move(client_game, init, drawing_settings)
 
         if drawing_settings["clear_selections"]:
             if selected_piece:
@@ -634,21 +624,21 @@ def main():
             drawing_settings["clear_selections"] = False
 
         # Web browser actions/commands are received in previous loop iterations
-        # if client_state_actions["step"]:
-        #     drawing_settings["recalc_selections"] = True
-        #     drawing_settings["clear_selections"] = True
-        #     web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
-        #     web_game_metadata_dict = json.loads(web_game_metadata)
-        #     move_index = web_game_metadata_dict["step"]["index"]
-        #     client_game.step_to_move(move_index)
-        #     if client_game._move_index == -1:
-        #         pass
-        #     elif 'x' in client_game.alg_moves[client_game._move_index][0] or 'x' in client_game.alg_moves[client_game._move_index][1]:
-        #         handle_play(window, capture_sound)
-        #     else:
-        #         handle_play(window, move_sound)
-        #     client_state_actions["step"] = False
-        #     client_state_actions["step_executed"] = True
+        if client_state_actions["step"]:
+            drawing_settings["recalc_selections"] = True
+            drawing_settings["clear_selections"] = True
+            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+            web_game_metadata_dict = json.loads(web_game_metadata)
+            move_index = web_game_metadata_dict["step"]["index"]
+            client_game.step_to_move(move_index)
+            if client_game._move_index == -1:
+                pass
+            elif 'x' in client_game.alg_moves[client_game._move_index][0] or 'x' in client_game.alg_moves[client_game._move_index][1]:
+                handle_play(window, capture_sound)
+            else:
+                handle_play(window, move_sound)
+            client_state_actions["step"] = False
+            client_state_actions["step_executed"] = True
 
         if not client_game.end_position:
             if client_state_actions["undo"]:
@@ -957,7 +947,7 @@ def main():
             }
 
             ## TODO await
-            promoted = promotion_state(
+            promoted = await promotion_state(
                 promotion_square, 
                 client_game, 
                 row, 
@@ -1072,37 +1062,37 @@ def main():
 
         draw_board(draw_board_params)
 
-        # try:
-        #     if not init["sent"] and not init["final_updates"]:
-        #         if not init["local_debug"]:
-        #             await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
-        #         init["sent"] = 1
-        # except Exception as err:
-        #     init["reloaded"] = False
-        #     init["sent"] = 1
-        #     err = 'Could not send game... Reconnecting...'
-        #     js_code = f"console.log('{err}')"
-        #     window.eval(js_code)
-        #     print(err)
-        #     continue
+        try:
+            if not init["sent"] and not init["final_updates"]:
+                if not init["local_debug"]:
+                    await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
+                init["sent"] = 1
+        except Exception as err:
+            init["reloaded"] = False
+            init["sent"] = 1
+            err = 'Could not send game... Reconnecting...'
+            js_code = f"console.log('{err}')"
+            window.eval(js_code)
+            print(err)
+            continue
 
         if client_game.end_position and not init["final_updates"] and init["reloaded"]:
-            # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
-            # web_game_metadata_dict = json.loads(web_game_metadata)
+            web_game_metadata_dict = json.loads(web_game_metadata)
 
-            # net_pieces = net_board(client_game.board)
+            net_pieces = net_board(client_game.board)
 
-            # if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
-            #     web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
-            #     web_game_metadata_dict['forced_end'] = client_game.forced_end
-            #     web_game_metadata_dict['alg_moves'] = client_game.alg_moves
-            #     web_game_metadata_dict['comp_moves'] = client_game.moves
-            #     web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
-            #     web_game_metadata_dict['net_pieces'] = net_pieces
+            if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
+                web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
+                web_game_metadata_dict['forced_end'] = client_game.forced_end
+                web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+                web_game_metadata_dict['comp_moves'] = client_game.moves
+                web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
+                web_game_metadata_dict['net_pieces'] = net_pieces
 
-            #     web_game_metadata = json.dumps(web_game_metadata_dict)
-            #     window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+                web_game_metadata = json.dumps(web_game_metadata_dict)
+                window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
             
             init["final_updates"] = True
 
@@ -1146,52 +1136,51 @@ def main():
             }
 
         pygame.display.flip()
-        # await asyncio.sleep(0)
+        await asyncio.sleep(0)
 
-        # # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
-        # web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
-        # web_game_metadata_dict = json.loads(web_game_metadata)
+        web_game_metadata_dict = json.loads(web_game_metadata)
         
-        # # Undo move, resign, draw offer, cycle theme, flip command handle
-        # for status_names in command_status_names:
-        #     handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")        
+        # Undo move, resign, draw offer, cycle theme, flip command handle
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")        
 
-        # net_pieces = net_board(client_game.board)
+        net_pieces = net_board(client_game.board)
 
-        # metadata_update = False
-        # if web_game_metadata_dict['net_pieces'] != net_pieces:
-        #     web_game_metadata_dict['net_pieces'] = net_pieces
-        #     metadata_update = True
+        metadata_update = False
+        if web_game_metadata_dict['net_pieces'] != net_pieces:
+            web_game_metadata_dict['net_pieces'] = net_pieces
+            metadata_update = True
 
-        # if web_game_metadata_dict['white_played'] != client_game.white_played:
-        #     web_game_metadata_dict['white_played'] = client_game.white_played
-        #     metadata_update = True
+        if web_game_metadata_dict['white_played'] != client_game.white_played:
+            web_game_metadata_dict['white_played'] = client_game.white_played
+            metadata_update = True
 
-        # if web_game_metadata_dict['black_played'] != client_game.black_played:
-        #     web_game_metadata_dict['black_played'] = client_game.black_played
-        #     metadata_update = True
+        if web_game_metadata_dict['black_played'] != client_game.black_played:
+            web_game_metadata_dict['black_played'] = client_game.black_played
+            metadata_update = True
 
-        # if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-        #     web_game_metadata_dict['alg_moves'] = client_game.alg_moves
-        #     web_game_metadata_dict['comp_moves'] = client_game.moves
-        #     metadata_update = True
+        if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict['comp_moves'] = client_game.moves
+            metadata_update = True
         
-        # starting_player_color = 'white' if client_game._starting_player else 'black'
-        # if web_game_metadata_dict['player_color'] != starting_player_color:
-        #     web_game_metadata_dict['player_color'] = starting_player_color
-        #     metadata_update = True
+        starting_player_color = 'white' if client_game._starting_player else 'black'
+        if web_game_metadata_dict['player_color'] != starting_player_color:
+            web_game_metadata_dict['player_color'] = starting_player_color
+            metadata_update = True
             
-        # if metadata_update:
-        #     web_game_metadata = json.dumps(web_game_metadata_dict)
-        #     window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+        if metadata_update:
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()
 
 if __name__ == "__main__":
-    main()
-    # try:
-    #     asyncio.run(main())
-    # except Exception as e:
-    #     log_err_and_print(e, window)
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        log_err_and_print(e, window)

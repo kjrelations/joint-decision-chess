@@ -392,6 +392,9 @@ Decision Chess
                           </button>
                         </div>
                         <div class="modal-body">
+                            <div class="main-mode">
+                              {{ form.main_mode_computer|as_crispy_field }}
+                            </div>
                             <div class="text-center">Choose Starting Side</div>
                             <div class="d-flex justify-content-center align-items-center">
                                 <button class="position-placeholder mr-2" data-position="white" new-computer-game="true">
