@@ -609,7 +609,7 @@ class Node(pygbag_net.Node):
 
 # Main loop
 async def main():
-    game_id = window.sessionStorage.getItem("current_game_id")
+    game_id = window.sessionStorage.getItem("current_game_id") if not local_debug else '222'
     if game_id is None:
         raise Exception("No game id set")
     

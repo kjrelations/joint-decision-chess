@@ -4,8 +4,8 @@ import random
 import math
 import pygame
 import cython
-import cProfile
-import pstats
+#import cProfile
+#import pstats
 from game import *
 
 global_pos = {

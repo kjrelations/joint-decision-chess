@@ -292,17 +292,15 @@ def get_config(request, game_uuid):
         else:
             user_id = uuid.UUID(guest_uuid)
     
-    theme_names = request.session.get('themes')
-    if theme_names is None and request.user and request.user.id is not None:
+    if request.user and request.user.id is not None:
         user_settings = UserSettings.objects.get(user=request.user)
         user_themes = user_settings.themes
         user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
         theme_names = [json.loads(theme)["name"] for theme in user_themes]
-    elif theme_names is None:
+    else:
         themes = default_themes()
         themes = [theme.replace("'", "\"") for theme in themes]
         theme_names = [json.loads(theme)["name"] for theme in themes]
-        request.session['themes'] = theme_names
 
     type = request.GET.get('type')
     if type == 'live':
@@ -751,22 +749,17 @@ def change_themes(request):
             user_settings = UserSettings.objects.get(user=request.user)
             user_settings.themes = new_user_themes
             user_settings.save()
-            request.session['themes'] = selected_themes
             messages.success(request, 'Themes updated!')
 
             return render(request, "main/settings/change_themes.html", {"form": form, "themes": response_themes, 'endings': ['1', '2', '3']})
     else:
         selected_themes, snake_case_names, response_themes = [], [], []
         initial_theme = None
-        if 'themes' in request.session:
-            selected_themes = request.session['themes']
-            initial_theme = selected_themes[0].lower().replace(" ", "-")
-        elif request.user and request.user.is_authenticated:
+        if request.user and request.user.is_authenticated:
             user_settings = UserSettings.objects.get(user=request.user)
             user_themes = user_settings.themes
             user_themes = [theme.replace("'", "\"") for theme in user_themes] # Single quotes in DB
             selected_themes = [json.loads(theme)["name"] for theme in user_themes]
-            request.session['themes'] = selected_themes
             initial_theme = selected_themes[0].lower().replace(" ", "-")
         form = ChangeThemesForm(initial_value=initial_theme)
 
