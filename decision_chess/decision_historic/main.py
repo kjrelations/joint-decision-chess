@@ -408,7 +408,7 @@ async def main():
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
         drawing_settings['new_state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
         if drawing_settings['new_state'] != drawing_settings['state']:
@@ -443,7 +443,7 @@ async def main():
         draw_board(draw_board_params)
 
         drawing_settings['state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
 

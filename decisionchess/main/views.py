@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.utils.timesince import timesince
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings, Lessons
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -666,6 +666,24 @@ def save_chat_and_game(active_game, data):
         state = active_game.state
     )
     completed_game.save()
+
+def lessons(request):
+    lessons = Lessons.objects.all()
+    basic_titles = ['Introduction']
+    standard_titles = ['Rook', 'Bishop', 'Knight', 'Queen', 'Pawn', 'King']
+    decision_titles = ['Potential Barriers', 'Annihilation', 'Entanglement & Collapse', 'Double Checkmate']
+    basic_rules, standard_rules, decision_rules = [], [], []
+    for lesson in lessons:
+        if lesson.title in basic_titles:
+            basic_rules.append(lesson)
+        elif lesson.title in standard_titles:
+            standard_rules.append(lesson)
+        else:
+            decision_rules.append(lesson)
+    basic_rules = sorted(basic_rules, key=lambda x: basic_titles.index(x.title))
+    standard_rules = sorted(standard_rules, key=lambda x: standard_titles.index(x.title))
+    decision_rules = sorted(decision_rules, key=lambda x: decision_titles.index(x.title))
+    return render(request, "main/lessons.html", {"basic_rules": basic_rules, "standard_rules": standard_rules, "decision_rules": decision_rules})
 
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')

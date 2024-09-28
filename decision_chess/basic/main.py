@@ -1421,7 +1421,7 @@ async def main():
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
 
         drawing_settings['new_state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
         if drawing_settings['new_state'] != drawing_settings['state']:
@@ -1595,7 +1595,7 @@ async def main():
                 'selected_piece_image': selected_piece_image
             })
         drawing_settings['state'] = {
-            'board': copy.deepcopy(client_game.board),
+            'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
 

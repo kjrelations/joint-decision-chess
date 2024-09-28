@@ -69,6 +69,14 @@
     /* News */
     --news-title-text: #1720a1;
     --blog-titles: #e4a03a;
+    /* Lessons */
+    --lesson-hover: #e4a03a;
+    --basic-header: #2f484d;
+    --basic-lesson-background: #436c73;
+    --standard-header: #6d6d48;
+    --standard-lesson-background: #adad73;
+    --decision-header: brown;
+    --decision-lesson-background: #F84E4E;
     /* Play */
     --chat-box-text: #242424;
     --chat-box-background: #B3CDD1;

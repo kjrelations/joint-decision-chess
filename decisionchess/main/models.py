@@ -120,3 +120,22 @@ class BlogPosts(models.Model):
 
 	def __str__(self):
 		return f'{self.timestamp} {self.title} {self.author}: {self.content}'
+	
+class Lessons(models.Model):
+	lesson_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	title = models.CharField(max_length=50, blank=False, null=False, default="")
+	url_name = models.CharField(max_length=25, blank=False, null=False, default="")
+	description = models.TextField(blank=False, null=False, default="")
+
+class Pages(models.Model):
+	page_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	tutorial_id = models.ForeignKey(Lessons, on_delete=models.CASCADE, null=False) 
+	page_position = models.IntegerField(blank=False, null=False, default=1)
+	content = models.TextField(blank=False, null=False, default="")
+
+class EmbeddedGames(models.Model):
+	embedded_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	FEN = models.CharField(max_length=85, blank=False, null=False, default="")
+	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	indexed_moves = models.TextField(blank=False, null=True, default="")
+	moves = models.TextField(blank=False, null=True, default="")
