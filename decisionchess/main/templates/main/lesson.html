@@ -1,0 +1,182 @@
+{% extends "main/base.html" %}
+
+{% load static %}
+
+{% block title %}
+Play
+{% endblock %}
+
+{% block style%}
+<style>
+    .page-content {
+        transition: opacity 0.5s ease-in-out;
+        height: calc(100% - 40px);
+        overflow-y: auto;
+        scrollbar-color: var(--lesson-scrollbar-thumb) var(--lesson-info-background);
+        scrollbar-width: thin;
+        will-change: transform; /* laggy on chrome otherwise */
+    }
+    .page-content::-webkit-scrollbar-track { 
+        background: var(--lesson-info-background);
+    }
+    .page-content::-webkit-scrollbar-thumb { 
+        background: var(--lesson-scrollbar-thumb);
+    }
+    .page-content::-webkit-scrollbar-thumb:hover { 
+        background: var(--lesson-scrollbar-thumb);
+    }
+    .previous-page {
+        border: none;
+        background-color: transparent;
+        color: var(--lesson-hover);
+    }
+    .next-page {
+        border: none;
+        background-color: transparent;
+        color: var(--lesson-hover);
+    }
+    .next-page:disabled, .previous-page:disabled {
+        background-color: transparent;
+        color: rgb(120, 76, 76);
+    }
+    .next-page:focus, .previous-page:focus {
+        outline: none;
+    }
+    .pr {
+        padding-right: 0;
+    }
+    @media (max-width: 767px) {
+        .pr {
+            padding-right: 15px;
+        }
+    }
+</style>
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
+<script>
+    var webGameMetadata = {};
+    sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <div class="col-10 col-md-7 pr">
+            <div id="iframe-container">
+                <iframe id="embedded-iframe" src="{% static 'main/html/exercise.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+            </div>
+        </div>
+        <div class="col-10 col-md-4" style="width: 100%;">
+            <div class="card" style="background-color: var(--lesson-info-background); color: var(--body-text)">
+                <div id="lesson-info" class="card-body" style="padding: 10px; height: 70vh;">
+                    {% for page in pages %}
+                        <div class="page-content" id="page-{{ page.page_position }}" style="display: none; opacity: 0;">
+                            <div>{{ page.content|safe }}</div>
+                        </div>
+                    {% endfor %}
+                    <div class="mt-auto d-flex justify-content-between" style="height: 40px; padding-top: 10px;">
+                        <button id="prev-page" class="previous-page" onclick="navigatePage(-1)" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                        <button id="next-page" class="next-page ml-auto" onclick="navigatePage(1)" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%; max-height: 130px;">
+                <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
+                    <div id="moves-list" class="scrollable-moves-list mt-auto">
+                        <!-- Content will be dynamically added here -->
+                    </div>
+                </div>
+                <div class="d-flex justify-content-center align-items-center mb-auto" style="background-color: var(--control-section-text); min-width: 100%;"> <!-- fix height -->
+                    <button id="skipBackwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-backward-step icon-color"></i>
+                    </button>
+                    <button id="backwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play fa-rotate-180 icon-color"></i>
+                    </button>
+                    <button id="forwardButton" post-game="true" class="action-button confirm hidden mr-2">
+                        <i class="fa-solid fa-play icon-color"></i>
+                    </button>
+                    <button id="skipForwardButton" post-game="true" class="action-button confirm hidden">
+                        <i class="fa-solid fa-forward-step icon-color"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm hidden">Flip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const game_ids = [
+            {% for id in embedded_game_ids %}
+                "{{ id }}",
+            {% endfor %}
+        ];
+        sessionStorage.setItem('current_game_id', game_ids[0]);
+        sessionStorage.setItem('proceed', false);
+        sessionStorage.setItem('muted', "false");
+        sessionStorage.setItem('currentPage', "1");
+
+        let currentPage = 1;
+        const totalPages = Number("{{ pages|length }}");
+        const fadeDuration = 500;
+    
+        function enableNavigation() {
+            if (sessionStorage.getItem('proceed') === "true") {
+                document.getElementById('next-page').disabled = false;
+                sessionStorage.setItem('proceed', 'false');
+            }
+        }
+
+        var proceedIntervalId = setInterval(enableNavigation, 1000);
+
+        function showPage(page) {
+            document.querySelectorAll('.page-content').forEach(el => el.style.display = 'none');
+            
+            const pageElement = document.getElementById('page-' + page);
+            pageElement.style.display = 'block';
+            setTimeout(() => {
+                pageElement.style.opacity = 1;
+            }, 10);
+
+            document.getElementById('prev-page').disabled = (page === 1);
+            document.getElementById('next-page').disabled = true;
+            document.getElementById('prev-page').style.display = (page === 1) ? 'none': 'block';
+            document.getElementById('next-page').style.display = (page === totalPages) ? 'none': 'block';
+        }
+    
+        function navigatePage(step) {
+            if (currentPage + step >= 1 && currentPage + step <= totalPages) {
+                document.getElementById('next-page').disabled = true;
+                document.getElementById('prev-page').disabled = true;
+                const currentElement = document.getElementById('page-' + currentPage);
+                
+                currentElement.style.opacity = 0;
+                
+                clearInterval(proceedIntervalId);
+
+                setTimeout(() => {
+                    currentPage += step;
+                    sessionStorage.setItem('current_game_id', game_ids[currentPage - 1]);
+                    showPage(currentPage);
+                    sessionStorage.setItem('currentPage', currentPage.toString());
+                    sessionStorage.setItem('next_page_loaded', 'true');
+                }, fadeDuration);
+
+                setTimeout(() => {
+                    proceedIntervalId = setInterval(enableNavigation, 1000);
+                }, 2000 + fadeDuration);
+            }
+        }
+    
+        document.addEventListener("DOMContentLoaded", function() {
+            showPage(currentPage);
+        });
+    </script>
+    <script src="{% static 'main/js/lesson.js' %}"></script> 
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

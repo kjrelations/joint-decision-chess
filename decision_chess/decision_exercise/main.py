@@ -4,17 +4,15 @@ import json
 import asyncio
 import pygbag.aio as asyncio
 import fetch
-import pygbag_net
-import builtins
+import copy
 from game import *
 from constants import *
 from helpers import *
-from ai import *
 from network import *
 
 production = False
 local = "http://127.0.0.1:8000"
-local_debug = True
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -46,18 +44,11 @@ debug_prints = True
 
 def handle_new_piece_selection(game, row, col, is_white, hovered_square):
     piece = game.board[row][col]
-    # Initialize variables based on player
-    if (not game.white_played and is_white and game._starting_player) or \
-       (not game.black_played and not is_white and not game._starting_player):
-        first_intent = True
-        selected_piece = (row, col)
-        selected_piece_image = transparent_pieces[piece]
-        valid_moves, valid_captures, valid_specials = game.validate_moves(row, col)
-    else:
-        first_intent = False
-        selected_piece = None
-        selected_piece_image = None
-        valid_moves, valid_captures, valid_specials = [], [], []
+    # Initialize variables
+    first_intent = True
+    selected_piece = (row, col)
+    selected_piece_image = transparent_pieces[piece]
+    valid_moves, valid_captures, valid_specials = game.validate_moves(row, col)
 
     if (row, col) != hovered_square:
         hovered_square = (row, col)
@@ -95,8 +86,6 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
         selected_piece = None
 
         if update:
-            init["sent"] = 0
-            init["updated_board"] = True
             checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
             checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
             checkmate = checkmate_white or checkmate_black
@@ -142,8 +131,6 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
         handle_play(window, error_sound)
 
     if update:
-        init["sent"] = 0
-        init["updated_board"] = True
         checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
         checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
         checkmate = checkmate_white or checkmate_black
@@ -220,39 +207,6 @@ async def promotion_state(
     while promotion_required:
 
         # Web browser actions/commands are received in previous loop iterations
-        if client_state_actions["undo"]:
-            if client_game._starting_player:
-                client_game.white_active_move = None
-                client_game.white_played = False
-            else:
-                client_game.black_active_move = None
-                client_game.black_played = False
-            client_state_actions["undo"] = False
-            client_state_actions["undo_executed"] = True
-            promotion_required = False
-            continue
-
-        if client_state_actions["resign"]:
-            client_game.white_active_move = None
-            client_game.black_active_move = None
-            client_game.white_played = False
-            client_game.black_played = False
-            client_game.white_lock = False
-            client_game.black_lock = False
-            client_game.reveal_stage = False
-            client_game.decision_stage = False
-            client_game.playing_stage = True
-            client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
-            print(client_game.forced_end)
-            client_game.end_position = True
-            white_wins = not client_game._starting_player
-            black_wins = not white_wins
-            client_game.add_end_game_notation(True, white_wins, black_wins)
-            client_state_actions["resign"] = False
-            client_state_actions["resign_executed"] = True
-            promotion_required = False
-            continue
-
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
             drawing_settings["theme_index"] %= len(themes)
@@ -349,35 +303,26 @@ async def promotion_state(
     await asyncio.sleep(0)
     return promoted
 
-def initialize_game(init, game_id, drawing_settings):
+def initialize_game(init, drawing_settings):
     current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
     if init["starting_player"]:
         pygame.display.set_caption("Chess - White")
     else:
         pygame.display.set_caption("Chess - Black")
-    if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"])
+    if init["board"] is None or init["game_type"] is None:
+        raise Exception("No starting position or board or game type")
     else:
-        client_game = Game(custom_params=init["starting_position"])
-    if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
-        init["game_type"] = "Complete"
-    elif client_game.reveal_stage_enabled and not client_game.decision_stage_enabled:
-        init["game_type"] = "Relay"
-    elif not client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
-        init["game_type"] = "Countdown"
-    else:
-        init["game_type"] = "Standard"
+        client_game = Game(init["board"], init["starting_player"], init["game_type"])
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
     init["opponent"] = "black" if init["starting_player"] else "white"
     web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
     if web_game_metadata is not None:
-        web_game_metadata_dict = json.loads(web_game_metadata)
+        web_game_metadata_dict = json.loads(web_game_metadata) # Why do I load if I just set it? Artifact?
     else:
         web_game_metadata_dict = {}
-    game_tab_id =  init["player"] + "-" + game_id
-    window.sessionStorage.setItem("current_game_id", game_tab_id)
+
     if not init["initialized"]:
         if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
             web_game_metadata_dict = {
@@ -397,15 +342,6 @@ def initialize_game(init, game_id, drawing_settings):
                     "update_executed": False,
                     "index": None
                 },
-                "undo_move": {
-                    "execute": False,
-                    "update_executed": False,
-                    "reset": False
-                },
-                "resign": {
-                    "execute": False,
-                    "update_executed": False
-                },
                 "cycle_theme": {
                     "execute": False,
                     "update_executed": False
@@ -422,7 +358,7 @@ def initialize_game(init, game_id, drawing_settings):
         web_ready = False
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
         if web_game_metadata is not None:
-            web_game_metadata_dict = json.loads(web_game_metadata)
+            web_game_metadata_dict = json.loads(web_game_metadata) # why is it loaded again?
             web_ready = True
             init["initializing"], init["initialized"] = False, True
             window.sessionStorage.setItem("initialized", "true")
@@ -430,7 +366,7 @@ def initialize_game(init, game_id, drawing_settings):
             raise Exception("Failed to set web value")
     else:
         init["initializing"] = False
-    return client_game, game_tab_id
+    return client_game
 
 # Main loop
 async def main():
@@ -444,17 +380,17 @@ async def main():
         "initialized": False,
         "config_retrieved": False,
         "starting_player": None,
-        "game_type": None,
-        "starting_position": None,
-        "sent": None,
-        "updated_board": False,
+        "board": None,
+        "indexed_moves": None,
+        "moves": None,
+        "game_type": "Standard",
+        # "starting_position": None,
         "player": None,
         "opponent": None,
+        "page": 1,
+        "proceed": False,
         "local_debug": local_debug,
         "access_keys": None,
-        "reloaded": True,
-        "reconnecting": False,
-        "retrieved": None,
         "final_updates": False
     }
     client_game = None
@@ -464,19 +400,14 @@ async def main():
     client_state_actions = {
         "step": False,
         "step_executed": False,
-        "undo": False,
-        "undo_executed": False,
         "cycle_theme": False,
         "cycle_theme_executed": False,
-        "resign": False,
-        "resign_executed": False,
         "flip": False,
         "flip_executed": False
     }
     # This holds the command name for the web sessionStorage object and the associated keys in the above dictionary
     command_status_names = [
             ("step", "step", "step_executed"),
-            ("resign", "resign", "resign_executed"),
             ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
             ("flip_board", "flip", "flip_executed")
     ]
@@ -522,8 +453,15 @@ async def main():
     # Main game loop
     while init["running"]:
 
+        if game_id != window.sessionStorage.getItem("current_game_id"):
+            init["proceed"] = False
+            window.sessionStorage.setItem("proceed", "false")
+            init["initialized"] = False
+            init["config_retrieved"] = False
+            game_id = window.sessionStorage.getItem("current_game_id")
+
         if init["initializing"]:
-            client_game, game_tab_id = initialize_game(init, game_id, drawing_settings)
+            client_game = initialize_game(init, drawing_settings)
 
         elif not init["initialized"]:
             if not init["config_retrieved"] and not init["local_debug"]:
@@ -532,7 +470,7 @@ async def main():
                 # TODO Consider whether to merge with retreival
                 try:
                     domain = 'https://decisionchess.com' if production else local
-                    url = f'{domain}/config/' + game_id + '/?type=live'
+                    url = f'{domain}/config/' + game_id + '/?type=exercise'
                     handler = fetch.RequestHandler()
                     while not init["config_retrieved"]:
                         try:
@@ -546,6 +484,15 @@ async def main():
                             print(err)
                     if data.get("status") and data["status"] == "error":
                         raise Exception(f'Request failed {data}')
+                    if data["message"]["indexed_moves"]:
+                        init["indexed_moves"] = data["message"]["indexed_moves"]
+                        page_keys = sorted(init["indexed_moves"].keys())
+                        key = "1" if init["page"] == 1 else page_keys[0]
+                        init["moves"] = init["indexed_moves"].get(key, [])
+                    else:
+                        raise Exception('Bad request, no moves')
+                    if data["message"]['FEN']:
+                        init["board"] = translate_FEN_into_board(data["message"]['FEN'])
                     if data["message"]["starting_side"] == "white":
                         init["starting_player"] = True 
                     elif data["message"]["starting_side"] == "black":
@@ -561,56 +508,93 @@ async def main():
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     else:
                         raise Exception("Bad request")
-                    if data["message"]["game_type"]:
-                        init["game_type"] = data["message"]["game_type"]
-                    else:
-                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
+                    window.sessionStorage.setItem("next_page_loaded", "false")
                 except Exception as e:
                     log_err_and_print(e, window)
                     raise Exception(str(e))
-            retrieved_state = None
-            if init["local_debug"]:
-                init["starting_player"] = True
-                init["game_type"] = "Standard"
-                window.sessionStorage.setItem("color", "white")
-                window.sessionStorage.setItem("muted", "false")
-            else:
-                retrieved = False
-                while not retrieved:
-                    try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
-                        init["starting_position"] = json.loads(retrieved_state)
-                        if init["starting_player"]:
-                            played_condition = init["starting_player"] == init["starting_position"]["white_played"]
-                        else:
-                            played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
-                        init["sent"] = int(played_condition)
-                        retrieved = True
-                    except Exception as e:
-                        err = 'Game State retreival Failed. Reattempting...'
-                        js_code = f"console.log('{err}')"
-                        window.eval(js_code)
-                        print(err)
             
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Setting Up")
             window.sessionStorage.setItem("connected", "true")
             init["initializing"] = True
             continue
+        
+        # if window page order (incremented on every next page in this script) > highest index key and move list non empty: play all moves
+        keys = sorted([int(x) for x in init["indexed_moves"].keys()])
+        if len(keys) != 0 and init["page"] > keys[-1]:
+            # Skip playing on pages while moving forward or pages with no moves
+            if len(init["moves"]) != 0:
+                for key in keys:
+                    init["moves"] = init["indexed_moves"][str(key)]
+                    turns = copy.deepcopy(init["moves"])
+                    for moves in turns:
+                        player_move = moves[0] if client_game._starting_player else moves[1]
+                        row, col, opponent_piece, special = player_move[0], player_move[1], (player_move[2], player_move[3]), player_move[4]
+                        promotion_piece = player_move[5] if len(player_move) == 6 else None
+                        
+                        client_game.update_state(row, col, opponent_piece, special = special)
+                        if promotion_piece:
+                            client_game.promote_to_piece(row, col, promotion_piece)
 
-        if not init["reloaded"] and not init["reconnecting"]:
-            if init["retrieved"] is None:
-                asyncio.create_task(reconnect(window, game_id, access_keys, init))
+                        opponent_move = moves[1] if client_game._starting_player else moves[0]
+                        row, col, opponent_piece, special = opponent_move[0], opponent_move[1], (opponent_move[2], opponent_move[3]), opponent_move[4]
+                        promotion_piece = opponent_move[5] if len(opponent_move) == 6 else None
+                        
+                        client_game.update_state(row, col, opponent_piece, special = special)
+                        if promotion_piece:
+                            client_game.promote_to_piece(row, col, promotion_piece)
+                        del init["moves"][0]
+                init["indexed_moves"] = {}
+                init["proceed"] = True
+                window.sessionStorage.setItem("proceed", "true")
+        
+        if len(init["moves"]) > 0 and \
+           ((client_game._starting_player and client_game.white_active_move is not None) or \
+           (not client_game._starting_player and client_game.black_active_move is not None)):
+            move = init["moves"][0][1] if client_game._starting_player else init["moves"][0][0]
+            row, col, opponent_piece, special = move[0], move[1], (move[2], move[3]), move[4]
+            promotion_piece = move[5] if len(move) == 6 else None
+            
+            client_game.update_state(row, col, opponent_piece, special = special)
+            if promotion_piece:
+                client_game.promote_to_piece(row, col, promotion_piece)
+            if ("x" in client_game.alg_moves[-1][0] or "x" in client_game.alg_moves[-1][1]):
+                handle_play(window, capture_sound)
             else:
-                client_game = init["retrieved"]
-                init["retrieved"] = None
-                init["reloaded"] = True
-                drawing_settings["recalc_selections"] = True
-                drawing_settings["clear_selections"] = True
-
-        if client_game._latest and not init["final_updates"] and init["reloaded"]:
-            ai_move(client_game, init, drawing_settings)
+                handle_play(window, move_sound)
+            checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+            checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+            checkmate = checkmate_white or checkmate_black
+            no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+            if checkmate:
+                print("CHECKMATE")
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+            elif no_remaining_moves:
+                print("STALEMATE")
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+            elif client_game.threefold_check():
+                print("STALEMATE BY THREEFOLD REPETITION")
+                client_game.forced_end = "Stalemate by Threefold Repetition"
+                client_game.end_position = True
+                client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+            del init["moves"][0]
+        elif len(init["moves"]) == 0:
+            next_page_loaded = window.sessionStorage.getItem('next_page_loaded') == "true"
+            if next_page_loaded:
+                init["proceed"] = False
+                window.sessionStorage.setItem("proceed", "false")
+                window.sessionStorage.setItem('next_page_loaded', "false")
+                if len(keys) >= 2 and int(window.sessionStorage.getItem("currentPage")) == keys[1]:
+                    del init["indexed_moves"][str(keys[0])]
+                    init["moves"] = init["indexed_moves"][str(keys[1])]
+            elif not init["proceed"]:
+                window.sessionStorage.setItem("proceed", "true")
+                if int(window.sessionStorage.getItem("currentPage")) == init["page"]:
+                    init["page"] += 1
+                init["proceed"] = True
 
         if drawing_settings["clear_selections"]:
             if selected_piece:
@@ -639,45 +623,6 @@ async def main():
                 handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
-
-        if not client_game.end_position:
-            if client_state_actions["undo"]:
-                if not client_game._latest:
-                    client_game.step_to_move(len(client_game.moves) - 1)
-                client_game.undo_move()
-                init["sent"] = 0
-                # These two are useless in AI mode but we keep a clean state anyway
-                client_game._sync = True
-                client_game._move_undone = False
-                hovered_square = None
-                selected_piece_image = None
-                selected_piece = None
-                first_intent = False
-                valid_moves, valid_captures, valid_specials = [], [], []
-                drawing_settings["right_clicked_squares"] = []
-                drawing_settings["drawn_arrows"] = []
-                client_state_actions["undo_executed"] = True
-
-            if client_state_actions["resign"]:
-                if not client_game._latest:
-                    client_game.step_to_move(len(client_game.moves) - 1)
-                client_game.white_active_move = None
-                client_game.black_active_move = None
-                client_game.white_played = False
-                client_game.black_played = False
-                client_game.white_lock = False
-                client_game.black_lock = False
-                client_game.reveal_stage = False
-                client_game.decision_stage = False
-                client_game.playing_stage = True
-                client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
-                print(client_game.forced_end)
-                client_game.end_position = True
-                white_wins = not client_game._starting_player
-                black_wins = not white_wins
-                client_game.add_end_game_notation(True, white_wins, black_wins)
-                client_state_actions["resign"] = False
-                client_state_actions["resign_executed"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -766,9 +711,16 @@ async def main():
                         elif client_game.playing_stage:
                             # Allow moves only on current turn, if up to date, and synchronized
                             current_turn = (not client_game.white_played and client_game._starting_player) or (not client_game.black_played and not client_game._starting_player)
-                            if current_turn and client_game._latest and client_game._sync and init["reloaded"]:
+                            if current_turn and client_game._latest and client_game._sync:
                                 ## Free moves or captures
-                                if (row, col) in valid_moves:
+                                if len(init["moves"]) != 0:
+                                    move_info = init["moves"][0][0] if client_game._starting_player else init["moves"][0][1]
+                                    allowed_move = (move_info[0], move_info[1])
+                                    allowed_piece = (move_info[2], move_info[3])
+                                else:
+                                    allowed_move = None
+                                    allowed_piece = None
+                                if (row, col) in valid_moves and (row, col) == allowed_move and selected_piece == allowed_piece:
                                     update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                     promotion_square, promotion_required = \
                                         handle_piece_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
@@ -782,7 +734,7 @@ async def main():
                                         break
 
                                 ## Specials
-                                elif (row, col) in valid_specials:
+                                elif (row, col) in valid_specials and (row, col) == allowed_move and selected_piece == allowed_piece:
                                     update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                     piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                     
@@ -853,9 +805,16 @@ async def main():
                         
                         # Allow moves only on current turn, if up to date, and synchronized
                         current_turn = (not client_game.white_played and client_game._starting_player) or (not client_game.black_played and not client_game._starting_player)
-                        if current_turn and client_game._latest and client_game._sync and init["reloaded"]:
+                        if current_turn and client_game._latest and client_game._sync:
                             ## Free moves or captures
-                            if (row, col) in valid_moves:
+                            if len(init["moves"]) != 0:
+                                move_info = init["moves"][0][0] if client_game._starting_player else init["moves"][0][1]
+                                allowed_move = (move_info[0], move_info[1])
+                                allowed_piece = (move_info[2], move_info[3])
+                            else:
+                                allowed_move = None
+                                allowed_piece = None
+                            if (row, col) in valid_moves and (row, col) == allowed_move and selected_piece == allowed_piece:
                                 update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                 promotion_square, promotion_required = \
                                     handle_piece_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
@@ -869,7 +828,7 @@ async def main():
                                     break
 
                             ## Specials
-                            elif (row, col) in valid_specials:
+                            elif (row, col) in valid_specials and (row, col) == allowed_move and selected_piece == allowed_piece:
                                 update_positions = False if client_game.reveal_stage_enabled or client_game.decision_stage_enabled else True
                                 piece, is_white = handle_piece_special_move(client_game, selected_piece, row, col, init, update_positions=update_positions)
                                 
@@ -1061,21 +1020,7 @@ async def main():
 
         draw_board(draw_board_params)
 
-        try:
-            if not init["sent"] and not init["final_updates"]:
-                if not init["local_debug"]:
-                    await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
-                init["sent"] = 1
-        except Exception as err:
-            init["reloaded"] = False
-            init["sent"] = 1
-            err = 'Could not send game... Reconnecting...'
-            js_code = f"console.log('{err}')"
-            window.eval(js_code)
-            print(err)
-            continue
-
-        if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+        if client_game.end_position and not init["final_updates"]:
             web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
             web_game_metadata_dict = json.loads(web_game_metadata)

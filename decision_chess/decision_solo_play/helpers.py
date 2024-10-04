@@ -2,7 +2,6 @@ import pygame
 import sys
 import asyncio
 import json
-from constants import *
 
 ## General Helpers
 # Helper function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping
@@ -674,15 +673,15 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     # and instead use a temp board
     if piece_type == 'k' and castle_attributes is not None:
         if is_white:
-            moved_king = castle_attributes['white_king_moved'][0]
-            left_rook_moved = castle_attributes['left_white_rook_moved'][0]
-            right_rook_moved = castle_attributes['right_white_rook_moved'][0]
+            moved_king = castle_attributes['white_king_moved'][0] or board[7][4] != 'K'
+            left_rook_moved = castle_attributes['left_white_rook_moved'][0] or board[7][0] != 'R'
+            right_rook_moved = castle_attributes['right_white_rook_moved'][0] or board[7][7] != 'R'
             king_row = 7
             king_piece = 'K'
         else:
-            moved_king = castle_attributes['black_king_moved'][0]
-            left_rook_moved = castle_attributes['left_black_rook_moved'][0]
-            right_rook_moved = castle_attributes['right_black_rook_moved'][0]
+            moved_king = castle_attributes['black_king_moved'][0] or board[0][4] != 'k'
+            left_rook_moved = castle_attributes['left_black_rook_moved'][0] or board[0][0] != 'r'
+            right_rook_moved = castle_attributes['right_black_rook_moved'][0] or board[0][7] != 'r'
             king_row = 0
             king_piece = 'k'
 

@@ -18,7 +18,7 @@ from django.urls import reverse
 from django.utils.timesince import timesince
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings, Lessons
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -330,6 +330,20 @@ def get_config(request, game_uuid):
     elif type == 'historic':
         # TODO historic game type
         return JsonResponse({"message": {"theme_names": theme_names}}, status=200)
+    elif type == 'exercise':
+        try:
+            game = EmbeddedGames.objects.get(embedded_game_id=game_uuid)
+            indexed_moves_json = json.loads(game.indexed_moves)
+            return JsonResponse({
+                "message": {"starting_side": game.side, 
+                            "game_type": game.gametype, 
+                            "theme_names": theme_names, 
+                            "FEN": game.FEN, 
+                            "indexed_moves": indexed_moves_json
+                            }
+                }, status=200)
+        except EmbeddedGames.DoesNotExist:
+            return JsonResponse({"status": "error"}, status=401)
     else:
         return JsonResponse({"status": "error"}, status=401)
 
@@ -684,6 +698,14 @@ def lessons(request):
     standard_rules = sorted(standard_rules, key=lambda x: standard_titles.index(x.title))
     decision_rules = sorted(decision_rules, key=lambda x: decision_titles.index(x.title))
     return render(request, "main/lessons.html", {"basic_rules": basic_rules, "standard_rules": standard_rules, "decision_rules": decision_rules})
+
+def lesson(request, lesson):
+    lesson = Lessons.objects.get(url_name=lesson)
+    pages = Pages.objects.filter(lesson=lesson.lesson_id).order_by("page_position")
+    embedded_game_ids = []
+    for page in pages:
+        embedded_game_ids.append(page.embedded_game.embedded_game_id)
+    return render(request, "main/lesson.html", {"pages": pages, "embedded_game_ids": embedded_game_ids})
 
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')

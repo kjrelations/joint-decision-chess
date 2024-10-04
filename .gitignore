@@ -18,6 +18,8 @@ decision_chess/decision_ai/*
 !decision_chess/decision_ai/ai.pyx
 !decision_chess/decision_ai/game.pyx
 !decision_chess/decision_ai/helpers.pyx
+decision_chess/decision_exercise/*
+!decision_chess/decision_exercise/main.py
 decision_chess/decision_historic/*
 !decision_chess/decision_historic/main.py
 decision_chess/decision_solo_play/*

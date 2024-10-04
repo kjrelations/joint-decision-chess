@@ -77,6 +77,8 @@
     --standard-lesson-background: #adad73;
     --decision-header: brown;
     --decision-lesson-background: #F84E4E;
+    --lesson-info-background: white;
+    --lesson-scrollbar-thumb: grey;
     /* Play */
     --chat-box-text: #242424;
     --chat-box-background: #B3CDD1;

@@ -4,7 +4,6 @@ import sys
 import asyncio
 import json
 import cython
-from constants import *
 
 ## General Helpers
 # Helper function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping

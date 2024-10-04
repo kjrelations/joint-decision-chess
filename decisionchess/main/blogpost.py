@@ -33,7 +33,7 @@ def create_blog_post(title, author, markdown_content):
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python script.py <file_path> <title> <author>")
+        print("Usage: python blogpost.py <file_path> <title> <author>")
         sys.exit(1)
 
     # Get the file path from the command-line argument

@@ -22,10 +22,12 @@
     border: solid transparent;
     border-radius: 20px;
     transition: color 0.5s ease, border-color 0.2s ease;
+    display: block;
 }
 
 .lesson:hover { 
     color: #ecac22;
+    text-decoration: none;
 }
 
 .basic:hover {
@@ -60,30 +62,30 @@ Lessons
             <h2 class="header" style="background-color: var(--basic-header);">Basics</h2>
             <div class="lesson-section" style="background-color: var(--basic-lesson-background);">
                 {% for lesson in basic_rules %}
-                    <div class="lesson basic mx-2">
+                    <a class="lesson basic mx-2" href="/lessons/{{ lesson.url_name }}">
                         <h3 style="text-align: center;">{{lesson.title}}</h3>
                         <p class="w-75 mx-auto" style="text-align: center;">{{lesson.description}}</p>
-                    </div>
+                    </a>
                 {% endfor %}
             </div>
             <h2 class="header" style="background-color: var(--standard-header);">Standard Moves</h2>
             <div class="row lesson-section" style="background-color: var(--standard-lesson-background); margin-left: 0; margin-right: 0;">
                 {% for lesson in standard_rules %}
                     <div class="col-6">
-                        <div class="lesson standard mx-2">
+                        <a class="lesson standard mx-2" href="/lessons/{{ lesson.url_name }}">
                             <h3 style="text-align: center;">{{lesson.title}}</h3>
                             <p style="text-align: center;">{{lesson.description}}</p>
-                        </div>
+                        </a>
                     </div>
                 {% endfor %}
             </div>
             <h2 class="header" style="background-color: var(--decision-header);">Decision Chess Rules</h2>
             <div class="lesson-section" style="background-color: var(--decision-lesson-background);">
                 {% for lesson in decision_rules %}
-                    <div class="lesson decision mx-2">
+                    <a class="lesson decision mx-2" href="/lessons/{{ lesson.url_name }}">
                         <h3 style="text-align: center;">{{lesson.title}}</h3>
                         <p style="text-align: center;">{{lesson.description}}</p>
-                    </div>
+                    </a>
                 {% endfor %}
             </div>
         </div>
