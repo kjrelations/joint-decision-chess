@@ -206,56 +206,69 @@ class Node:
         self.closed = False
 
     async def connect(self, host):
-        self.peek = []
-        async with aio_sock(host, "a+", 5) as sock:
-            self.host = host
-            self.aiosock = sock # should come first
-            self.events.append(self.CONNECTED)
-            self.alarm()
-            if self.offline:
-                self.offline = False
+        while True:
+            try:
+                self.peek = []
+                async with aio_sock(host, "a+", 5) as sock:
+                    self.host = host
+                    self.aiosock = sock # should come first
+                    self.events.append(self.CONNECTED)
+                    self.alarm()
+                    if self.offline:
+                        self.offline = False
 
-            while not aio.exit:
-                if self.closed:
-                    break
-                try:
-                    rr, rw, re = select.select([sock.socket], [], [], 0)
-                except:
-                    break
-                if self.offline:
-                    print("HANGUP")
-                    await self.reconnect_node(host)
-                if rr or rw or re:
-                    while not aio.exit and self.aiosock:
+                    while not aio.exit:
+                        if self.closed:
+                            return
                         try:
-                            # emscripten does not honor PEEK
-                            # peek = sock.socket.recv(1, socket.MSG_PEEK |socket.MSG_DONTWAIT)
-                            one = sock.socket.recv(1, socket.MSG_DONTWAIT)
-                            if one and not self.offline:
-                                if self.reconnecting:
-                                    self.reconnecting = False
-                                self.peek.append(one)
-                                # full line let's send that to event processing
-                                if one == b"\n":
-                                    self.rxq.append(b"".join(self.peek))
-                                    self.peek.clear()
-                                    self.events.append(self.RX)
-                                    break
-                            else:
-                                if self.reconnecting:
-                                    self.offline = True
-                                    raise Exception('Received no data')
-                                # lost con.
-                                print("HANGUP", self.peek)
-                                self.offline = True
-                                await self.reconnect_node(host)
-                                return # This is never hit
-                        except BlockingIOError as e:
-                            print("here", self.offline)
-                            if e.errno == 6:
-                                await aio.sleep(0)
-                else:
-                    await aio.sleep(0)
+                            rr, rw, re = select.select([sock.socket], [], [], 0)
+                        except:
+                            return
+                        if self.offline:
+                            break
+                        if rr or rw or re:
+                            while not aio.exit and self.aiosock:
+                                try:
+                                    # emscripten does not honor PEEK
+                                    # peek = sock.socket.recv(1, socket.MSG_PEEK |socket.MSG_DONTWAIT)
+                                    one = sock.socket.recv(1, socket.MSG_DONTWAIT)
+                                    if one and not self.offline:
+                                        if self.reconnecting:
+                                            self.reconnecting = False
+                                        self.peek.append(one)
+                                        # full line let's send that to event processing
+                                        if one == b"\n":
+                                            self.rxq.append(b"".join(self.peek))
+                                            self.peek.clear()
+                                            self.events.append(self.RX)
+                                            break
+                                    else:
+                                        if self.reconnecting:
+                                            self.offline = True
+                                            raise Exception('Received no data')
+                                        # lost con.
+                                        print("HANGUP", self.peek)
+                                        self.offline = True
+                                        break
+                                except BlockingIOError as e:
+                                    if e.errno == 6:
+                                        await aio.sleep(0)
+                        else:
+                            await aio.sleep(0)
+                        
+                        if aio.exit:
+                            return
+                        
+            except Exception as e:
+                print(f"Reconnect failed, Re-attempting in 5... : {str(e)}")
+
+            print("Reconnecting...")
+            self.aiosock = None
+            self.users = {}
+            self.fork = -1
+            # alarm_set, rxq, txq, topics, joined, uid is not used
+            self.reconnecting = True
+            await aio.sleep(5)
 
     async def reconnect_node(self, host):
         while self.offline:
