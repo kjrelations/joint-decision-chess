@@ -21,9 +21,9 @@ def create_page(markdown_content, position, lesson, embedded_game):
 
     # Create a new Page instance
     new_page = Pages(        
-        lesson_id= lesson,
+        lesson= lesson,
         content= html_content,
-        embedded_game_id= embedded_game,
+        embedded_game= embedded_game,
         page_position= position
         )
     

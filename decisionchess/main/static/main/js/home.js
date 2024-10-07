@@ -15,6 +15,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+function adjustPreview() {
+    var previewContainer = document.getElementById('preview-container');
+    var iframeContainer = document.getElementById('iframe-container');
+    if (iframeContainer) {
+        const computedStyle = window.getComputedStyle(previewContainer);
+        const paddingLeft = parseFloat(computedStyle.paddingLeft);
+        const paddingRight = parseFloat(computedStyle.paddingRight);
+        var width = previewContainer.offsetWidth - (paddingLeft + paddingRight);
+        iframeContainer.style.height = width + 'px';
+        iframeContainer.style.width = width + 'px';
+        document.getElementById('embedded-iframe').style.height = width + 'px';
+        document.getElementById('embedded-iframe').style.width = width + 'px';
+    }
+}
+
+window.addEventListener('load', adjustPreview);
+
+window.addEventListener('resize', adjustPreview);
+
 function showGameOptions(mainMode, decisionContent) {
     const mode = mainMode.value;
 

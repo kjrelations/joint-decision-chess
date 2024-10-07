@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
-from django.db.models import Q
+from django.db.models import Q, OuterRef, Subquery
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
@@ -36,6 +36,25 @@ def home(request):
         user_id = request.user.id
     else:
         user_id = request.session.get('guest_uuid')
+
+    time_threshold = timezone.now() - timedelta(minutes=5)
+    preview_game = None
+    if ActiveGames.objects.exists():
+        lobby_subquery = ChessLobby.objects.filter(
+            lobby_id=OuterRef('active_game_id'),  # Match lobby_id to active_game_id
+            private=False,
+            computer_game=False,
+            solo_game=False
+        )
+        preview_game = ActiveGames.objects.filter(
+            active_game_id__in=Subquery(lobby_subquery.values('lobby_id')),
+            start_time__gte=time_threshold
+        ).order_by('?').first()
+        preview_game_available = True if preview_game else False
+    else:
+        preview_game_available = False
+    context["preview_game"] = preview_game
+    context["preview_game_available"] = preview_game_available
 
     # Active games with the same id, where there is a disconnect via the lobby column, and it matches the lobby game id
     user_games = ActiveGames.objects.filter(
@@ -303,25 +322,26 @@ def get_config(request, game_uuid):
         theme_names = [json.loads(theme)["name"] for theme in themes]
 
     type = request.GET.get('type')
-    if type == 'live':
+    if type == 'live' or type == 'spectate':
         try:
             game = ChessLobby.objects.get(lobby_id=game_uuid)
-            if str(user_id) not in [str(game.white_id), str(game.black_id)]:
+            if type == 'live' and str(user_id) not in [str(game.white_id), str(game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             fill = None
-            if str(user_id) == str(game.white_id) == str(game.black_id):
-                if game.initiator_color == "black":
+            if type == 'live':
+                if str(user_id) == str(game.white_id) == str(game.black_id):
+                    if game.initiator_color == "black":
+                        fill = "white"
+                    elif game.initiator_color == "white":
+                        fill = "black"
+                    else:
+                        return JsonResponse({"status": "error"}, status=401)
+                elif str(user_id) == str(game.white_id):
                     fill = "white"
-                elif game.initiator_color == "white":
+                elif str(user_id) == str(game.black_id):
                     fill = "black"
                 else:
                     return JsonResponse({"status": "error"}, status=401)
-            elif str(user_id) == str(game.white_id):
-                fill = "white"
-            elif str(user_id) == str(game.black_id):
-                fill = "black"
-            else:
-                return JsonResponse({"status": "error"}, status=401)
 
             return JsonResponse({"message": {"starting_side": fill, "game_type": game.gametype, "theme_names": theme_names}}, status=200)
         except ChessLobby.DoesNotExist:
@@ -597,11 +617,12 @@ def get_or_update_state(request, game_uuid):
         else:
             return JsonResponse({"status": "error"}, status=400)
     elif request.method == "GET":
+        spectator = request.GET.get('spectator')
         try:
             active_game = ActiveGames.objects.get(active_game_id=game_uuid)
             if active_game.state == "":
                 return JsonResponse({"message": "DNE"}, status=200)
-            if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
+            if spectator is None and str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             token = jwt.encode(json.loads(active_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
             return JsonResponse({"token": token}, status=200)

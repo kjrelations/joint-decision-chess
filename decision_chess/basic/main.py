@@ -1493,7 +1493,7 @@ async def main():
                     "right_clicked_squares": drawing_settings["right_clicked_squares"],
                     "drawn_arrows": drawing_settings["drawn_arrows"]
                 }
-                txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings)}
+                txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "spectator_pid": None}
                 node.tx(txdata)
                 init["drawings_sent"] = 1
         except Exception as err:

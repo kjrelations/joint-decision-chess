@@ -581,7 +581,7 @@ async def main():
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
             del init["moves"][0]
-        elif len(init["moves"]) == 0:
+        elif len(init["moves"]) >= 0:
             next_page_loaded = window.sessionStorage.getItem('next_page_loaded') == "true"
             if next_page_loaded:
                 init["proceed"] = False
@@ -591,10 +591,12 @@ async def main():
                     del init["indexed_moves"][str(keys[0])]
                     init["moves"] = init["indexed_moves"][str(keys[1])]
             elif not init["proceed"]:
-                window.sessionStorage.setItem("proceed", "true")
-                if int(window.sessionStorage.getItem("currentPage")) == init["page"]:
+                if len(init["moves"]) == 0 and \
+                   int(window.sessionStorage.getItem("currentPage")) == init["page"]:
                     init["page"] += 1
-                init["proceed"] = True
+                if init["page"] > int(window.sessionStorage.getItem("currentPage")):
+                    window.sessionStorage.setItem("proceed", "true")
+                    init["proceed"] = True
 
         if drawing_settings["clear_selections"]:
             if selected_piece:

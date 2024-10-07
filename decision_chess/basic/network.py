@@ -159,7 +159,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
             if ev == node.SYNC:
                 print("SYNC:", node.proto, node.data[node.CMD])
                 cmd = node.data[node.CMD]
-                if cmd == "initialize":
+                if cmd == "initialize" and node.data["spectator_pid"] is None:
                     init["starting_player"] = node.data.pop("start")
                     if node.data.get("starting_position"):
                         init["starting_position"] = json.loads(node.data.pop("starting_position"))
@@ -265,7 +265,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             txdata.update({"game": send_game})
                             node.tx(txdata)
                             init["sent"] = 0
-                elif cmd == "drawings":
+                elif cmd == "drawings" and node.data["spectator_pid"] is None:
                     drawings = json.loads(node.data.pop("drawings"))
                     opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
                     drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
@@ -298,13 +298,15 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         client_state_actions[sent_status] = False
 
                 elif cmd == "join_game":
-                    print(node.data["nick"], "joined game")
+                    join_text = "joined game" if "spec" not in node.data["nick"] else "is spectating"
+                    print(node.data["nick"], join_text)
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
-                    if node.fork: # Need to handle spectators
+                    spectator = "spec" in node.data["nick"]
+                    if node.fork and not spectator:
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
-                        node.publish()
+                        node.publish(spectator)
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
@@ -465,37 +467,41 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         client_state_actions[sent_status] = False
                 
                 elif cmd == "clone":
-                    # send all history to child
-                    node.checkout_for(node.data)
-                    init_message = {node.CMD: "initialize", "start": not init["starting_player"]}
-                    if init["initialized"]:
-                        init_message.update({"starting_position": client_game.to_json(include_states=True)})
-                    else:
-                        if client_game._starting_player:
-                            played_condition = client_game._starting_player == client_game.white_played
+                    if not node.fork:
+                        # send all history to child
+                        node.checkout_for(node.data)
+                        spectator_pid = node.data[node.PID] if "spec" in node.data["nick"] else None
+                        init_message = {node.CMD: "initialize", "start": not init["starting_player"], "spectator_pid": spectator_pid}
+                        if init["initialized"]:
+                            init_message.update({"starting_position": client_game.to_json(include_states=True)})
                         else:
-                            played_condition = not client_game._starting_player == client_game.black_played
-                        init["sent"] = int(played_condition)
-                    node.tx(init_message)
-                    if client_game.reveal_stage:
-                        drawings = {
-                            "right_clicked_squares": drawing_settings["right_clicked_squares"],
-                            "drawn_arrows": drawing_settings["drawn_arrows"],
-                            "opposing_right_clicked_squares": drawing_settings["opposing_right_clicked_squares"],
-                            "opposing_drawn_arrows": drawing_settings["opposing_drawn_arrows"]
-                        }
-                        txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "redraw": True}
-                        node.tx(txdata)
-                    if not init["initialized"]:
-                        init["initializing"] = True
+                            if client_game._starting_player:
+                                played_condition = client_game._starting_player == client_game.white_played
+                            else:
+                                played_condition = not client_game._starting_player == client_game.black_played
+                            init["sent"] = int(played_condition)
+                        node.tx(init_message)
+                        if client_game.reveal_stage:
+                            drawings = {
+                                "right_clicked_squares": drawing_settings["right_clicked_squares"],
+                                "drawn_arrows": drawing_settings["drawn_arrows"],
+                                "opposing_right_clicked_squares": drawing_settings["opposing_right_clicked_squares"],
+                                "opposing_drawn_arrows": drawing_settings["opposing_drawn_arrows"]
+                            }
+                            txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "redraw": True, "spectator_pid": spectator_pid}
+                            node.tx(txdata)
+                        if not init["initialized"]:
+                            init["initializing"] = True
                 elif cmd == "join_game":
-                    print(node.data["nick"], "joined game")
+                    join_text = "joined game" if "spec" not in node.data["nick"] else "is spectating"
+                    print(node.data["nick"], join_text)
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
-                    if node.fork: # Need to handle spectators by not publishing to them if they live in a different room
+                    spectator = "spec" in node.data["nick"]
+                    if node.fork and not spectator:
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
-                        node.publish()
+                        node.publish(spectator)
                 elif cmd == "_retrieve":
                     confirmed_state = None
                     if not init["local_debug"]:
@@ -538,9 +544,10 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
             elif ev == node.JOINED:
                 print("Entered channel", node.joined)
                 game_channel = f"{node.lobby}-{init['game_id']}"
-                if node.joined == node.lobby_channel:
+                if node.joined == node.lobby_channel and not node.in_game:
                     node.tx({node.CMD: "join_game", 'nick': node.nick}) # tx() joins the game lobby and sends another JOINED event
-                if node.joined == game_channel and not init["reloaded"]: # This should handle rejoining spectators differently, especially if not present in that code
+                    node.in_game = True
+                if node.joined == game_channel and not init["reloaded"] and node.in_game:
                     node.pstree[node.pid]["forks"] = []
                     if node.oid in node.pstree and "forks" in node.pstree[node.oid]:
                         node.pstree[node.oid]["forks"] = []
@@ -557,20 +564,23 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 if u in node.users:
                     del node.users[u]
                 apply_resets(window, offers, client_state_actions)
-                if node.fork:
+                if node.fork and "spec" not in u:
                     node.fork = 0
+                    node.publish(True)
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
 
                 if cmd == node.HELLO:
                     print("Lobby/Game:", "Welcome", nick)
-                    game_status = window.sessionStorage.getItem("connected")
-                    if game_status != "true":
-                        window.sessionStorage.setItem("connected", "true")
+                    spectator = "spec" in nick
+                    if not spectator:
+                        game_status = window.sessionStorage.getItem("connected")
+                        if game_status != "true":
+                            window.sessionStorage.setItem("connected", "true")
                     # publish if main
-                    if not node.fork or node.fork != pid:
-                        node.publish()
+                    if not node.fork or (node.fork != pid and not spectator):
+                        node.publish(spectator)
 
                 elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
                     if node.fork:
@@ -581,7 +591,8 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         print("forking to game offer", node.hint)
                         node.clone(pid)
                         print("cloning", init["player"], pid)
-
+                elif cmd == node.SPEC_OFFER:
+                    ...
                 else:
                     print(f"\nLOBBY/GAME: {node.fork=} {node.proto=} {node.data=} {node.hint=}")
 
@@ -596,7 +607,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
 
             elif ev in [node.USERLIST]:
                 print(node.proto, node.users)
-                count = sum(1 for key in node.users.keys() if key.startswith("u_"))
+                count = sum(1 for key in node.users.keys() if key.startswith("u_") and "spec" not in key)
                 if count == 1:
                     if init["starting_position"] is not None:
                         init["waiting"] = False # Can be dependant on starting position later/game state
