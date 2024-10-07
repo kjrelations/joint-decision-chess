@@ -8,6 +8,10 @@ Play
 
 {% block style%}
 <style>
+    .card {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
     .page-content {
         transition: opacity 0.5s ease-in-out;
         height: calc(100% - 40px);
@@ -68,7 +72,7 @@ Play
         </div>
         <div class="col-10 col-md-4" style="width: 100%;">
             <div class="card" style="background-color: var(--lesson-info-background); color: var(--body-text)">
-                <div id="lesson-info" class="card-body" style="padding: 10px; height: 70vh;">
+                <div id="lesson-info" class="card-body" style="padding: 10px;">
                     {% for page in pages %}
                         <div class="page-content" id="page-{{ page.page_position }}" style="display: none; opacity: 0;">
                             <div>{{ page.content|safe }}</div>
@@ -80,8 +84,8 @@ Play
                     </div>
                 </div>
             </div>
-            <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%; max-height: 130px;">
-                <div class="d-flex justify-content-end" style="height: 40%; width: 100%">
+            <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;max-height: 130px;">
+                <div class="d-flex justify-content-end" style="max-height: 60%; width: 100%">
                     <div id="moves-list" class="scrollable-moves-list mt-auto">
                         <!-- Content will be dynamically added here -->
                     </div>

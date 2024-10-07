@@ -24,12 +24,19 @@ function adjustSizes() {
     document.getElementById('embedded-iframe').style.height = size + 'px';
     iframeContainer.style.height = size + 'px';
     iframeContainer.style.width = size + 'px';
-    var lessonSize = size - document.getElementById('command-center').offsetHeight;
-    var lessonMobileSize = window.innerHeight - size - 80 - document.getElementById('command-center').offsetHeight
+    var commandCenter = document.getElementById('command-center');
+    commandCenter.style.height = 'auto';
+    commandCenter.style.height = Math.min(commandCenter.scrollHeight, 130) + 'px';
+    var lessonSize = size - commandCenter.scrollHeight;
+    var lessonMobileSize = window.innerHeight - size - 80 - commandCenter.scrollHeight;
     lessonSize = (isSmallScreen) ? lessonMobileSize: lessonSize;
     document.getElementById('lesson-info').style.height = lessonSize + 'px';
     adjustFont();
-    if (Math.abs(iframeContainer.style.height - iframeContainer.style.width) > 0.25) {
+    var moveListHeight = document.getElementById('moves-list').offsetHeight;
+    var cycleHeight = document.getElementById('cycleThemeButton').offsetHeight;
+    var backwardsHeight = document.getElementById('skipBackwardButton').offsetHeight;
+    var summedHeight = moveListHeight + cycleHeight + backwardsHeight;
+    if (Math.abs(iframeContainer.style.height - iframeContainer.style.width) > 0.25 || commandCenter.style.height < summedHeight) {
         adjustSizes();
     }
 }
