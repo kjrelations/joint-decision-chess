@@ -225,7 +225,6 @@ html {
 }
 
 .accordion-content:hover {
-    color: var(--lobby-row-hover-text);
     background-color: var(--lobby-row-hover-background);
 }
 
@@ -244,7 +243,6 @@ html {
 }
 
 .quick-pair-row:hover {
-    color: var(--lobby-row-hover-text);
     background-color: var(--lobby-row-hover-background) !important;
 }
 
