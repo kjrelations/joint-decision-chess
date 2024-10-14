@@ -1,0 +1,174 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+
+{% block style %} 
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/live.css' %}">
+<style>
+</style>
+{% endblock %}
+
+{% block title %}
+Live
+{% endblock %}
+
+{% block side_head_content %}
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin-bottom: 5px;">
+        <div class="col-10">
+            <div class="w-100 d-flex justify-content-center">
+                <div class="header active focused" id="Standard" data-main-mode="Standard" onclick="selectHeader(this)">
+                    <h3>Standard</h3>
+                </div>
+                <div class="header" id="Complete" data-main-mode="Complete" onclick="selectHeader(this)">
+                    <h3>Complete</h3>
+                </div>
+                <div class="header" id="Relay" data-main-mode="Relay" onclick="selectHeader(this)">
+                    <h3>Relay</h3>
+                </div>
+                <div class="header" id="Countdown" data-main-mode="Countdown" onclick="selectHeader(this)">
+                    <h3>Countdown</h3>
+                </div>
+            </div>
+            <div class="w-100">
+                <div class="w-100 d-flex justify-content-center" id="standard-variants">
+                    <h5 class="subheader active" id="Normal" data-variant="Normal" onclick="selectHeader(this)">Normal</h5>
+                    <h5 class="subheader" id="Classical" data-variant="Classical" onclick="selectHeader(this)">Classical</h5>
+                    <h5 class="subheader" id="Rapid" data-variant="Rapid" onclick="selectHeader(this)">Rapid</h5>
+                    <h5 class="subheader" id="Blitz" data-variant="Blitz" onclick="selectHeader(this)">Blitz</h5>
+                </div>
+                <div class="w-100 d-none justify-content-center" id="complete-variants">
+                    <h5 class="subheader" id="Complete-Simple" data-variant="Simple" onclick="selectHeader(this)">Simple</h5>
+                    <h5 class="subheader" id="Complete-Suggestive" data-variant="Suggestive" onclick="selectHeader(this)">Suggestive</h5>
+                </div>
+                <div class="w-100 d-none justify-content-center" id="relay-variants">
+                    <h5 class="subheader" id="Relay-Simple" data-variant="Simple" onclick="selectHeader(this)">Simple</h5>
+                    <h5 class="subheader" id="Relay-Suggestive" data-variant="Suggestive" onclick="selectHeader(this)">Suggestive</h5>
+                </div>
+                <div class="w-100 d-none justify-content-center" id="countdown-variants">
+                    <h5 class="subheader" id="Countdown-Simple" data-variant="Simple" onclick="selectHeader(this)">Simple</h5>
+                    <h5 class="subheader" id="Countdown-Suggestive" data-variant="Suggestive" onclick="selectHeader(this)">Suggestive</h5>
+                </div>
+                <div class="w-100 d-flex justify-content-center">
+                    <button class="refresh-button" onclick="loadPreviews()">Refresh Grid</button>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center align-items-center" style="width: 100%; height: 80vh;">
+                <div id="multiview-matrix" class="d-flex align-items-center" style="width: 100%;">
+                    <div id="left-column" class="d-flex flex-column justify-content-between" style="width: 25%; height: 100%;">
+                        <div id="game-1" class="game-container">
+                            <div class="spinner-border" id="spinner-1" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="game-9" class="game-container">
+                            <div class="spinner-border" id="spinner-9" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="game-5" class="game-container">
+                            <div class="spinner-border" id="spinner-5" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="width: 50%; height: 100%">
+                        <div id="top-middle" class="d-flex" style="width: 100%;">
+                            <div id="game-3" class="game-container">
+                                <div class="spinner-border" id="spinner-3" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                            <div id="game-4" class="game-container">
+                                <div class="spinner-border" id="spinner-4" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="middle-section" class="d-flex flex-column" style="width: 100%;">
+                            <div class="middle-headers">
+                                <div class="input-group" style="padding: 10px 5px 0 5px;">
+                                    <select class="custom-select user-select" id="user-select">
+                                        <option value="any" selected>Any</option>
+                                        <option value="white">White</option>
+                                        <option value="black">Black</option>
+                                    </select>
+                                    <input type="text" class="form-control search-input" id="user-input" placeholder="All Users" aria-label="Search input for a user with segmented dropdown button">
+                                    <div class="input-group-append">
+                                        <button class="search-button" onclick="searchResults()">Search</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="feed d-flex flex-column scrollable-feed-list" id="feed">
+                                <div class="feed-header">
+                                    <div style="text-align: center; width: 20%; overflow: hidden;">Type</div>
+                                    <div style="text-align: left; width: 25%; overflow: hidden;">White</div>
+                                    <div style="text-align: left; width: 25%; overflow: hidden;">Black</div>
+                                    <div style="text-align: right; width: 30%; overflow: hidden;">Started</div>
+                                </div>
+                                <div id="feed-content"></div>
+                            </div>
+                            <div id="center-preview" class="d-none center-preview"></div>
+                        </div>
+                        <div id="bottom-middle" class="d-flex" style="width: 100%;">
+                            <div id="game-7" class="game-container">
+                                <div class="spinner-border" id="spinner-7" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                            <div id="game-8" class="game-container">
+                                <div class="spinner-border" id="spinner-8" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="right-column" class="d-flex flex-column justify-content-between" style="width: 25%; height: 100%;">
+                        <div id="game-2" class="game-container">
+                            <div class="spinner-border" id="spinner-2" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="game-10" class="game-container">
+                            <div class="spinner-border" id="spinner-10" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="game-6" class="game-container">
+                            <div class="spinner-border" id="spinner-6" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        sessionStorage.clear();
+        var preview_src = "{% static 'main/html/preview.html' %}?";
+        var completeSVG = '{{ complete_svg|safe }}';
+        var relaySVG = '{{ relay_svg|safe }}';
+        var countdownSVG = '{{ countdown_svg|safe }}';
+        var standardSVG = '{{ standard_svg|safe }}';
+        var csrftoken = "{{ csrf_token|escapejs }}";
+        function formatDateTime() {
+
+        }
+        var active_games = [
+            {% for game in active_games %}
+                { "id": "{{ game.active_game_id }}",
+                  "gametype": "{{ game.gametype }}",
+                  "white_user": "{{ game.white_username }}",
+                  "black_user": "{{ game.black_username }}",
+                  "start_time": "{{ game.start_time }}"
+                },
+            {% endfor %}
+        ]
+    </script>
+    <script src="{% static 'main/js/live.js' %}"></script>
+</div>
+{% endblock %}

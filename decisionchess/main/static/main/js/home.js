@@ -23,7 +23,7 @@ function adjustPreview() {
         const paddingLeft = parseFloat(computedStyle.paddingLeft);
         const paddingRight = parseFloat(computedStyle.paddingRight);
         var width = previewContainer.offsetWidth - (paddingLeft + paddingRight);
-        iframeContainer.style.height = width + 'px';
+        iframeContainer.style.height = width * 1.2 + 'px';
         iframeContainer.style.width = width + 'px';
         document.getElementById('embedded-iframe').style.height = width + 'px';
         document.getElementById('embedded-iframe').style.width = width + 'px';

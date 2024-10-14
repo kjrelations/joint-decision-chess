@@ -111,17 +111,20 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             raise Exception(str(e))
 
 # Helper to retrieve game from DB
-async def reconnect(window, game_id, access_keys, init):
+async def reconnect(window, game_id, access_keys, init, drawing_settings):
     init["reconnecting"] = True
     retrieved_state = None
     try:
-        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        if game_id != "":
+            retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        else:
+            retrieved_state = None
         if retrieved_state is None:
             init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"])
         else:
             retrieved_state = json.loads(retrieved_state)
             init["retrieved"] = Game(custom_params=retrieved_state)
-        init["sent"] = 1
+        drawing_settings["draw"] = True
     except:
         err = 'Reconnection Failed. Reattempting...'
         js_code = f"console.log('{err}')"
@@ -147,12 +150,14 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                         init["starting_position"]["_starting_player"] = True
                     init["initializing"] = True
                     init["reloaded"] = True
+                    drawing_settings["draw"] = True
                 elif "_update" in cmd or "_sync" in cmd:
                     if "_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             client_game.synchronize(game)
+                            drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
                                 if client_game.end_position:
                                     break
@@ -173,6 +178,7 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
+                    drawing_settings["draw"] = True
 
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
@@ -190,6 +196,7 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             client_game.synchronize(game)
+                            drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
                                 if client_game.end_position:
                                     break
@@ -210,7 +217,8 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
-                
+                    drawing_settings["draw"] = True
+                    
                 elif cmd == "join_game":
                     print(node.data["nick"], "joined game")
                 elif cmd == "rejoin":

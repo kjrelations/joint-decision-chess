@@ -44,7 +44,7 @@ outlines = king_outlines(transparent_pieces['k'])
 
 debug_prints = True
 
-def initialize_game(init, drawing_settings):
+def initialize_game(init, drawing_settings, game_key):
     current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
     if init["starting_player"]:
         pygame.display.set_caption("Chess - White")
@@ -68,6 +68,7 @@ def initialize_game(init, drawing_settings):
         init["initializing"], init["initialized"] = False, True
     else:
         init["initializing"] = False
+    window.sessionStorage.setItem(f'waiting-{game_key}', "false")
     return client_game
 
 class Node(pygbag_net.Node):
@@ -75,9 +76,13 @@ class Node(pygbag_net.Node):
 
 # Main loop
 async def main():
-    game_id = os.environ.get('current_game_id') if not local_debug else '222'
-    if game_id is None:
-        raise Exception("No game id set")
+    game_key = os.environ.get('key') if not local_debug else '222'
+    if game_key is None:
+        raise Exception('No iframe key param set')
+    else:
+        game_id = window.sessionStorage.getItem(game_key)
+        if game_id is None:
+            raise Exception('No game id set')
     
     builtins.node = Node(gid=game_id, groupname="Decision Chess", offline="offline" in sys.argv)
     node = builtins.node
@@ -100,6 +105,16 @@ async def main():
         "final_updates": False
     }
     client_game = None
+    if game_id == "":
+        if node.aiosock != None:
+            node.quit()
+        init["starting_position"] = None
+        init["starting_player"] = True 
+        init["gametype"] = "Standard"
+        init["initializing"] = True
+        init["config_retrieved"] = True # TODO won't get user themes, handle later
+        init["loaded"] = True
+        window.sessionStorage.setItem(f'waiting-{game_key}', "true")
 
     valid_moves = []
     valid_captures = []
@@ -119,12 +134,35 @@ async def main():
         "check_white": False,
         "checkmate_black": False,
         "check_black": False,
+        "draw": True,
         "state": {'board': [], 'active_moves': []},
         "new_state": {'board': [], 'active_moves': []}
     }
 
     # Main game loop
     while init["running"]:
+
+        loaded_id = window.sessionStorage.getItem(game_key) if not local_debug else '222'
+        if loaded_id is None:
+            loaded_id = ""
+        if loaded_id != game_id:
+            game_id = loaded_id
+            init["game_id"] = game_id
+            if loaded_id == "":
+                if node.aiosock != None:
+                    node.quit()
+                init["starting_position"] = None
+                init["starting_player"] = True 
+                init["gametype"] = "Standard"
+                init["initializing"] = True
+                init["loaded"] = True
+                drawing_settings["draw"] = True
+                window.sessionStorage.setItem(f'waiting-{game_key}', "true")
+            else:
+                builtins.node = Node(gid=loaded_id, groupname="Decision Chess", offline="offline" in sys.argv)
+                node = builtins.node
+                init["loaded"] = False
+                window.sessionStorage.setItem(f'waiting-{game_key}', "false")
 
         try:
             if not init["final_updates"]:
@@ -134,7 +172,7 @@ async def main():
             raise Exception(str(e))
 
         if init["initializing"]:
-            client_game = initialize_game(init, drawing_settings)
+            client_game = initialize_game(init, drawing_settings, game_key)
 
         elif not init["loaded"]:
             if not init["config_retrieved"] and not init["local_debug"]:
@@ -151,6 +189,8 @@ async def main():
                             data = json.loads(response)
                             init["config_retrieved"] = True
                         except Exception as e:
+                            if not isinstance(e, asyncio.TimeoutError):
+                                await asyncio.sleep(5)
                             err = 'Game config retreival failed. Reattempting...'
                             js_code = f"console.log('{err}')"
                             window.eval(js_code)
@@ -184,6 +224,8 @@ async def main():
                         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         retrieved = True
                     except Exception as e:
+                        if not isinstance(e, asyncio.TimeoutError):
+                            await asyncio.sleep(5)
                         err = 'Game State retreival Failed. Reattempting...'
                         js_code = f"console.log('{err}')"
                         window.eval(js_code)
@@ -194,17 +236,19 @@ async def main():
             if retrieved_state is None:
                 client_game = Game(new_board.copy(), init["starting_player"])
                 init["loaded"] = True
+                drawing_settings["draw"] = True
+                window.sessionStorage.setItem(f'waiting-{game_key}', "false")
             else:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = True
-                client_game = Game(custom_params=init["starting_position"])
                 init["initializing"] = True
                 init["loaded"] = True
+                drawing_settings["draw"] = True
                 continue
 
         if not init["reloaded"] and not init["reconnecting"]:
             if init["retrieved"] is None:
-                asyncio.create_task(reconnect(window, game_id, access_keys, init))
+                asyncio.create_task(reconnect(window, game_id, access_keys, init, drawing_settings))
             else:
                 client_game = init["retrieved"]
                 if not node.offline:
@@ -222,53 +266,13 @@ async def main():
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
-        if drawing_settings['new_state'] != drawing_settings['state']:
+        if drawing_settings['new_state'] != drawing_settings['state'] and drawing_settings["draw"]:
             set_check_or_checkmate_settings(drawing_settings, client_game)
 
-        game_window.fill((0, 0, 0))
-
-        draw_board_params = {
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'starting_player': client_game._starting_player,
-            'drawing_settings': drawing_settings.copy(),
-            'selected_piece': None,
-            'white_current_position': client_game.white_current_position,
-            'white_previous_position': client_game.white_previous_position,
-            'black_current_position': client_game.black_current_position,
-            'black_previous_position': client_game.black_previous_position,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': None,
-            'white_active_position': None,
-            'black_active_position': None,
-            'white_selected_piece_image': None,
-            'black_selected_piece_image': None,
-            'selected_piece_image': None
-        }
-
-        draw_board(draw_board_params)
-
-        if client_game.end_position and not init["final_updates"] and init["reloaded"]:
-            node.quit()
-            init["final_updates"] = True
-
-        if client_game.end_position and client_game._latest:
-            # Clear any selected highlights
-            drawing_settings["right_clicked_squares"] = []
-            drawing_settings["opposing_right_clicked_squares"] = []
-            drawing_settings["drawn_arrows"] = []
-            drawing_settings["opposing_drawn_arrows"] = []
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    init["running"] = False
-
+        if drawing_settings["draw"]:
             game_window.fill((0, 0, 0))
 
-            draw_board({
+            draw_board_params = {
                 'window': game_window,
                 'theme': current_theme,
                 'board': client_game.board,
@@ -289,7 +293,50 @@ async def main():
                 'white_selected_piece_image': None,
                 'black_selected_piece_image': None,
                 'selected_piece_image': None
-            })
+            }
+
+            draw_board(draw_board_params)
+
+        if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+            node.quit()
+            init["final_updates"] = True
+            window.sessionStorage.setItem(f'waiting-{game_key}', "true")
+
+        if client_game.end_position and client_game._latest:
+            # Clear any selected highlights
+            drawing_settings["right_clicked_squares"] = []
+            drawing_settings["opposing_right_clicked_squares"] = []
+            drawing_settings["drawn_arrows"] = []
+            drawing_settings["opposing_drawn_arrows"] = []
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    init["running"] = False
+
+            if drawing_settings["draw"]:
+                game_window.fill((0, 0, 0))
+
+                draw_board({
+                    'window': game_window,
+                    'theme': current_theme,
+                    'board': client_game.board,
+                    'starting_player': client_game._starting_player,
+                    'drawing_settings': drawing_settings.copy(),
+                    'selected_piece': None,
+                    'white_current_position': client_game.white_current_position,
+                    'white_previous_position': client_game.white_previous_position,
+                    'black_current_position': client_game.black_current_position,
+                    'black_previous_position': client_game.black_previous_position,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': None,
+                    'white_active_position': None,
+                    'black_active_position': None,
+                    'white_selected_piece_image': None,
+                    'black_selected_piece_image': None,
+                    'selected_piece_image': None
+                })
         drawing_settings['state'] = {
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
@@ -297,6 +344,7 @@ async def main():
 
         pygame.display.flip()
         await asyncio.sleep(0)
+        drawing_settings["draw"] = False
 
     pygame.quit()
     sys.exit()

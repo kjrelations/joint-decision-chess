@@ -465,10 +465,10 @@ class Node:
                 nick = cmd.split("!", 1)[0]
                 gid, pid, proto, info = line.split(":", 3)
                 node.pstree.setdefault(int(pid), {"nick": nick, "mem": [], "shm": [], "rev": 0})
+                self.proto = [proto, int(pid), nick, info]
 
                 # that's our game
                 if gid == str(self.gid):
-                    self.proto = [proto, int(pid), nick, info]
                     self.data = line
                     yield self.LOBBY_GAME
                     return self.discard()

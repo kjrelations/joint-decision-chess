@@ -19,6 +19,7 @@ urlpatterns = [
     path("lessons/", views.lessons, name="lessons"),
     path("lessons/<str:lesson>/", views.lesson, name="lesson"),
     path("news/", views.news, name="news"),
+    path("live/", views.live, name='live'),
     path("profile/<str:username>/", views.profile, name="profile"),
     path("terms-of-service/", views.terms_of_service, name="terms"),
     path("privacy/", views.privacy_policy, name="privacy"),

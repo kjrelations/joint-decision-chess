@@ -3,7 +3,8 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
-from django.db.models import Q, OuterRef, Subquery
+from django.db.models import Q, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
@@ -39,6 +40,7 @@ def home(request):
 
     time_threshold = timezone.now() - timedelta(minutes=5)
     preview_game = None
+    preview_game_available = False
     if ActiveGames.objects.exists():
         lobby_subquery = ChessLobby.objects.filter(
             lobby_id=OuterRef('active_game_id'),  # Match lobby_id to active_game_id
@@ -49,10 +51,24 @@ def home(request):
         preview_game = ActiveGames.objects.filter(
             active_game_id__in=Subquery(lobby_subquery.values('lobby_id')),
             start_time__gte=time_threshold
+        ).annotate(
+            white_username=Coalesce(
+                Subquery(
+                    User.objects.filter(id=OuterRef('white_id')).values('username')[:1]
+                ), Value("Anonymous")
+            ),
+            black_username=Coalesce(
+                Subquery(
+                    User.objects.filter(id=OuterRef('black_id')).values('username')[:1]
+                ), Value("Anonymous")
+            )
+        ).values(
+            'active_game_id',
+            'white_username',
+            'black_username',
+            'start_time'
         ).order_by('?').first()
         preview_game_available = True if preview_game else False
-    else:
-        preview_game_available = False
     context["preview_game"] = preview_game
     context["preview_game_available"] = preview_game_available
 
@@ -545,7 +561,7 @@ def update_connected(request):
                     else:
                         game.white_id = bot_id
                     update_and_check = True
-                elif data.get('computer_game') == False:
+                elif data.get('computer_game') == False: # TODO check if we need to remove this, does nothing currently?
                     if null_id == "black":
                         game.black_id = user_id
                     else:
@@ -731,6 +747,87 @@ def lesson(request, lesson):
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')
     return render(request, "main/news.html", {"blogs": blogs})
+
+def live(request):
+    types_param = request.GET.get('type')
+    types = types_param.split(",") if types_param is not None else []
+    user_type_param = request.GET.get('user_type')
+    user_param = request.GET.get('user')
+    active_games = []
+    if ActiveGames.objects.exists():
+        lobby_subquery = ChessLobby.objects.filter(
+            lobby_id=OuterRef('active_game_id'),
+            private=False,
+            computer_game=False,
+            solo_game=False
+        )
+
+        game_filter = Q(gametype__in=types) if types else Q(gametype="Standard")
+        if user_param:
+            if user_type_param == "white":
+                game_filter &= Q(
+                    white_id__in=Subquery(
+                        User.objects.filter(username__icontains=user_param).values('id')
+                    )
+                )
+            elif user_type_param == "black":
+                game_filter &= Q(
+                    black_id__in=Subquery(
+                        User.objects.filter(username__icontains=user_param).values('id')
+                    )
+                )
+            elif user_type_param == "any":
+                game_filter &= Q(
+                    Q(white_id__in=Subquery(
+                        User.objects.filter(username__icontains=user_param).values('id')
+                    )) |
+                    Q(black_id__in=Subquery(
+                        User.objects.filter(username__icontains=user_param).values('id')
+                    ))
+                )
+            else:
+                return JsonResponse({"status": "error", "message": "Invalid user_type value"}, status=400)
+
+        returned_active_games = ActiveGames.objects.filter(
+            game_filter,
+            active_game_id__in=Subquery(lobby_subquery.values('lobby_id'))
+        ).annotate(
+            white_username=Coalesce(
+                Subquery(
+                    User.objects.filter(id=OuterRef('white_id')).values('username')[:1]
+                ), Value("Anonymous")
+            ),
+            black_username=Coalesce(
+                Subquery(
+                    User.objects.filter(id=OuterRef('black_id')).values('username')[:1]
+                ), Value("Anonymous")
+            )
+        ).values(
+            'active_game_id',
+            'gametype',
+            'white_username',
+            'black_username',
+            'start_time'
+        ).order_by('?')[:100]
+
+        for game in returned_active_games:
+            date_obj = datetime.strptime(str(game["start_time"]), "%Y-%m-%d %H:%M:%S.%f%z")
+            game["start_time"] = date_obj.strftime("%H:%M:%S %m-%d")
+            game["white_username"] = "Anon" if game["white_username"] == "Anonymous" else game["white_username"]
+            game["black_username"] = "Anon" if game["black_username"] == "Anonymous" else game["black_username"]
+        active_games = [ game for game in returned_active_games ]
+    
+    if types_param is not None:
+        if active_games != []:
+            return JsonResponse({"status": "OK", "active_games": active_games}, status=200)
+        else:
+            return JsonResponse({"status": "DNE", "message": "no games"}, status=200)
+    context = {"active_games": active_games}
+    context['complete_svg'] = open(".\\static\\images\\complete-variant-icon.svg").read()
+    context['relay_svg'] = open(".\\static\\images\\reveal-stage-icon.svg").read()
+    context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
+    context['standard_svg'] = open(".\\static\\images\\decision-icon-colored.svg").read()
+    return render(request, "main/live.html", context)
 
 def profile(request, username):
     try:

@@ -16,7 +16,7 @@
     --homebutton-chess: black;
     --homeblock-hover: #ecac22;
     --homeblock-a: #F84E4E;
-    --homeblock-header-background: #E8FFF2;
+    --homeblock-header-background: #FAFAEB;
     --sidenav-background: #001d23;
     --sidenav-element: #818181;
     --sidenav-element-hover: #f1f1f1;
@@ -105,6 +105,8 @@
     --move-button-disabled-background: #17568a;
     --displayed-move-background: rgb(179, 179, 179);
     --displayed-move-border: rgb(212, 212, 212);
+    /* Live */
+    --headerFocused: #805d14;
     /* Profile */
     --bio-border: rgb(46, 46, 46);
     --bio-background: #2e4147;

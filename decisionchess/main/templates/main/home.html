@@ -448,9 +448,10 @@ Decision Chess
                   </div>
                 <div class="mt-auto"></div>
                 {% if preview_game_available %}
-                  <div style="text-align: center;">Live Game</div>
-                  <div id="iframe-container">
-                    <iframe id="embedded-iframe" src="{% static 'main/html/preview.html' %}?current_game_id={{ preview_game.active_game_id }}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+                  <div id="iframe-container" class="d-flex flex-column">
+                    <div class="metadata" id="metadata-black">{{ preview_game.black_username }}</div>
+                    <iframe id="embedded-iframe" src="{% static 'main/html/preview.html' %}?key=preview-game" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+                    <div class="metadata" id="metadata-white">{{ preview_game.white_username }}</div>
                   </div>
                 {% endif %}
             </div>
@@ -515,14 +516,17 @@ Decision Chess
         </div>
     </div>
     <script>
-        var csrftoken = "{{ csrf_token|escapejs }}";
-        var whiteSideSVG = '{{ white_side_svg|safe }}';
-        var blackSideSVG = '{{ black_side_svg|safe }}';
-        var randomSideSVG = '{{ random_side_svg|safe }}';
-        var completeSVG = '{{ complete_svg|safe }}';
-        var relaySVG = '{{ relay_svg|safe }}';
-        var countdownSVG = '{{ countdown_svg|safe }}';
-        var standardSVG = '{{ standard_svg|safe }}';
+      {% if preview_game_available %}
+        sessionStorage.setItem('preview-game', '{{ preview_game.active_game_id }}');
+      {% endif %}
+      var csrftoken = "{{ csrf_token|escapejs }}";
+      var whiteSideSVG = '{{ white_side_svg|safe }}';
+      var blackSideSVG = '{{ black_side_svg|safe }}';
+      var randomSideSVG = '{{ random_side_svg|safe }}';
+      var completeSVG = '{{ complete_svg|safe }}';
+      var relaySVG = '{{ relay_svg|safe }}';
+      var countdownSVG = '{{ countdown_svg|safe }}';
+      var standardSVG = '{{ standard_svg|safe }}';
     </script>
     <script src="{% static 'main/js/home.js' %}"></script>
 </div>
