@@ -39,6 +39,16 @@ html {
     background-color: var(--new-game-background-hover);
 }
 
+.preview {
+    text-decoration: none;
+    color: var(--body-text);
+}
+
+.preview:hover {
+    text-decoration: none;
+    color: var(--body-text);
+}
+
 .metadata {
     display: inline-flex;
     height: 10%;
@@ -271,7 +281,6 @@ html {
     border: thin solid var(--lobby-outline); 
     height: 100%;
 }
-
 
 .highlights-column {
     border: none;

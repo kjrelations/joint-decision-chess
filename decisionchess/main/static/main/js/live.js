@@ -70,6 +70,26 @@ function loadPreviews() {
 }
 
 
+function getPreviewLink(key) {
+    const previewValue = sessionStorage.getItem(key);
+    return previewValue !== "" && previewValue !== null ? `/play/${previewValue}` : null;
+}
+
+function addHrefHandler(key) {
+    const preview = document.getElementById(key);
+    preview.addEventListener("mouseover", function() {
+        const newHref = getPreviewLink(key);
+        preview.href = newHref || "#";
+    });
+    
+    preview.addEventListener("click", function(event) {
+        event.preventDefault();
+        const newHref = getPreviewLink(key);
+        preview.href = newHref || "#";
+        window.location.assign(preview.href);
+    });
+}
+
 async function loadNewPreviewBatch() {
     const batch = 4;
     for (let i = 1; i <= 10; i++) {
@@ -128,6 +148,7 @@ async function loadNewPreviewBatch() {
                 <div class="metadata" id="black-metadata-${i}">${game.black_user}</div>
                 <iframe 
                 id="embedded-iframe-${i}" 
+                style="pointer-events: none;"
                 src="${preview_src}key=game-${i}" 
                 frameborder=0 
                 scrolling="no" 
@@ -137,6 +158,7 @@ async function loadNewPreviewBatch() {
                 <div class="metadata" id="white-metadata-${i}">${game.white_user}</div>
                 `;
                 gameContainer.innerHTML = content;
+                addHrefHandler(`game-${i}`);
                 adjustSizes();
             }
             sessionStorage.setItem(iframeKey, game.id);
@@ -158,7 +180,7 @@ function adjustSizes() {
     var matrixDimension = Math.min(parentWidth, parentHeight) - (paddingLeft + paddingRight);
     contentContainer.style.width = matrixDimension + 'px';
     var containerWidth = document.getElementById("left-column").offsetWidth;
-    gameContainerHeight = containerWidth * 1.2;
+    gameContainerHeight = containerWidth * 1.25;
     contentContainer.style.height = (gameContainerHeight * 3.1) + 'px';
     var gameDimension = containerWidth * 0.9;
     document.getElementById("top-middle").style.height = gameContainerHeight + "px";
@@ -211,21 +233,23 @@ function loadCenterPreview(game) {
     else {
         var content = `
         <div class="back-button mr-auto ml-auto" onclick="backToFeed()"><i class="fa-solid fa-chevron-left"></i></div>
-        <div class="game-container" style="height: 100%">
+        <a class="game-container" id="center-game" style="height: 100%">
             <div class="center-metadata" id="black-center-metadata">${game.black_user}</div>
             <iframe 
                 id="center-iframe"
                 src="${preview_src}key=center-game" 
+                style="pointer-events: none;"
                 frameborder=0 
                 scrolling="no" 
                 sandbox="allow-same-origin 
                 allow-scripts">
             </iframe>
             <div class="center-metadata" id="white-center-metadata">${game.white_user}</div>
-        </div>
+        </a>
         <div class="mr-auto ml-auto" ></div>
         `;
         centerPreview.innerHTML = content;
+        addHrefHandler("center-game");
     }
     sessionStorage.setItem("center-game", game.id);
     centerPreview.classList.add("d-flex");

@@ -448,11 +448,11 @@ Decision Chess
                   </div>
                 <div class="mt-auto"></div>
                 {% if preview_game_available %}
-                  <div id="iframe-container" class="d-flex flex-column">
+                  <a class="preview" href="#" id="iframe-container" class="d-flex flex-column">
                     <div class="metadata" id="metadata-black">{{ preview_game.black_username }}</div>
-                    <iframe id="embedded-iframe" src="{% static 'main/html/preview.html' %}?key=preview-game" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+                    <iframe id="embedded-iframe" src="{% static 'main/html/preview.html' %}?key=preview-game" style="pointer-events: none;" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
                     <div class="metadata" id="metadata-white">{{ preview_game.white_username }}</div>
-                  </div>
+                  </a>
                 {% endif %}
             </div>
         </div>
@@ -518,6 +518,24 @@ Decision Chess
     <script>
       {% if preview_game_available %}
         sessionStorage.setItem('preview-game', '{{ preview_game.active_game_id }}');
+        
+        const preview = document.getElementById("iframe-container");
+        function getPreviewLink() {
+            const previewValue = sessionStorage.getItem('preview-game');
+            return previewValue !== "" && previewValue !== null ? `/play/${previewValue}` : null;
+        }
+
+        preview.addEventListener("mouseover", function() {
+            const newHref = getPreviewLink();
+            preview.href = newHref || "#";
+        });
+
+        preview.addEventListener("click", function(event) {
+            event.preventDefault();
+            const newHref = getPreviewLink();
+            preview.href = newHref || "#";
+            window.location.assign(preview.href);
+        });
       {% endif %}
       var csrftoken = "{{ csrf_token|escapejs }}";
       var whiteSideSVG = '{{ white_side_svg|safe }}';
