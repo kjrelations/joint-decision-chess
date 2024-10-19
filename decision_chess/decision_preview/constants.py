@@ -4,7 +4,7 @@ class Theme:
     def __init__(self):
         # Constants
         self.NAME = 'Standard'
-        self.WIDTH, self.HEIGHT = 800, 800
+        self.WIDTH, self.HEIGHT = 304, 304
         self.GRID_SIZE = self.WIDTH // 8
         self.WHITE_SQUARE = (255, 230, 155)
         self.BLACK_SQUARE = (140, 215, 230)
@@ -12,8 +12,8 @@ class Theme:
         self.TRANSPARENT_SPECIAL_CIRCLES = (140, 95, 80, 160)
         self.HOVER_OUTLINE_COLOR_WHITE = (255, 240, 200)
         self.HOVER_OUTLINE_COLOR_BLACK = (200, 235, 245)
-        self.TEXT_OFFSET = 7
-        self.FONT_SIZE = 36
+        self.TEXT_OFFSET = 2
+        self.FONT_SIZE = 13
         self.HIGHLIGHT_WHITE = (255, 215, 105)
         self.HIGHLIGHT_BLACK = (75, 215, 230)
         self.HIGHLIGHT_WHITE_BLACK = (170, 144, 70)
@@ -31,7 +31,7 @@ class Theme:
 
     def apply_theme(self, theme, inverse_view):
         self.NAME = theme.get("name", self.NAME)
-        self.WIDTH, self.HEIGHT = 800, 800
+        self.WIDTH, self.HEIGHT = 304, 304
         self.GRID_SIZE = self.WIDTH // 8
         self.WHITE_SQUARE = theme.get("white_square", self.WHITE_SQUARE)
         self.BLACK_SQUARE = theme.get("black_square", self.BLACK_SQUARE)
@@ -39,8 +39,6 @@ class Theme:
         self.TRANSPARENT_SPECIAL_CIRCLES = theme.get("transparent_special_circles", self.TRANSPARENT_SPECIAL_CIRCLES)
         self.HOVER_OUTLINE_COLOR_WHITE = theme.get("hover_outline_color_white", self.HOVER_OUTLINE_COLOR_WHITE)
         self.HOVER_OUTLINE_COLOR_BLACK = theme.get("hover_outline_color_black", self.HOVER_OUTLINE_COLOR_BLACK)
-        self.TEXT_OFFSET = theme.get("text_offset", self.TEXT_OFFSET)
-        self.FONT_SIZE = theme.get("font_size", self.FONT_SIZE)
         self.HIGHLIGHT_WHITE = theme.get("highlight_white", self.HIGHLIGHT_WHITE)
         self.HIGHLIGHT_BLACK = theme.get("highlight_black", self.HIGHLIGHT_BLACK)
         self.HIGHLIGHT_WHITE_BLACK = theme.get("highlight_white_black", self.HIGHLIGHT_WHITE_BLACK)

@@ -25,6 +25,11 @@ decision_chess/decision_spectate/*
 !decision_chess/decision_spectate/network.py
 !decision_chess/decision_spectate/pygbag_net.py
 !decision_chess/decision_spectate/constants.py
+decision_chess/decision_preview/*
+!decision_chess/decision_preview/main.py
+!decision_chess/decision_preview/network.py
+!decision_chess/decision_preview/pygbag_net.py
+!decision_chess/decision_preview/constants.py
 decision_chess/decision_historic/*
 !decision_chess/decision_historic/main.py
 decision_chess/decision_solo_play/*

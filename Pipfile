@@ -24,6 +24,7 @@ twisted = "*"
 django-debug-toolbar = "*"
 django-livereload-server = "*"
 cython = "*"
+redis = "*"
 
 [dev-packages]
 pytest = "*"

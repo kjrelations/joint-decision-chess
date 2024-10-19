@@ -424,8 +424,15 @@ def play(request, game_uuid):
             sessionVariables['computer_game'] = True if game.computer_game else False
             return render(request, solo_html, sessionVariables) ## TODO rename html file name and this variable so it's agnostic for solo or computer games
         elif not game.is_open and str(user_id) not in [str(game.white_id), str(game.black_id)]:
-            # This should later redirect spectators to a spectator view if it's an active game, otherwise to home, maybe also to home for private games
-            return redirect('home')
+            active_game_exists = ActiveGames.objects.filter(active_game_id=game_uuid).exists()
+            if game.computer_game or game.solo_game or game.private or not active_game_exists:
+                return redirect('home')
+            else:
+                if game.initiator_color == "white":
+                    sessionVariables.update({'white': game.initiator_name, 'black': game.opponent_name})
+                elif game.initiator_color == "black":
+                    sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
+                return render(request, "main/play/decision_spectate.html", sessionVariables)
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
             if game.black_id is None and game.initiator_connected:

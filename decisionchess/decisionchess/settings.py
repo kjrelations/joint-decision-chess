@@ -117,21 +117,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'decisionchess.wsgi.application'
 ASGI_APPLICATION = 'decisionchess.asgi.application'
 
-if DEBUG:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
-    }
-else:
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                    'hosts': [config('REDIS_URL')],
-                },
-        },
-    }
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+                'hosts': [config('REDIS_URL')],
+            },
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

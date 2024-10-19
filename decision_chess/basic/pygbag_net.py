@@ -606,7 +606,11 @@ class Node:
         alarm = self.alarm()
 
         if alarm:
-            self.wire(f"PING :{alarm}")
+            try:
+                self.wire(f"PING :{alarm}")
+            except Exception as e:
+                print("Alarm error ", e)
+                return
 
         while len(self.events):
             ev = self.events.pop(0)

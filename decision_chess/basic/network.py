@@ -550,7 +550,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 if node.joined == game_channel and not init["reloaded"] and node.in_game:
                     node.pstree[node.pid]["forks"] = []
                     if node.oid in node.pstree and "forks" in node.pstree[node.oid]:
-                        node.pstree[node.oid]["forks"] = []
+                        node.pstree[node.oid]["forks"] = [] # maybe remove?
                     node.tx({node.CMD: "rejoin", node.PID: node.pid, 'nick': node.nick, "forked_node": node.fork})
 
             elif ev == node.TOPIC:
@@ -581,6 +581,8 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     # publish if main
                     if not node.fork or (node.fork != pid and not spectator):
                         node.publish(spectator)
+                        if not spectator:
+                            node.publish(True)
 
                 elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
                     if node.fork:

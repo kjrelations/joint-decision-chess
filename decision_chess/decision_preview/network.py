@@ -115,7 +115,10 @@ async def reconnect(window, game_id, access_keys, init, drawing_settings):
     init["reconnecting"] = True
     retrieved_state = None
     try:
-        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        if game_id != "":
+            retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        else:
+            retrieved_state = None
         if retrieved_state is None:
             init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"])
         else:
@@ -130,7 +133,7 @@ async def reconnect(window, game_id, access_keys, init, drawing_settings):
     init["reconnecting"] = False
 
 # Main network event loop
-async def handle_node_events(node, window, init, client_game, drawing_settings):
+async def handle_node_events(node, init, client_game, drawing_settings):
     if node.offline and init["reloaded"]:
         init["reloaded"] = False
     # Network events
@@ -156,11 +159,6 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                             client_game.synchronize(game)
                             drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
-                                if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '1-1', '½–½']): # Could add a winning or losing sound
-                                    if "x" in client_game.alg_moves[-1][0] or "x" in client_game.alg_moves[-1][1]:
-                                        handle_play(window, capture_sound)
-                                    else:
-                                        handle_play(window, move_sound)
                                 if client_game.end_position:
                                     break
                     if "_sync" in cmd:
@@ -208,11 +206,6 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                             client_game.synchronize(game)
                             drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
-                                if not any(symbol in client_game.alg_moves[-1] for symbol in ['0-1', '1-0', '1-1', '½–½']): # Could add a winning or losing sound
-                                    if "x" in client_game.alg_moves[-1][0] or "x" in client_game.alg_moves[-1][1]:
-                                        handle_play(window, capture_sound)
-                                    else:
-                                        handle_play(window, move_sound)
                                 if client_game.end_position:
                                     break
                     if "_sync" in cmd:
@@ -276,7 +269,7 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                 elif (ev == node.LOBBY_GAME) and (cmd == node.SPEC_OFFER):
                     print("forking to game offer", node.hint)
                     node.clone(pid)
-                    print("cloning", pid)
+                    print("cloning ", pid)
                 
                 elif cmd == node.OFFER:
                     ...

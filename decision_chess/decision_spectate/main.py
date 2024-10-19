@@ -6,7 +6,6 @@ import pygbag.aio as asyncio
 import fetch
 import pygbag_net
 import builtins
-import os
 from game import *
 from constants import *
 from helpers import *
@@ -44,7 +43,42 @@ outlines = king_outlines(transparent_pieces['k'])
 
 debug_prints = True
 
-def initialize_game(init, drawing_settings, game_key):
+def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
+    command_name, client_action_name, client_executed_name, *remaining = status_names
+    if len(status_names) == 3:
+        client_reset_name = None 
+    else:
+        client_reset_name = remaining[0]
+    client_executed_status, client_reset_status = \
+        client_state_actions[client_executed_name], client_state_actions.get(client_reset_name)
+    
+    if web_metadata_dict.get(command_name) is not None:
+        if web_metadata_dict[command_name]['execute'] and not web_metadata_dict[command_name]['update_executed'] and not client_reset_status:
+            if client_state_actions[client_action_name] != True:
+                client_state_actions[client_action_name] = True
+            if client_executed_status:
+                web_metadata_dict[command_name]['update_executed'] = True
+                web_metadata_dict = web_metadata_dict
+                json_metadata = json.dumps(web_metadata_dict)
+                
+                window.sessionStorage.setItem(games_metadata_name, json_metadata)
+                client_state_actions[client_action_name] = False
+
+        # Handling race conditions assuming speed differences and sychronizing states with this.
+        # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
+        if client_executed_status and not web_metadata_dict[command_name]['execute']:
+            client_state_actions[client_executed_name] = False    
+
+        if client_reset_status is not None and client_reset_status == True and not web_metadata_dict[command_name]['reset']:
+            web_metadata_dict[command_name]['reset'] = True
+            web_metadata_dict[command_name]['execute'] = False
+            json_metadata = json.dumps(web_metadata_dict)
+            
+            window.sessionStorage.setItem(games_metadata_name, json_metadata)
+            client_state_actions[client_reset_name] = False
+            client_state_actions[client_action_name] = False
+
+def initialize_game(init, drawing_settings):
     current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
     if init["starting_player"]:
         pygame.display.set_caption("Chess - White")
@@ -64,11 +98,72 @@ def initialize_game(init, drawing_settings, game_key):
         init["game_type"] = "Standard"
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+    web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+    if web_game_metadata is not None:
+        web_game_metadata_dict = json.loads(web_game_metadata)
+    else:
+        web_game_metadata_dict = {}
     if not init["initialized"]:
-        init["initializing"], init["initialized"] = False, True
+        if (isinstance(web_game_metadata_dict, dict) or web_game_metadata is None):
+            web_game_metadata_dict = {
+                "end_state": '',
+                "forced_end": '',
+                "alg_moves": [],
+                "comp_moves": [],
+                "FEN_final_pos": "",
+                "net_pieces": {'p': 0, 'r': 0, 'n': 0, 'b': 0, 'q': 0},
+                "white_played": False,
+                "black_played": False,
+                "white_active_move": None,
+                "black_active_move": None,
+                "playing_stage": True,
+                "white_undo": 0,
+                "black_undo": 0,
+                "decision_stage_enabled": client_game.decision_stage_enabled,
+                "game_type": init["game_type"],
+                "step": {
+                    "execute": False,
+                    "update_executed": False,
+                    "index": None
+                },
+                "cycle_theme": {
+                    "execute": False,
+                    "update_executed": False
+                },
+                "flip_board": {
+                    "execute": False,
+                    "update_executed": False
+                }
+            }
+            if client_game.reveal_stage_enabled:
+                web_game_metadata_dict.update(
+                    {
+                        "reveal_stage": client_game.reveal_stage
+                    }
+                )
+            if client_game.decision_stage_enabled:
+                web_game_metadata_dict.update(
+                    {
+                        "decision_stage": client_game.decision_stage,
+                        "next_stage": False,
+                        "reset_timer": False
+                    }
+                )
+        else:
+            raise Exception("Browser game metadata of wrong type", web_game_metadata_dict)
+        web_game_metadata = json.dumps(web_game_metadata_dict)
+        window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+        web_ready = False
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+        if web_game_metadata is not None:
+            web_game_metadata_dict = json.loads(web_game_metadata)
+            web_ready = True
+            init["initializing"], init["initialized"] = False, True
+            window.sessionStorage.setItem("initialized", "true")
+        if not web_ready:
+            raise Exception("Failed to set web value")
     else:
         init["initializing"] = False
-    window.sessionStorage.setItem(f'waiting-{game_key}', "false")
     return client_game
 
 class Node(pygbag_net.Node):
@@ -76,13 +171,9 @@ class Node(pygbag_net.Node):
 
 # Main loop
 async def main():
-    game_key = os.environ.get('key') if not local_debug else '222'
-    if game_key is None:
-        raise Exception('No iframe key param set')
-    else:
-        game_id = window.sessionStorage.getItem(game_key)
-        if game_id is None:
-            raise Exception('No game id set')
+    game_id = window.sessionStorage.getItem('current_game_id') if not local_debug else '222'
+    if game_id is None:
+        raise Exception("No game id set")
     
     builtins.node = Node(gid=game_id, groupname="Decision Chess", offline="offline" in sys.argv)
     node = builtins.node
@@ -93,7 +184,7 @@ async def main():
         "initializing": False,
         "initialized": False,
         "config_retrieved": False,
-        "starting_player": None,
+        "starting_player": True,
         "game_type": None,
         "starting_position": None,
         "local_debug": local_debug,
@@ -105,16 +196,21 @@ async def main():
         "final_updates": False
     }
     client_game = None
-    if game_id == "":
-        if node.aiosock != None:
-            node.quit()
-        init["starting_position"] = None
-        init["starting_player"] = True 
-        init["gametype"] = "Standard"
-        init["initializing"] = True
-        init["config_retrieved"] = True # TODO won't get user themes, handle later
-        init["loaded"] = True
-        window.sessionStorage.setItem(f'waiting-{game_key}', "true")
+
+    client_state_actions = {
+        "step": False,
+        "step_executed": False,
+        "cycle_theme": False,
+        "cycle_theme_executed": False,
+        "flip": False,
+        "flip_executed": False
+    }
+
+    command_status_names = [
+        ("step", "step", "step_executed"),
+        ("cycle_theme", "cycle_theme", "cycle_theme_executed"),
+        ("flip_board", "flip", "flip_executed")
+    ]
 
     valid_moves = []
     valid_captures = []
@@ -142,37 +238,15 @@ async def main():
     # Main game loop
     while init["running"]:
 
-        loaded_id = window.sessionStorage.getItem(game_key) if not local_debug else '222'
-        if loaded_id is None:
-            loaded_id = ""
-        if loaded_id != game_id:
-            game_id = loaded_id
-            init["game_id"] = game_id
-            if loaded_id == "":
-                if node.aiosock != None:
-                    node.quit()
-                init["starting_position"] = None
-                init["starting_player"] = True 
-                init["gametype"] = "Standard"
-                init["initializing"] = True
-                init["loaded"] = True
-                drawing_settings["draw"] = True
-                window.sessionStorage.setItem(f'waiting-{game_key}', "true")
-            else:
-                builtins.node = Node(gid=loaded_id, groupname="Decision Chess", offline="offline" in sys.argv)
-                node = builtins.node
-                init["loaded"] = False
-                window.sessionStorage.setItem(f'waiting-{game_key}', "false")
-
         try:
             if not init["final_updates"]:
-                await handle_node_events(node, init, client_game, drawing_settings)
+                await handle_node_events(node, window, init, client_game, drawing_settings)
         except Exception as e:
             log_err_and_print(e, window)
             raise Exception(str(e))
 
         if init["initializing"]:
-            client_game = initialize_game(init, drawing_settings, game_key)
+            client_game = initialize_game(init, drawing_settings)
 
         elif not init["loaded"]:
             if not init["config_retrieved"] and not init["local_debug"]:
@@ -217,6 +291,7 @@ async def main():
             retrieved_state = None
             if init["local_debug"]:
                 init["starting_player"] = True
+                window.sessionStorage.setItem("muted", "false")
             else:
                 retrieved = False
                 while not retrieved:
@@ -233,18 +308,13 @@ async def main():
             
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
-            if retrieved_state is None:
-                client_game = Game(new_board.copy(), init["starting_player"])
-                init["loaded"] = True
-                drawing_settings["draw"] = True
-                window.sessionStorage.setItem(f'waiting-{game_key}', "false")
-            else:
+            if retrieved_state is not None:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = True
-                init["initializing"] = True
-                init["loaded"] = True
-                drawing_settings["draw"] = True
-                continue
+            init["initializing"] = True
+            init["loaded"] = True
+            drawing_settings["draw"] = True
+            continue
 
         if not init["reloaded"] and not init["reconnecting"]:
             if init["retrieved"] is None:
@@ -255,12 +325,61 @@ async def main():
                     init["retrieved"] = None
                     init["reloaded"] = True
 
-        # An ugly indent but we need to send the draw_offer and resign execution status and skip unnecessary events
-        # TODO make this skip cleaner or move it into a function
+        if client_state_actions["step"]:
+            if client_game._sync: # Preventing stepping while syncing required
+                web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+                web_game_metadata_dict = json.loads(web_game_metadata)
+                move_index = web_game_metadata_dict["step"]["index"]
+                client_game.step_to_move(move_index)
+                if client_game._move_index == -1:
+                    pass
+                elif 'x' in client_game.alg_moves[client_game._move_index][0] or 'x' in client_game.alg_moves[client_game._move_index][1]:
+                    handle_play(window, capture_sound)
+                else:
+                    handle_play(window, move_sound)
+            client_state_actions["step"] = False
+            client_state_actions["step_executed"] = True
+            drawing_settings["draw"] = True
+
+        if client_state_actions["cycle_theme"]:
+            drawing_settings["theme_index"] += 1
+            drawing_settings["theme_index"] %= len(themes)
+            current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
+            # Redraw board and coordinates
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["cycle_theme"] = False
+            client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
+
+        if client_state_actions["flip"]:
+            current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+            # Redraw board and coordinates
+            drawing_settings["chessboard"] = generate_chessboard(current_theme)
+            drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+            client_state_actions["flip"] = False
+            client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
+
         if not client_game.end_position:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     init["running"] = False
+                
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_t:
+                        drawing_settings["theme_index"] += 1
+                        drawing_settings["theme_index"] %= len(themes)
+                        current_theme.apply_theme(themes[drawing_settings["theme_index"]], current_theme.INVERSE_PLAYER_VIEW)
+                        # Redraw board and coordinates
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+
+                    elif event.key == pygame.K_f:
+                        current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
+                        # Redraw board and coordinates
+                        drawing_settings["chessboard"] = generate_chessboard(current_theme)
+                        drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
 
         drawing_settings['new_state'] = {
             'board': deepcopy_list_of_lists(client_game.board),
@@ -298,9 +417,25 @@ async def main():
             draw_board(draw_board_params)
 
         if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+            web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+
+            web_game_metadata_dict = json.loads(web_game_metadata)
+
+            net_pieces = net_board(client_game.board)
+
+            if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
+                web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
+                web_game_metadata_dict['forced_end'] = client_game.forced_end
+                web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+                web_game_metadata_dict['comp_moves'] = client_game.moves
+                web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
+                web_game_metadata_dict['net_pieces'] = net_pieces
+
+                web_game_metadata = json.dumps(web_game_metadata_dict)
+                window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
+            
             node.quit()
             init["final_updates"] = True
-            window.sessionStorage.setItem(f'waiting-{game_key}', "true")
 
         if client_game.end_position and client_game._latest:
             # Clear any selected highlights
@@ -345,6 +480,95 @@ async def main():
         pygame.display.flip()
         await asyncio.sleep(0)
         drawing_settings["draw"] = False
+
+        # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
+        web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
+
+        web_game_metadata_dict = json.loads(web_game_metadata)
+        
+        # cycle theme, flip command handle
+        for status_names in command_status_names:
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")        
+
+        net_pieces = net_board(client_game.board)
+
+        metadata_update = False
+        if web_game_metadata_dict['net_pieces'] != net_pieces:
+            web_game_metadata_dict['net_pieces'] = net_pieces
+            metadata_update = True
+
+        if web_game_metadata_dict['white_played'] != client_game.white_played:
+            web_game_metadata_dict['white_played'] = client_game.white_played
+            metadata_update = True
+
+        if web_game_metadata_dict['black_played'] != client_game.black_played:
+            web_game_metadata_dict['black_played'] = client_game.black_played
+            metadata_update = True
+
+        if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict['comp_moves'] = client_game.moves
+            metadata_update = True
+
+        if not client_game.playing_stage:
+            if web_game_metadata_dict['playing_stage'] != False:
+                web_game_metadata_dict['playing_stage'] = False
+                metadata_update = True
+            
+            file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
+            rank_conversion = {i: str(8 - i) for i in range(8)}
+            web_white_move = file_conversion[client_game.white_active_move[1][1]] + rank_conversion[client_game.white_active_move[1][0]]
+            web_black_move = file_conversion[client_game.black_active_move[1][1]] + rank_conversion[client_game.black_active_move[1][0]]
+            if web_game_metadata_dict['white_active_move'] != web_white_move:
+                web_game_metadata_dict['white_active_move'] = web_white_move
+                metadata_update = True
+
+            if web_game_metadata_dict['black_active_move'] != web_black_move:
+                web_game_metadata_dict['black_active_move'] = web_black_move
+                metadata_update = True
+        else:
+            if web_game_metadata_dict['playing_stage'] != True:
+                web_game_metadata_dict['playing_stage'] = True
+                metadata_update = True
+
+            if web_game_metadata_dict['white_active_move'] != None:
+                web_game_metadata_dict['white_active_move'] = None
+                metadata_update = True
+
+            if web_game_metadata_dict['black_active_move'] != None:
+                web_game_metadata_dict['black_active_move'] = None
+                metadata_update = True
+
+        if client_game.reveal_stage_enabled:
+            if web_game_metadata_dict['reveal_stage'] != client_game.reveal_stage:
+                web_game_metadata_dict['reveal_stage'] = client_game.reveal_stage
+                metadata_update = True
+
+        if client_game.decision_stage_enabled:
+            if web_game_metadata_dict['decision_stage_enabled'] != client_game.decision_stage_enabled:
+                web_game_metadata_dict['decision_stage_enabled'] = client_game.decision_stage_enabled
+                metadata_update = True
+
+            if web_game_metadata_dict['decision_stage'] != client_game.decision_stage:
+                web_game_metadata_dict['decision_stage'] = client_game.decision_stage
+                metadata_update = True
+            
+            if web_game_metadata_dict['white_undo'] != client_game.white_undo_count:
+                web_game_metadata_dict['white_undo'] = client_game.white_undo_count
+                metadata_update = True
+            
+            if web_game_metadata_dict['black_undo'] != client_game.black_undo_count:
+                web_game_metadata_dict['black_undo'] = client_game.black_undo_count
+                metadata_update = True
+
+            if web_game_metadata_dict["next_stage"]:
+                client_game.decision_stage_complete = True
+                web_game_metadata_dict["next_stage"] = False
+                metadata_update = True
+            
+        if metadata_update:
+            web_game_metadata = json.dumps(web_game_metadata_dict)
+            window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
 
     pygame.quit()
     sys.exit()

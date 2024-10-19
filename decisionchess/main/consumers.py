@@ -3,9 +3,11 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.utils.html import escape, mark_safe
+from .redis_helpers import RedisHelper
 import json
 import uuid
 import time
+import random
 
 class ChatConsumer(AsyncWebsocketConsumer):
     MESSAGE_LIMIT = 5
@@ -17,9 +19,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.last_message_time = {}
 
     async def connect(self):
-        # TODO Can handle spectator names later with a split on "-spectator" in the room name
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f"chat_{self.room_name}"
+        self.redis_helper = RedisHelper(self.channel_layer)
 
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -32,19 +34,37 @@ class ChatConsumer(AsyncWebsocketConsumer):
         guest_id = self.scope.get("session", {}).get("guest_uuid")
         is_member = await self.is_user_game_member(str(user.id) if user and user.is_authenticated else guest_id, self.room_name)
         
-        if is_member:
-            username = user.username if user and user.is_authenticated else 'Anonymous'
+        if (is_member and not "spectate" in self.room_name) or "spectate" in self.room_name:
+            if user and user.is_authenticated:
+                username = user.username
+                stored_id = username
+            elif "spectate" not in self.room_name:
+                username = "Anonymous"
+                stored_id = guest_id
+            else:
+                username = await self.generate_unique_anonymous_username()
+                stored_id = guest_id
             
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                'type': 'chat.message',
-                'message': {
-                    'log': 'connect',
-                    'user': username,
-                    'text': 'You are connected to the chat room.'
+            await self.redis_helper.group_add_user(self.room_group_name, stored_id, username)
+
+            if "spectate" not in self.room_name:
+                content = {
+                    'type': 'chat.message',
+                    'message': {
+                        'log': 'connect',
+                        'user': username,
+                        'text': 'You are connected to the chat room.'
+                    }
                 }
-            })
+                
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    content
+                )
+                await self.channel_layer.group_send(
+                    self.room_group_name + "-spectate",
+                    content
+                )
         else:
             await self.close()
 			
@@ -58,34 +78,53 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def is_user_game_member(self, user_id, room_name):
         from .models import ActiveGames # Lazy import to run app
         try:
-            game = ActiveGames.objects.get(active_game_id=room_name)
+            game_id = room_name.split("-spectate")[0]
+            game = ActiveGames.objects.get(active_game_id=game_id)
             return user_id in (str(game.white_id), str(game.black_id))
         except ActiveGames.DoesNotExist:
             return False
 
     async def disconnect(self, close_code):
         user = await self.get_user()
-        if user and user.is_authenticated:
-            username = user.username
-        else:
-            username = "Anonymous"
-        message = {
-            "log": "disconnect",
-            "user": username,
-            "text": "User has left the chat."
-        }
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
+        guest_id = self.scope.get("session", {}).get("guest_uuid")
+        
+        key = user.username if user and user.is_authenticated else guest_id
+        username = await self.redis_helper.get_username_by_key(self.room_group_name, key)
+        await self.redis_helper.group_discard_user(self.room_group_name, key)
+        
+        if "spectate" not in self.room_name:
+            message = {
+                "log": "disconnect",
+                "user": username,
+                "text": "User has left the chat."
+            }
+            content = {
                 'type': 'chat.message',
                 'message': message
             }
-        )
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                content
+            )
+            await self.channel_layer.group_send(
+                self.room_group_name + "spectate",
+                content
+            )
 
         await self.channel_layer.group_discard(
             self.room_group_name,
 			self.channel_name
 		)
+
+    async def generate_unique_anonymous_username(self):
+        increment = 0
+        while True:
+            random_number = random.randint(1 + increment, 9999 + increment)
+            username = f"Anon-{random_number}"
+            existing_users = await self.redis_helper.group_users(self.room_group_name)
+            if username not in existing_users.values():
+                return username
+            increment += 1000
 
     def is_rate_limited(self, user_id):
         current_time = time.time()
@@ -117,13 +156,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json['message']
-        username = message["sender"]
-        color = message["color"]
+        
+        user = await self.get_user()
+        user_id = guest_id = user.id if user and user.is_authenticated else self.scope.get("session", {}).get("guest_uuid")
+        key = user.username if user and user.is_authenticated else guest_id
+        username = await self.redis_helper.get_username_by_key(self.room_group_name, key)
+
+        color = message.get('color')
         if username == "Anonymous":
-            message["sender"] = color
+            if "spectate" not in self.room_name:
+                message["sender"] = color
+        else:
+            message["sender"] = username
 
         if 'log' in message:
             # Process the message without rate-limiting checks
+            # Maybe only allow expected logs
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -133,8 +181,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        user = await self.get_user()
-        user_id = guest_id = self.scope.get("session", {}).get("guest_uuid") if user is None else user.id
         if self.is_rate_limited(user_id):
             await self.send_error_message("Too many messages within 10 seconds")
             return
@@ -152,18 +198,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         # Continue chat after game ends but don't save
-        if message["end_state"] == '' and message.get('log') is None:
-            sender = await self.get_user()
-            if username == "Anonymous":
-                sender_id = uuid.UUID(self.scope.get("session", {}).get("guest_uuid"))
-            else:
-                sender_id = sender.id
+        if "spectate" not in self.room_name and message["end_state"] == '' and message.get('log') is None:
             game_uuid = uuid.UUID(self.room_name)
             message["text"] = escape(message["text"])
             message["sender"] = escape(message["sender"])
             sanitized_sender = mark_safe(message["sender"])
             sanitized_text = mark_safe(message["text"])
-            await self.save_active_chat_message(game_uuid, color, sender_id, sanitized_sender, sanitized_text)
+            await self.save_active_chat_message(game_uuid, color, user_id, sanitized_sender, sanitized_text)
 
         self.update_rate_limit_counters(user_id)
 

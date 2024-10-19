@@ -507,6 +507,7 @@ class Node:
         self.proto = cmd
         self.data = line
         if cmd.endswith(room):
+            game = f"{self.fork or self.pid}:"
 
             if self.fork:
                 self.proto = "fork"
@@ -526,11 +527,8 @@ class Node:
                     except Exception as e:
                         sys.print_exception(e)
 
-            # print(f"i am {self.nick}({self.proto}) filtering on {game=} {line=}")
             else:
                 self.proto = "main"
-            
-            _, pid, msgtype, data = line.split(":", 3)
 
             # ND rpid could be different from payload pid in case of message relaying
             # on a mesh.
@@ -544,7 +542,7 @@ class Node:
 
             except Exception as e:
                 sys.print_exception(e)
-            
+
             self.proto = "noise"
 
         yield self.SPURIOUS
