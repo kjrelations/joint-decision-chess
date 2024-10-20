@@ -846,6 +846,10 @@ def profile(request, username):
     member_since = profile_user.date_joined.strftime("%b %d, %Y")
     historic_games = GameHistoryTable.objects.filter(Q(white_id=profile_user.id) | Q(black_id=profile_user.id))
     games_details = []
+    wins = []
+    losses = []
+    draws = []
+    win_wins = []
     for game in historic_games:
         if profile_user.id == game.white_id:
             side = "White"
@@ -861,31 +865,60 @@ def profile(request, username):
                 opponent_username = "Anonymous"
         relative_game_time = timesince(game.end_time, datetime.utcnow().replace(tzinfo=dt_timezone.utc))
         result = []
-        move_list = game.algebraic_moves.split(',')
-        end_scores = ['0-0', '1-0', '0-1', '½–½']
+        if game.gametype == 'classical':
+            move_list = game.algebraic_moves.split(',')
+        else:
+            move_list = json.loads(game.algebraic_moves)
+        end_scores = ['0-0', '1-0', '0-1', '½–½', '1-1']
         for string in end_scores:
             if string in move_list:
                 move_list.remove(string)
-        for i in range(0, len(move_list), 2):
-            pair = move_list[i:i+2]
-            pair_string = " ".join(pair)
-            result.append(f"{(i//2) + 1}. {pair_string}")
+        if game.gametype == 'classical':
+            for i in range(0, len(move_list), 2):
+                pair = move_list[i:i+2]
+                pair_string = " ".join(pair)
+                result.append(f"{(i//2) + 1}. {pair_string}")
+        else:
+            for i in range(0, len(move_list)):
+                pair_string = ", ".join(move_list[i])
+                result.append(f"{i + 1}. {pair_string}")
         
         init_index = 2 if len(move_list) > 5 else len(result)
         formatted_moves_string = " ".join(result[:init_index])
         if len(move_list) > 5:
             formatted_moves_string += f" ... {result[-1]}"
+        won = (side == 'White' and game.outcome == '1-0') \
+           or (side == 'Black' and game.outcome == '0-1')
+        loss = (side == 'White' and game.outcome == '0-1') \
+            or (side == 'Black' and game.outcome == '1-0')
         games_details.append({
             'game_id': game.historic_game_id,
             'outcome': game.outcome,
             'opponent': opponent_username,
             'game_type': game.gametype.capitalize(),
             'side': side,
+            'won': won,
+            'loss': loss,
             'relative_game_time': relative_game_time,
             'formatted_moves_string': formatted_moves_string
         })
         
-    return render(request, "main/profile.html", {"profile_user": profile_user, "member_since": member_since, "games_details": games_details})
+    wins = [game for game in games_details if game['won']]
+    losses = [game for game in games_details if game['loss']]
+    draws = [game for game in games_details if game['outcome'] == '½–½']
+    win_wins = [game for game in games_details if game['outcome'] == '1-1']
+    
+    context = {
+        "profile_user": profile_user, 
+        "member_since": member_since, 
+        "games_details": games_details, 
+        "wins": wins, 
+        "losses": losses, 
+        "draws": draws, 
+        "win_wins": win_wins
+    }
+
+    return render(request, "main/profile.html", context)
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})

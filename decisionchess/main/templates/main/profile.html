@@ -31,6 +31,29 @@
     .historic-game:hover::before {
         background: linear-gradient(to right, transparent, rgba(115, 101, 59, 0.22), transparent);
     }
+
+    .game-tab {
+        width: 20%;
+        background-color: var(--bio-background);
+        color: white;
+        outline: none;
+        border: none;
+        padding: 10px 0;;
+        transition: color .5s, background-color .5s;
+    }
+
+    .game-tab.active {
+        color: var(--homebutton-decision);
+    }
+
+    .game-tab:hover {
+        background-color: var(--category-background);
+        color: #e4a03a;
+    }
+
+    .game-tab:focus {
+        outline: none;
+    }
 </style>
 {% endblock %}
 
@@ -56,21 +79,106 @@
                     <p class="bio">{{ profile_user.bio|safe }}</p>
                 {% endif %}
             </div>
-            {% for game in games_details %}
-                <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
-                    <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                        <div class="d-flex flex-column justify-content-start">
-                            <h3>{{ game.game_type }} as {{ game.side }} ~ {{ game.outcome }}</h3>
-                            <p class="fw-bold fs-4">{{ game.relative_game_time }} ago...</p>
-                            <div class="align-items-center" style="text-align: center; padding: 10px 0;">
-                                {{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}
-                            </div>
-                            <i>{{ game.formatted_moves_string }}</i>
+            <nav class="nav d-flex">
+                <button class="active game-tab" data-toggle="tab" href="#allGames" style="border-top-left-radius: 10px;">Games {{ games_details|length }}</button>
+                <button class="game-tab" data-toggle="tab" href="#wins">Wins {{ wins|length }}</button>
+                <button class="game-tab" data-toggle="tab" href="#losses">Losses {{ losses|length }}</button>
+                <button class="game-tab" data-toggle="tab" href="#draws">Draws {{ draws|length }}</button>
+                <button class="game-tab" data-toggle="tab" href="#winWins" style="border-top-right-radius: 10px;">Win-Wins {{ win_wins|length }}</button>
+            </nav>
+            <hr style="border-color: white; margin: 0px;">
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="allGames">
+                    {% for game in games_details %}
+                        <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                            <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                                <div class="d-flex flex-column justify-content-start">
+                                    <h3 style="{% if game.won %}color: green;{% elif game.loss %}color: red;{% elif game.outcome == '1-1' %}color: var(--title-text);{% endif %}">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                    <div style="text-align: center; padding: 10px 0;">
+                                        <h3>{{ game.game_type }}</h3>
+                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                    </div>
+                                    <i>{{ game.formatted_moves_string }}</i>
+                                </div>
+                            </a>
+                            <hr style="border-color: white; margin-bottom: 0px;">
                         </div>
-                    </a>
-                    <hr style="border-color: white; margin-bottom: 0px;">
+                    {% endfor %}
                 </div>
-            {% endfor %}
+                <div class="tab-pane fade" id="wins">
+                    {% for game in wins %}
+                        <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                            <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                                <div class="d-flex flex-column justify-content-start">
+                                    <h3 style="color: green;">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                        <h3>{{ game.game_type }}</h3>
+                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                    </div>
+                                    <i>{{ game.formatted_moves_string }}</i>
+                                </div>
+                            </a>
+                            <hr style="border-color: white; margin-bottom: 0px;">
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="tab-pane fade" id="losses">
+                    {% for game in losses %}
+                        <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                            <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                                <div class="d-flex flex-column justify-content-start">
+                                    <h3 style="color: red;">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                        <h3>{{ game.game_type }}</h3>
+                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                    </div>
+                                    <i>{{ game.formatted_moves_string }}</i>
+                                </div>
+                            </a>
+                            <hr style="border-color: white; margin-bottom: 0px;">
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="tab-pane fade" id="draws">
+                    {% for game in draws %}
+                        <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                            <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                                <div class="d-flex flex-column justify-content-start">
+                                    <h3>{{ game.side }} ~ {{ game.outcome }}</h3>
+                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                        <h3>{{ game.game_type }}</h3>
+                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                    </div>
+                                    <i>{{ game.formatted_moves_string }}</i>
+                                </div>
+                            </a>
+                            <hr style="border-color: white; margin-bottom: 0px;">
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="tab-pane fade" id="winWins">
+                    {% for game in win_wins %}
+                        <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                            <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                                <div class="d-flex flex-column justify-content-start">
+                                    <h3 style="color: var(--title-text);">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                        <h3>{{ game.game_type }}</h3>
+                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                    </div>
+                                    <i>{{ game.formatted_moves_string }}</i>
+                                </div>
+                            </a>
+                            <hr style="border-color: white; margin-bottom: 0px;">
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
             <div style="padding-bottom: 20px;"></div>
         </div>
         <div class="col-2 d-none d-md-block"></div>

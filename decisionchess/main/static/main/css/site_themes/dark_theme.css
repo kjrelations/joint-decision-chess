@@ -108,8 +108,9 @@
     /* Live */
     --headerFocused: #756026;
     /* Profile */
-    --bio-border: rgb(46, 46, 46);
+    --bio-border: rgb(76, 76, 76);
     --bio-background: #090e0f;
+    --category-background: #355055;
     --history-background-1: #2a3f42;
     --history-background-2: #0c1011;
     /* Settings */
