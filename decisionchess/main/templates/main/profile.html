@@ -79,14 +79,16 @@
                     <p class="bio">{{ profile_user.bio|safe }}</p>
                 {% endif %}
             </div>
-            <nav class="nav d-flex">
-                <button class="active game-tab" data-toggle="tab" href="#allGames" style="border-top-left-radius: 10px;">Games {{ games_details|length }}</button>
-                <button class="game-tab" data-toggle="tab" href="#wins">Wins {{ wins|length }}</button>
-                <button class="game-tab" data-toggle="tab" href="#losses">Losses {{ losses|length }}</button>
-                <button class="game-tab" data-toggle="tab" href="#draws">Draws {{ draws|length }}</button>
-                <button class="game-tab" data-toggle="tab" href="#winWins" style="border-top-right-radius: 10px;">Win-Wins {{ win_wins|length }}</button>
-            </nav>
-            <hr style="border-color: white; margin: 0px;">
+            {% if not profile_user.account_closed %}
+                <nav class="nav d-flex">
+                    <button class="active game-tab" data-toggle="tab" href="#allGames" style="border-top-left-radius: 10px;">Games {{ games_details|length }}</button>
+                    <button class="game-tab" data-toggle="tab" href="#wins">Wins {{ wins|length }}</button>
+                    <button class="game-tab" data-toggle="tab" href="#losses">Losses {{ losses|length }}</button>
+                    <button class="game-tab" data-toggle="tab" href="#draws">Draws {{ draws|length }}</button>
+                    <button class="game-tab" data-toggle="tab" href="#winWins" style="border-top-right-radius: 10px;">Win-Wins {{ win_wins|length }}</button>
+                </nav>
+                <hr style="border-color: white; margin: 0px;">
+            {% endif %}
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="allGames">
                     {% for game in games_details %}

@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.db import transaction
 from django.db.utils import IntegrityError
-from django.db.models import Q, OuterRef, Subquery, Value
+from django.db.models import Q, F, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.template.loader import render_to_string
@@ -14,12 +14,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.views import LoginView
 from django.http import JsonResponse, HttpResponseNotFound
 from django.urls import reverse
 from django.utils.timesince import timesince
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable
+from .models import ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames, Message
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -126,6 +128,14 @@ def home(request):
     context['a1_svg'] = open(".\\static\\images\\a1.svg").read()
     context['b1_svg'] = open(".\\static\\images\\b1.svg").read()
     return render(request, "main/home.html", context)
+
+class CustomLoginView(LoginView):
+    template_name = 'main/login.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
 
 def custom_404(request, exception):
     return render(request, 'main/404.html', {'exception': exception}, status=404)
@@ -919,6 +929,40 @@ def profile(request, username):
     }
 
     return render(request, "main/profile.html", context)
+
+@login_required
+def inbox(request):
+    user = request.user
+    received = user.received_messages.all().order_by('-sent_at')
+    received = received.annotate(
+        sender_username=Coalesce(F('sender__username'), Value("Deleted User"))
+    )
+    return render(request, "main/inbox.html", {'received': received})
+
+@login_required
+def message(request, message_id):
+    try:
+        message = Message.objects.get(message_id=message_id)
+    except Message.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Not found"}, status=404)
+    if request.user.id != message.recipient_id:
+        return JsonResponse({"status": "error", "message": "Forbidden"}, status=403)
+    if message.is_deleted:
+        return JsonResponse({"status": "error", "message": "This message has been deleted"}, status=404)
+    if not message.is_read:
+        message.is_read = True
+        request.user.inbox.unread_count -= 1
+        message.save()
+        request.user.inbox.save()
+    
+    sender = message.sender
+    sender_username = sender.username if sender else "Deleted User"
+    return JsonResponse({
+        "subject": message.subject, 
+        "body": message.body, 
+        "sender": sender_username, 
+        "sent_at": message.sent_at
+    })
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})

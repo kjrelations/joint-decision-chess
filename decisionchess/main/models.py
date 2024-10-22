@@ -142,3 +142,38 @@ class Pages(models.Model):
 	page_position = models.IntegerField(blank=False, null=False, default=1)
 	content = models.TextField(blank=False, null=False, default="")
 	embedded_game = models.ForeignKey(EmbeddedGames, on_delete=models.SET_NULL, null=True)
+
+class Message(models.Model):
+	message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
+	recipient = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
+	subject = models.CharField(max_length=255, null=True, blank=True)
+	body = models.TextField()
+	sent_at = models.DateTimeField(auto_now_add=True)
+	is_read = models.BooleanField(default=False)
+	is_deleted = models.BooleanField(default=False)
+
+	def save(self, *args, **kwargs):
+		super().save(*args, **kwargs)
+
+		recipient_inbox, created = Inbox.objects.get_or_create(user=self.recipient)
+		recipient_inbox.messages.add(self)
+
+		if not self.is_read:
+			recipient_inbox.unread_count += 1
+			recipient_inbox.save()
+
+		Notification.objects.create(user=self.recipient, message=self)
+
+class Inbox(models.Model):
+	inbox_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.OneToOneField(User, related_name='inbox', on_delete=models.CASCADE)
+	messages = models.ManyToManyField(Message, related_name='inboxes')
+	unread_count = models.IntegerField(default=0)
+
+class Notification(models.Model):
+	notification_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
+	message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
+	created_at = models.DateTimeField(auto_now_add=True)
+	is_seen = models.BooleanField(default=False)

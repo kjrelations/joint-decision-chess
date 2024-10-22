@@ -9,7 +9,7 @@ from django.core.mail import send_mail
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib import messages
 from django.http import HttpResponseNotFound
-from main.models import UserSettings
+from main.models import UserSettings, Inbox
 from base64 import binascii
 from datetime import datetime, timedelta
 from .forms import RegisterForm, ResendActivationEmailForm, CustomResetForm, CustomPasswordChangeForm
@@ -18,6 +18,9 @@ import jwt
 User = get_user_model()
 
 def register(request):
+    if request.user and request.user.is_authenticated:
+        return redirect("home")
+    
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
@@ -164,6 +167,11 @@ def activate_account(request, uidtoken, token):
             user.save()
             user_default_settings.user = user
             user_default_settings.save()
+            new_inbox = Inbox(
+                user = user,
+                unread_count = 0
+                )
+            new_inbox.save()
 
             # Redirect to a success page
             return redirect('account_activated')

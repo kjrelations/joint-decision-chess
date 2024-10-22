@@ -113,6 +113,10 @@
     --category-background: #355055;
     --history-background-1: #2a3f42;
     --history-background-2: #0c1011;
+    /* Inbox */
+    --inbox-list-background: #253a3e;
+    --inbox-list-hover: #486368;
+    --inbox-header: #0d1516;
     /* Settings */
     --settings-side-nav-a-text: #5c67a3;
     --settings-side-nav-a-text-hover: #e4a03a;

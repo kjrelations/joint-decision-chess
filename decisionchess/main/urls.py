@@ -5,6 +5,7 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name='home'),
+    path('login/', views.CustomLoginView.as_view(), name='login'),
     path("quick_pair/", views.quick_pair, name='quick_pair'),
     path("create_new_game/", views.create_new_game, name='create_new_game'),
     path("create_new_game/<uuid:optional_uuid>/", views.create_new_game, name='create_new_game_with_uuid'),
@@ -21,6 +22,8 @@ urlpatterns = [
     path("news/", views.news, name="news"),
     path("live/", views.live, name='live'),
     path("profile/<str:username>/", views.profile, name="profile"),
+    path("inbox/", views.inbox, name="inbox"),
+    path("message/<uuid:message_id>/", views.message, name="message"),
     path("terms-of-service/", views.terms_of_service, name="terms"),
     path("privacy/", views.privacy_policy, name="privacy"),
     path("account/themes", views.change_themes, name="change_themes"),

@@ -1,0 +1,146 @@
+{% extends 'main/base.html' %}
+
+{% block style %}
+<style>
+    .inbox {
+        display: flex;
+        height: 75vh;
+        padding: 0;
+    }
+
+    .inbox-list {
+        width: 25%;
+        padding-bottom: auto;
+        background-color: var(--inbox-list-background);
+    }
+
+    .inbox-item {
+        border: none;
+        outline: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+        overflow-wrap: break-word;
+        color: white;
+        padding: 10px;
+    }
+
+    .inbox-item:hover {
+        background-color: var(--inbox-list-hover);
+    }
+
+    .inbox-item:focus {
+        outline: none;
+    }
+
+    .unread {
+        color: var(--title-text);
+    }
+
+    .username {
+        font-style: italic;
+    }
+
+    .message {
+        width: 75%;
+    }
+
+    .header {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        min-height: 50px;
+        padding: 10px;
+        background-color: var(--inbox-header);
+    }
+
+    .subject {
+        flex: 1 0 100%;
+    }
+
+    .sender {
+        flex: 0 0 25%;
+    }
+
+    .sent {
+        flex: 0 0 25%;
+        margin-left: auto;
+        text-align: right;
+    }
+
+    .body {
+        padding: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="main">
+    <div class="container-fluid" style="padding: 0;">
+        <div class="row justify-content-center" style="max-width: 100%;">
+            <div class="col-11 block ml-auto inbox">
+                <div class="inbox-list">
+                    {% for message in received.all %}
+                        <button class="inbox-item" id="{{ message.message_id }}" onclick="getMessage('{{ message.message_id }}')">
+                            <div class="{% if not message.is_read %}unread{% endif %}" id="header_{{ message.message_id }}">{{ message.subject }}</div>
+                            <div class="username">{{ message.sender_username }}</div>
+                        </button>
+                    {% endfor %}
+                </div>
+                <div class="message">
+                    <div style="height: 100%;">
+                        <div class="header">
+                            <div class="subject" id="subject"></div>
+                            <div class="sender" id="sender"></div>
+                            <div class="sent" id="sent"></div>
+                        </div>
+                        <div class="body" id="body"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const optionsDate = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+
+        const optionsTime = {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        };
+        function getMessage(messageId) {
+            fetch(`/message/${messageId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {                
+                    const utcDate = new Date(data.sent_at);
+                    const localDate = utcDate.toLocaleDateString(undefined, optionsDate);
+                    const localTime = utcDate.toLocaleTimeString(undefined, optionsTime);
+                    document.getElementById('subject').innerText = data.subject;
+                    document.getElementById('sender').innerText = data.sender;
+                    document.getElementById('sent').innerText = `${localDate} ${localTime}`;
+                    document.getElementById('body').innerText = data.body;
+
+                    const button = document.getElementById(`header_${messageId}`);
+                    if (button) {
+                        button.classList.remove('unread');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching message:', error);
+                });
+        }
+    </script>
+</div>
+{% endblock %}
