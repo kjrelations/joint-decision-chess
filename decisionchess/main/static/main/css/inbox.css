@@ -1,0 +1,163 @@
+.inbox {
+    display: flex;
+    height: 75vh;
+    padding: 0;
+}
+
+.inbox-list {
+    width: 25%;
+    background-color: var(--inbox-list-background);
+}
+
+.inbox-item {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    overflow-wrap: break-word;
+    color: white;
+    padding: 10px;
+}
+
+.inbox-item:hover {
+    background-color: var(--inbox-list-hover);
+}
+
+.inbox-item:focus {
+    outline: none;
+}
+
+.unread {
+    color: var(--homeblock-hover);
+}
+
+.username {
+    font-style: italic;
+}
+
+.user-item {
+    display: flex;
+    justify-content: space-between;
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    text-align: center;
+    overflow-wrap: break-word;
+    color: white;
+    padding: 10px;
+}
+
+.user-item:hover {
+    background-color: var(--inbox-list-hover);
+}
+
+.user-item:focus {
+    outline: none;
+}
+
+.challenge {
+    border: none;
+    outline: none;
+    background-color: transparent;
+    color: white;
+}
+
+.challenge:hover {
+    outline: none;
+    color: var(--homebutton-decision);
+}
+
+.challenge:focus {
+    outline: none;
+}
+
+.input-container {
+    position: absolute;
+    bottom: 0;
+    background-color: var(--inbox-header);
+    margin-top: auto;
+    width: 25%;
+    height: 50px;
+    padding: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.back {
+    border: none;
+    background-color: transparent;
+    color: white;
+}
+
+.back:focus {
+    outline: none;
+}
+
+.search-input {
+    width: 75%;
+    height: 40px;
+    padding: 10px;
+    border-radius: 50px;
+    border: 1px solid transparent;
+    outline: none;
+    font-size: 16px;
+    background-color: var(--search-input-background);
+    color: white;
+}
+
+.search-input:focus {
+    border-color: #007bff;
+}
+
+.search-input::placeholder {
+    color: var(--search-input-placeholder);
+}
+
+.message {
+    width: 75%;
+}
+
+.header {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    min-height: 50px;
+    padding: 10px;
+    background-color: var(--inbox-header);
+}
+
+.subject {
+    flex: 1 0 100%;
+}
+
+.sender {
+    flex: 0 0 25%;
+}
+
+.sent {
+    flex: 0 0 25%;
+    margin-left: auto;
+    text-align: right;
+}
+
+.body {
+    padding: 10px;
+}
+
+.main-mode {
+    display: flex;
+    justify-content: center;
+}
+
+.position-placeholder {
+    border: none;
+    outline: none;
+    padding: 0px;
+}
+
+.position-placeholder:focus {
+    outline: none;
+}

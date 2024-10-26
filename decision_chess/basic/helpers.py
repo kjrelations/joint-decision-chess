@@ -215,7 +215,8 @@ def load_historic_game(json_game):
         "_sync": True,
         "_promotion_white": None,
         "_promotion_black": None,
-        "_set_last_move": False
+        "_set_last_move": False,
+        "_max_states_reached": False
     }
     return game_param_dict
 

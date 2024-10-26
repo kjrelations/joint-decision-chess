@@ -1,77 +1,10 @@
 {% extends 'main/base.html' %}
 
+{% load static %}
+{% load crispy_forms_tags %}
+
 {% block style %}
-<style>
-    .inbox {
-        display: flex;
-        height: 75vh;
-        padding: 0;
-    }
-
-    .inbox-list {
-        width: 25%;
-        padding-bottom: auto;
-        background-color: var(--inbox-list-background);
-    }
-
-    .inbox-item {
-        border: none;
-        outline: none;
-        background: transparent;
-        width: 100%;
-        text-align: left;
-        overflow-wrap: break-word;
-        color: white;
-        padding: 10px;
-    }
-
-    .inbox-item:hover {
-        background-color: var(--inbox-list-hover);
-    }
-
-    .inbox-item:focus {
-        outline: none;
-    }
-
-    .unread {
-        color: var(--title-text);
-    }
-
-    .username {
-        font-style: italic;
-    }
-
-    .message {
-        width: 75%;
-    }
-
-    .header {
-        display: flex;
-        flex-wrap: wrap;
-        width: 100%;
-        min-height: 50px;
-        padding: 10px;
-        background-color: var(--inbox-header);
-    }
-
-    .subject {
-        flex: 1 0 100%;
-    }
-
-    .sender {
-        flex: 0 0 25%;
-    }
-
-    .sent {
-        flex: 0 0 25%;
-        margin-left: auto;
-        text-align: right;
-    }
-
-    .body {
-        padding: 10px;
-    }
-</style>
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/inbox.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -80,12 +13,22 @@
         <div class="row justify-content-center" style="max-width: 100%;">
             <div class="col-11 block ml-auto inbox">
                 <div class="inbox-list">
-                    {% for message in received.all %}
-                        <button class="inbox-item" id="{{ message.message_id }}" onclick="getMessage('{{ message.message_id }}')">
-                            <div class="{% if not message.is_read %}unread{% endif %}" id="header_{{ message.message_id }}">{{ message.subject }}</div>
-                            <div class="username">{{ message.sender_username }}</div>
-                        </button>
-                    {% endfor %}
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="messagePreviews">
+                            {% for message in received.all %}
+                                <button class="inbox-item" id="{{ message.message_id }}" onclick="getMessage('{{ message.message_id }}')">
+                                    <div class="{% if not message.is_read %}unread{% endif %}" id="header_{{ message.message_id }}">{{ message.subject }}</div>
+                                    <div class="username">{{ message.sender_username }}</div>
+                                </button>
+                            {% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="userSearch"></div>
+                        <div class="input-container">
+                            <button id="backToInbox" class="back invisible" data-toggle="tab" href="#messagePreviews" onclick="clearAndHideBackButton()"><i class="fa-solid fa-chevron-left"></i></button>
+                            <input type="text" class="search-input" id="userSearchInput" placeholder="Search users..." data-toggle="tab" href="#userSearch" onclick="showBackButton()" autocomplete="off">
+                            <i class="fa-solid fa-chevron-left invisible"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="message">
                     <div style="height: 100%;">
@@ -97,10 +40,115 @@
                         <div class="body" id="body"></div>
                     </div>
                 </div>
+                <div class="modal fade" id="CreateNewChallenge" tabindex="-1" role="dialog" aria-labelledby="CreateNewChallengeLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title text-center w-100" id="CreateNewChallengeLabel">Challenge ...</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModal">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="main-mode">
+                            {{ form.main_mode_private|as_crispy_field }} 
+                          </div>
+                          <div class="d-none" id="decision-content-challenge">
+                            {{ form.reveal_stage_private|as_crispy_field }}
+                            {{ form.decision_stage_private|as_crispy_field }}
+                          </div>
+                          <div class="text-center">Choose Starting Side</div>
+                          <div class="d-flex justify-content-center align-items-center">
+                              <button class="position-placeholder mr-2" data-position="white" new-challenge="true">
+                                  <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                              </button>
+                              <button class="position-placeholder mr-2" data-position="random" new-challenge="true">
+                                  <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                              </button>
+                              <button class="position-placeholder mr-2" data-position="black" new-challenge="true">
+                                  <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                              </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <script>
+        var csrftoken = "{{ csrf_token|escapejs }}";
+        document.addEventListener('DOMContentLoaded', function () {
+            const mainModePrivate = document.getElementById('main-mode-private');
+            const decisionContentChallenge = document.getElementById('decision-content-challenge');
+            showGameOptions(mainModePrivate, decisionContentChallenge);
+
+            mainModePrivate.addEventListener('change', function() {
+                showGameOptions(mainModePrivate, decisionContentChallenge)
+            });
+        });
+        
+        function showGameOptions(mainMode, decisionContent) {
+            const mode = mainMode.value;
+
+            if (mode === 'Classical') {
+                decisionContent.classList.add('d-none');
+                decisionContent.classList.remove('d-block');
+            } else if (mode === 'Decision') {
+                decisionContent.classList.add('d-block');
+                decisionContent.classList.remove('d-none');
+            }
+        }
+
+        const newChallengeButtons = document.querySelectorAll('[new-challenge="true"]');
+        newChallengeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                body = {
+                    "username": document.getElementById('CreateNewChallengeLabel').getAttribute('data-username'),
+                    "position": button.dataset.position,
+                    "solo": null,
+                    "main_mode": document.getElementById('main-mode-private').value,
+                    "reveal_stage": false,
+                    "decision_stage": false,
+                    "private": true,
+                    "computer_game": null
+                }
+                if (body["main_mode"] === "Decision") {
+                    body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;
+                    body["decision_stage"] = document.getElementById('decision-stage-private-checkbox').checked;
+                }
+                generateChallenge(body);
+            });
+        });
+
+        function generateChallenge(body) {
+            fetch('/save_challenge/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify(body),
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    return response.json();
+                } else {
+                    console.error('Error creating challenge:', response.statusText);
+                    return Promise.reject('Error creating challenge');
+                }
+            })
+            .then(data => {
+                if (data.redirect) {
+                    window.open(data.url, '_blank');
+                    document.getElementById('closeModal').click();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
         const optionsDate = {
             year: 'numeric',
             month: 'long',
@@ -140,6 +188,65 @@
                 .catch(error => {
                     console.error('Error fetching message:', error);
                 });
+        }
+
+        function showBackButton() {
+            document.getElementById('backToInbox').classList.remove('invisible');
+        }
+
+        function clearSearch() {
+            document.getElementById('userSearchInput').value = "";
+        }
+
+        function clearAndHideBackButton() {
+            clearSearch();
+            document.getElementById('backToInbox').classList.add('invisible');
+        }
+
+        let debounceTimer;
+        document.getElementById('userSearchInput').addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetch(`/usersearch/?user=${this.value}`)
+                    .then(response => response.json())
+                    .then(data => updateSearchResults(data));
+            }, 300); // Waits 300ms after last keystroke before firing
+        });
+
+        function updateSearchResults(data) {
+            var userList = document.getElementById('userSearch');
+            userList.innerHTML = '';
+            var users = [];
+            data.forEach(username => {
+                var userDiv = document.createElement('div');
+                userDiv.className = "user-item";
+                var challengeButton = document.createElement('button');
+                challengeButton.className = "challenge invisible";
+                challengeButton.innerHTML = '<i class="fa-solid fa-handshake-simple"></i>';
+                challengeButton.id = `challenge-${username}`;
+                challengeButton.setAttribute('data-toggle', 'modal');
+                challengeButton.setAttribute('data-target', '#CreateNewChallenge');
+                challengeButton.onclick = function() {
+                    document.getElementById('CreateNewChallengeLabel').innerHTML= `Challenge ${username}`;
+                    document.getElementById('CreateNewChallengeLabel').setAttribute('data-username', username);
+                };
+                var usernameDiv = document.createElement('div');
+                usernameDiv.textContent = username;
+                var empty = document.createElement('div');
+                userDiv.addEventListener('mouseover', function() {
+                    document.getElementById(`challenge-${username}`).classList.remove('invisible');
+                });
+                userDiv.addEventListener('mouseleave', function() {
+                    document.getElementById(`challenge-${username}`).classList.add('invisible');
+                });
+                userDiv.appendChild(empty);
+                userDiv.appendChild(usernameDiv);
+                userDiv.appendChild(challengeButton);
+                users.push(userDiv);
+            });
+            users.forEach(userElement => {
+                userList.appendChild(userElement);
+            });
         }
     </script>
 </div>

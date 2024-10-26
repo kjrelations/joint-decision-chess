@@ -2,7 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .models import ChessLobby, User, ActiveGames
+from .models import ChessLobby, User, ActiveGames, Challenge
 
 @receiver(post_save, sender=ChessLobby)
 def notify_update_on_save(sender, instance, **kwargs):
@@ -51,3 +51,27 @@ def notify_update_on_delete(sender, instance, **kwargs):
             }
         }
     )
+
+@receiver(post_save, sender=Challenge)
+def notify_update_on_save(sender, instance, **kwargs):
+    channel_layer = get_channel_layer()
+
+    if instance.challenge_accepted is None:
+        accepted = None
+    elif instance.challenge_accepted:
+        accepted = "accepted"
+    else:
+        accepted = "denied"
+
+    message = {'log': accepted}
+    if instance.game_id is not None and accepted == "accepted":
+        message.update({'url': f'/play/{instance.game_id}'})
+
+    if accepted is not None:
+        async_to_sync(channel_layer.group_send)(
+            f"challenge_{str(instance.challenge_id)}",
+            {
+                'type': 'chat.message',
+                'message': message
+            }
+        )

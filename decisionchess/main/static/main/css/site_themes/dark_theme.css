@@ -70,6 +70,7 @@
     --news-title-text: #F84E4E;
     --blog-titles: #e4a03a;
     /* Lessons */
+    --lesson-hover-text: #ecac22;
     --lesson-hover: #e4a03a;
     --basic-header: #436c73;
     --basic-lesson-background: #2f484d;
@@ -117,6 +118,18 @@
     --inbox-list-background: #253a3e;
     --inbox-list-hover: #486368;
     --inbox-header: #0d1516;
+    --search-input-background: rgb(0, 0, 0);
+    --search-input-placeholder: #bfbfbf;
+    /* Challenge */
+    --challenge-chat-box-text: white;
+    --challenge-chat-box-background: rgb(95, 31, 31);
+    --challenge-chat-box-log: rgb(187, 86, 86);
+    --challenge-chat-input-text: rgb(210, 210, 210);
+    --challenge-chat-input-background: rgb(170, 47, 47);
+    --challenge-chat-input-placeholder: #c3c3c3;
+    --challenge-chat-input-focus-text: white;
+    --challenge-chat-input-focus-background: rgb(186, 73, 73);
+    --challenge-chat-input-disabled: rgb(105, 67, 67);
     /* Settings */
     --settings-side-nav-a-text: #5c67a3;
     --settings-side-nav-a-text-hover: #e4a03a;

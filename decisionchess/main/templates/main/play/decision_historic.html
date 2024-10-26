@@ -99,7 +99,7 @@ Play
                     <button id="flipButton" class="action-button confirm hidden">Flip</button>
                 </div>
                 <div class="d-flex flex-row" style="max-height: 10%; min-width: 100%;">
-                    <div id="bottomPlayer" class="userblock">{% if user.is_authenticated %}{{ user.username }}{% else %}Anonymous{% endif %}</div>
+                    <div id="bottomPlayer" class="userblock">{{ player }}</div>
                 </div>
             </div>
             <div class="d-flex flex-wrap mb-auto" id="bottomPieces" style="height: 25px;"></div>

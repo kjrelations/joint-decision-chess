@@ -15,13 +15,13 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash, logout
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView
-from django.http import JsonResponse, HttpResponseNotFound
+from django.http import JsonResponse, HttpResponseNotFound, Http404
 from django.urls import reverse
 from django.utils.timesince import timesince
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable
-from .models import ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames, Message
+from .models import ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames, Message, Challenge, ChallengeMessages
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -937,7 +937,7 @@ def inbox(request):
     received = received.annotate(
         sender_username=Coalesce(F('sender__username'), Value("Deleted User"))
     )
-    return render(request, "main/inbox.html", {'received': received})
+    return render(request, "main/inbox.html", {'received': received, 'form': CreateNewGameForm()})
 
 @login_required
 def message(request, message_id):
@@ -962,7 +962,133 @@ def message(request, message_id):
         "body": message.body, 
         "sender": sender_username, 
         "sent_at": message.sent_at
-    })
+    }, status=200)
+
+def user_search(request):
+    query = request.GET.get('user', '')
+    if query:
+        users = User.objects.filter(username__icontains=query).values_list('username', flat=True)
+        return JsonResponse(list(users), safe=False)
+    else:
+        return JsonResponse([], safe=False)
+
+@login_required
+def challenge(request, challenge_id):
+    try:
+        challenge = Challenge.objects.get(challenge_id=challenge_id)
+        if request.user.username not in [challenge.opponent_name, challenge.initiator_name]:
+            raise Http404("Object not found")
+        context = {'initiator': request.user.username == challenge.initiator_name, 'challenge': challenge}
+        if challenge.initiator_choice == "Random":
+            random = open(".\\static\\images\\random-pawn.svg").read()
+            context.update({
+                'init_svg': random,
+                'opp_svg': random
+                })
+        else:
+            black = open(".\\static\\images\\black-pawn.svg").read()
+            white = open(".\\static\\images\\white-pawn.svg").read()
+            context.update({
+                'init_svg': white if challenge.initiator_color == "white" else black,
+                'opp_svg': white if not challenge.initiator_color == "white" else black
+                })
+        if challenge.gametype == "Complete":
+            gametype_svg = "complete-variant-icon"
+        elif challenge.gametype == "Relay":
+            gametype_svg = "reveal-stage-icon"
+        elif challenge.gametype == "Countdown":
+            gametype_svg = "decision-stage-icon"
+        else:
+            gametype_svg = "decision-icon-colored" # Handle classical eventually
+        context['gametype_svg'] = open(f".\\static\\images\\{gametype_svg}.svg").read()
+        context["chat_messages"] = challenge.messages.all().order_by('timestamp')
+        return render(request, 'main/challenge.html', context)
+    except Challenge.DoesNotExist:
+        raise Http404("Object not found")
+
+@login_required
+def upsert_challenge(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        initiator_name = request.user.username
+        opponent_name = data.get('username')
+        if initiator_name == opponent_name and initiator_name != 'kjrelations':
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        try:
+            opponent = User.objects.get(username=opponent_name)
+        except User.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "User DNE"}, status=404)
+        new_challenge = Challenge(
+            initiator_name= initiator_name,
+            opponent_name= opponent_name
+        )
+        position = data.get('position')
+        if position == "white":
+            new_challenge.white_id = request.user.id
+            new_challenge.black_id = opponent.id
+            new_challenge.initiator_color = "white"
+            new_challenge.initiator_choice = "White"
+        elif position == "black":
+            new_challenge.black_id = request.user.id
+            new_challenge.white_id = opponent.id
+            new_challenge.initiator_color = "black"
+            new_challenge.initiator_choice = "Black"
+        elif position == "random":
+            column_to_fill = random.choice(["black_id", "white_id"])
+            setattr(new_challenge, column_to_fill, request.user.id)
+            new_challenge.initiator_color = "white" if column_to_fill == "white_id" else "black"
+            opponent_column_to_fill = "white_id" if column_to_fill == "black_id" else "black_id"
+            setattr(new_challenge, opponent_column_to_fill, opponent.id)
+            new_challenge.initiator_choice = "Random"
+        if data.get('main_mode') in ['Decision', 'Classical']:
+            if data.get('main_mode') == 'Decision':
+                if data.get('reveal_stage') and data.get('decision_stage'):
+                    new_challenge.gametype = 'Complete'
+                elif data.get('reveal_stage') and not data.get('decision_stage'):
+                    new_challenge.gametype = 'Relay'
+                elif not data.get('reveal_stage') and data.get('decision_stage'):
+                    new_challenge.gametype = 'Countdown'
+                else:
+                    new_challenge.gametype = 'Standard'
+            else:
+                new_challenge.gametype = data.get('main_mode')
+        else:
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        new_challenge.save()
+        return JsonResponse({'redirect': True, 'url': reverse('challenge', args=[str(new_challenge.challenge_id)]), "message": "Challenge sent"}, status=200)
+    elif request.method == "PUT":
+        data = json.loads(request.body)
+
+        challenge_id = data.get('challenge_id')
+        accepted = data.get('accepted')
+        if accepted not in [True, False] or challenge_id is None:
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        try:
+            challenge = Challenge.objects.get(challenge_id=challenge_id)
+        except Challenge.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        if request.user.username != challenge.opponent_name or \
+           challenge.challenge_accepted is not None:
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        challenge.challenge_accepted = accepted
+        json_message = {"accepted": accepted}
+        if accepted:
+            new_lobby = ChessLobby(
+                white_id = challenge.white_id,
+                black_id = challenge.black_id,
+                initiator_name = challenge.initiator_name,
+                opponent_name = challenge.opponent_name,
+                timestamp = challenge.timestamp,
+                is_open = False,
+                initiator_color = challenge.initiator_color,
+                gametype = challenge.gametype
+            )
+            new_lobby.save()
+            challenge.game_id = new_lobby.lobby_id
+            json_message.update({'redirect': True, 'url': reverse('join_new_game', args=[str(new_lobby.lobby_id)])})
+        challenge.save()
+        return JsonResponse(json_message, status=200)
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})

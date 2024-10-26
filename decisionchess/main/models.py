@@ -177,3 +177,31 @@ class Notification(models.Model):
 	message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
 	created_at = models.DateTimeField(auto_now_add=True)
 	is_seen = models.BooleanField(default=False)
+
+class Challenge(models.Model):
+	challenge_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	white_id = models.UUIDField(null=True)
+	black_id = models.UUIDField(null=True)
+	initiator_name = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
+	opponent_name = models.CharField(max_length=150, blank=False, null=False, default="Waiting...")
+	timestamp = models.DateTimeField()
+	initiator_color = models.CharField(max_length=5, null=True)
+	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	challenge_accepted = models.BooleanField(default=None, null=True)
+	choices = [('Random', 'Random'), ('White', 'White'), ('Black', 'Black')]
+	initiator_choice = models.CharField(max_length=6, choices=choices, default='Random')
+	game_id = models.UUIDField(null=True)
+
+	def save(self, *args, **kwargs):
+		if not self.timestamp:
+			self.timestamp = timezone.now()
+		super(Challenge, self).save(*args, **kwargs)
+
+class ChallengeMessages(models.Model):
+	message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	challenge = models.ForeignKey(Challenge, related_name='messages', on_delete=models.CASCADE)
+	sender_is_initiator = models.BooleanField(default=False, null=False)
+	sender = models.UUIDField(null=False)
+	sender_username = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
+	message = models.TextField()
+	timestamp = models.DateTimeField(default=timezone.now)

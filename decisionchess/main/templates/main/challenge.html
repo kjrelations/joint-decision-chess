@@ -1,0 +1,80 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+
+{% block style %}
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/challenge.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <div class="col-11 block ml-auto">
+            <div class="d-flex challenge-content">
+                <div class="challenger-side">
+                    <div class="d-flex flex-column justify-content-center h-100">
+                        <h1>{{ init_svg|safe }} Challenger</h1>
+                        <h2>{{ challenge.initiator_name }}</h2>
+                    </div>
+                </div>
+                <div class="game-info">
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100 first" style="position: relative;">
+                        <div class="d-flex justify-content-center align-items-center">{{ gametype_svg|safe }}</div>
+                        <h2>{{ challenge.gametype }}</h2>
+                        <span class="timestamp" data-timestamp="{{ challenge.timestamp|date:"c" }}"></span>
+                    </div>
+                    {% if challenge.challenge_accepted is not None %}
+                    <div class="second" id="challenge-status">
+                        {% if challenge.challenge_accepted == False %}
+                        Challenge Denied
+                        {% elif challenge.challenge_accepted == True %}
+                        Challenge Accepted <a class="join" href="/play/{{ challenge.game_id }}">Join Game</a>
+                        {% endif %}
+                    </div>
+                    {% elif initiator %}
+                    <div class="second" id="challenge-status">Waiting for opponent...</div>
+                    {% else %}
+                    <div class="second" id="challenge-status">
+                        <button class="btn btn-success" onclick="respondChallenge(true)">Accept</button>
+                        <button class="btn btn-danger" onclick="respondChallenge(false)">Deny</button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="opponent-side">
+                    <div class="d-flex flex-column justify-content-center h-100">
+                        <h1>Opponent {{ opp_svg|safe }}</h1>
+                        <h2>{{ challenge.opponent_name }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="challenge-chat-box d-flex flex-column justify-content-end">
+                <div class="chat-wrapper mb-auto">
+                    <div class="chat-messages">
+                        {% for message in chat_messages.all %}
+                            <div class="message-wrapper">
+                                {% if not message.sender_is_initiator %}
+                                <div class="chat-fill"></div>
+                                <p class="chat-message mr-auto">{{ message.message|safe }}</p>
+                                {% endif %}
+                                {% if message.sender_is_initiator %}
+                                <p class="chat-message ml-auto">{{ message.message|safe }}</p>
+                                <div class="chat-fill"></div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" class="form-control chat-input" placeholder="Type a message and press Enter..." id="chat-input" disabled>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var csrftoken = "{{ csrf_token|escapejs }}";
+        var is_challenger = {% if initiator %}true{% else %}false{% endif %};
+        var responded = {% if challenge.challenge_accepted is not None %}true{% else %}false{% endif%};
+    </script>
+    <script src="{% static 'main/js/challenge.js' %}"></script>
+</div>
+{% endblock %}

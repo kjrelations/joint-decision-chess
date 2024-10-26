@@ -1,0 +1,158 @@
+.challenge-content {
+    height: 60vh;
+    width: 100%;
+}
+
+h1 {
+    margin: 0;
+}
+
+.challenger-side,
+.opponent-side {
+    height: 100%;
+    width: 33%;
+}
+
+.challenger-side {
+    text-align: left;
+}
+
+.opponent-side {
+    text-align: right;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    height: 100%;
+    width: 33%;
+}
+
+.first {
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+.second {
+    position: absolute;
+    top: 75%;
+    transform: translateY(75%);
+}
+
+.join {
+    border-radius: 5px;
+    background-color: green;
+    color: white;
+    padding: 5px;
+}
+
+.join:hover {
+    text-decoration: none;
+    color: var(--homeblock-hover);
+}
+
+.challenge-chat-box {
+    position: relative;
+    height: 25vh;
+    width: 100%;
+    color: var(--challenge-chat-box-text);
+    background-color: var(--challenge-chat-box-background);
+    margin-bottom: 20px;
+}
+
+.challenge-chat-box::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    height: 100%;
+    bottom: 0;
+    width: 2px;
+    background-color: #ccc;  /* Choose your line color */
+    transform: translateX(-50%);
+    z-index: 0;            /* Ensures it stays behind chat messages */
+    pointer-events: none; 
+}
+
+.chat-wrapper {
+    position: relative;
+    overflow-y: auto;
+    padding-bottom: 1em;
+    margin-bottom: 1em;
+    scrollbar-width: none;
+    scrollbar-color: transparent transparent;
+}
+
+.chat-wrapper::-webkit-scrollbar {
+    width: 0;                
+    background: transparent; 
+}
+
+.message-wrapper {
+    width: 100%;
+    display: flex;
+}
+
+.chat-fill {
+    width: 50%;
+}
+
+.chat-message {
+    max-width: 50%;
+    overflow-wrap: break-word;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+    font-size: smaller;
+    margin-bottom: 0;
+}
+
+.chat-input {
+    border: none;
+    border-radius: 0;
+    color: var(--challenge-chat-input-text);
+    background-color: var(--challenge-chat-input-background);
+    padding: 0;
+    padding-left: 0.25em;
+}
+
+.chat-input::placeholder {
+    font-size: smaller;
+    color: var(--challenge-chat-input-placeholder);
+}
+
+.chat-input:focus {
+    z-index: 0;
+    border: none;
+    border-radius: 0;
+    color: var(--challenge-chat-input-focus-text);
+    background-color: var(--challenge-chat-input-focus-background);
+    box-shadow: none;
+}
+
+.form-control:focus {
+    z-index: 0 !important;
+}
+
+.form-control:disabled {
+    background-color: var(--challenge-chat-input-disabled);
+}
+
+.chat-input:disabled::placeholder {
+    color: transparent;
+}
+
+.svg-side {
+    width: 25px;
+    padding-bottom: 15px;
+}
+
+.svg-scaled-complete {
+    width: 10%;
+}
+
+.svg-scaled-circle {
+    width: 30%;
+}

@@ -256,7 +256,7 @@ function updateLobby() {
                 lobbyRow.appendChild(rightHalf);
 
                 var gameLink = document.createElement('a');
-                gameLink.className = "lobby-a"
+                gameLink.className = "lobby-a";
                 gameLink.href = '/play/' + game.game_uuid;
                 gameLink.onclick = function (event) {
                     event.preventDefault();
