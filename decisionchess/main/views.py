@@ -18,10 +18,11 @@ from django.contrib.auth.views import LoginView
 from django.http import JsonResponse, HttpResponseNotFound, Http404
 from django.urls import reverse
 from django.utils.timesince import timesince
+from django.views.decorators.http import require_GET
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
-from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable
-from .models import ActiveChatMessages, ChatMessages, UserSettings, Lessons, Pages, EmbeddedGames, Message, Challenge, ChallengeMessages
+from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
+from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -964,11 +965,17 @@ def message(request, message_id):
         "sent_at": message.sent_at
     }, status=200)
 
+@login_required
 def user_search(request):
     query = request.GET.get('user', '')
     if query:
         users = User.objects.filter(username__icontains=query).values_list('username', flat=True)
-        return JsonResponse(list(users), safe=False)
+        filtered_users = list(users)
+        try:
+            filtered_users.remove(request.user.username)
+        except:
+            pass
+        return JsonResponse(filtered_users, safe=False)
     else:
         return JsonResponse([], safe=False)
 
@@ -1019,6 +1026,9 @@ def upsert_challenge(request):
             opponent = User.objects.get(username=opponent_name)
         except User.DoesNotExist:
             return JsonResponse({"status": "error", "message": "User DNE"}, status=404)
+        initiator_blocked = Blocks.objects.filter(user=opponent, blocked_user_id=request.user.id).exists()
+        if initiator_blocked:
+            return JsonResponse({"status": "error", "message": "blocked"}, status=403)
         new_challenge = Challenge(
             initiator_name= initiator_name,
             opponent_name= opponent_name
@@ -1089,6 +1099,54 @@ def upsert_challenge(request):
             json_message.update({'redirect': True, 'url': reverse('join_new_game', args=[str(new_lobby.lobby_id)])})
         challenge.save()
         return JsonResponse(json_message, status=200)
+
+@login_required
+def block(request):
+    if request.method in ['POST', 'PUT']:
+        data = json.loads(request.body)
+        username = data.get('username')
+        if username == request.user.username:
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        try:
+            blocked_user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        already_blocked = Blocks.objects.filter(blocked_user_id=blocked_user.id).exists()
+        if already_blocked:
+            unblock = data.get('unblock')
+            if unblock:
+                try:
+                    block = Blocks.objects.get(blocked_user_id=blocked_user.id)
+                    block.delete()
+                    return JsonResponse({"status": "updated"}, status=200)
+                except:
+                    return JsonResponse({"status": "error", "message": "Internal Server error"}, status=500)
+            return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+        block = Blocks(
+            user = request.user,
+            blocked_user_id = blocked_user.id
+        )
+        block.save()
+        return JsonResponse({"status": "updated"}, status=200)
+    return JsonResponse({"status": "error", "message": "Not Allowed"}, status=405)
+
+@login_required
+@require_GET
+def existing_blocks(request):
+    blocked_user_ids = list(Blocks.objects.filter(user=request.user).values_list('blocked_user_id', flat=True))
+    blocked_usernames = []
+    if len(blocked_user_ids) != 0:
+        blocked_usernames = list(User.objects.filter(id__in=blocked_user_ids).values_list('username', flat=True))
+    return JsonResponse({'blocked': blocked_usernames}, safe=False, status=200)
+
+@login_required
+@require_GET
+def is_blocked(request):
+    try:
+        user = User.objects.get(username=request.GET.get('username'))
+    except User.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Not Found"}, status=404)
+    return JsonResponse({'is_blocked': Blocks.objects.filter(user=request.user, blocked_user_id=user.id).exists()}, status=200)
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})

@@ -119,7 +119,8 @@
     --inbox-list-hover: rgb(43, 56, 59);
     --inbox-header: rgb(61, 82, 87);
     --search-input-background: rgb(98, 119, 125);
-    --search-input-placeholder: deeadd;
+    --search-input-placeholder: #cfdace;
+    --left-column-scrollbar-track-background: #aed5df;
     /* Challenge */
     --challenge-chat-box-text: white;
     --challenge-chat-box-background: brown;

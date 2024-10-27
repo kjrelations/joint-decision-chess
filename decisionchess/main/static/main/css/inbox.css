@@ -9,6 +9,13 @@
     background-color: var(--inbox-list-background);
 }
 
+.left-column {
+    overflow-y: scroll;
+    height: calc(100% - 50px);
+    scrollbar-width: thin;
+    scrollbar-color: var(--inbox-header) var(--left-column-scrollbar-track-background);
+}
+
 .inbox-item {
     border: none;
     outline: none;
@@ -57,19 +64,19 @@
     outline: none;
 }
 
-.challenge {
+.user-button {
     border: none;
     outline: none;
     background-color: transparent;
     color: white;
 }
 
-.challenge:hover {
+.user-button:hover {
     outline: none;
     color: var(--homebutton-decision);
 }
 
-.challenge:focus {
+.user-button:focus {
     outline: none;
 }
 
@@ -84,6 +91,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.user-tab-header {
+    display: flex;
+    margin-right: 2px;
+    justify-content: end;
+    background-color: var(--inbox-header);
+    width: 100%;
 }
 
 .back {

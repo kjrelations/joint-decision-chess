@@ -13,7 +13,7 @@
         <div class="row justify-content-center" style="max-width: 100%;">
             <div class="col-11 block ml-auto inbox">
                 <div class="inbox-list">
-                    <div class="tab-content">
+                    <div class="tab-content left-column">
                         <div class="tab-pane fade show active" id="messagePreviews">
                             {% for message in received.all %}
                                 <button class="inbox-item" id="{{ message.message_id }}" onclick="getMessage('{{ message.message_id }}')">
@@ -22,12 +22,18 @@
                                 </button>
                             {% endfor %}
                         </div>
-                        <div class="tab-pane fade" id="userSearch"></div>
-                        <div class="input-container">
-                            <button id="backToInbox" class="back invisible" data-toggle="tab" href="#messagePreviews" onclick="clearAndHideBackButton()"><i class="fa-solid fa-chevron-left"></i></button>
-                            <input type="text" class="search-input" id="userSearchInput" placeholder="Search users..." data-toggle="tab" href="#userSearch" onclick="showBackButton()" autocomplete="off">
-                            <i class="fa-solid fa-chevron-left invisible"></i>
+                        <div class="tab-pane fade" id="userTab">
+                            <div class="user-tab-header">
+                                <button id="blockedPlayersButton" class="user-button" data-toggle="tab" href="#blockedUsersTab" onclick="fetchBlockedPlayers()"><i class="fa-solid fa-shield-halved"></i></button>
+                            </div>
+                            <div id="userSearch"></div>
                         </div>
+                        <div class="tab-pane fade" id="blockedUsersTab"></div>
+                    </div>
+                    <div class="input-container">
+                        <button id="backToInbox" class="back invisible" data-toggle="tab" href="#messagePreviews" onclick="clearAndHideBackButton()"><i class="fa-solid fa-chevron-left"></i></button>
+                        <input type="text" class="search-input" id="userSearchInput" placeholder="Search users..." data-toggle="tab" href="#userTab" onclick="showBackButton()" autocomplete="off">
+                        <i class="fa-solid fa-chevron-left invisible"></i>
                     </div>
                 </div>
                 <div class="message">
@@ -71,6 +77,34 @@
                           </div>
                         </div>
                       </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="BlockUser" tabindex="-1" role="dialog" aria-labelledby="BlockUserLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header d-flex justify-content-between align-items-center" style="position: relative;">
+                              <h5 class="modal-title text-center w-100" id="BlockUserLabel" style="flex: 1;">Block User?</h5>
+                              <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModal" style="position: absolute; right: 15px; top: 15px;">
+                                <span aria-hidden="true">&times;</span>
+                              </button>
+                          </div>
+                          <div class="modal-body d-flex justify-content-center">
+                            <button class="btn btn-success mr-2" id="blockUnblockButton">Block</button>
+                            <button class="btn btn-danger" data-dismiss="modal">No</button>
+                          </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="ChallengeBlocked" tabindex="-1" role="dialog" aria-labelledby="ChallengeBlockedLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                            <div class="modal-body d-flex justify-content-center">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModal" style="position: absolute; right: 15px; top: 15px;">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                Challenge cannot be sent to this user
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -134,6 +168,10 @@
                 if (response.status === 200) {
                     return response.json();
                 } else {
+                    if (response.status === 403) {
+                        $('#CreateNewChallenge').modal('hide');
+                        $('#ChallengeBlocked').modal('show');
+                    };
                     console.error('Error creating challenge:', response.statusText);
                     return Promise.reject('Error creating challenge');
                 }
@@ -196,11 +234,19 @@
 
         function clearSearch() {
             document.getElementById('userSearchInput').value = "";
+            document.getElementById('userSearch').innerHTML = "";
         }
 
         function clearAndHideBackButton() {
             clearSearch();
             document.getElementById('backToInbox').classList.add('invisible');
+            clearActives();
+        }
+
+        function clearActives() {
+            document.getElementById('backToInbox').classList.remove('active');
+            document.getElementById('userSearchInput').classList.remove('active');
+            document.getElementById('blockedPlayersButton').classList.remove('active');
         }
 
         let debounceTimer;
@@ -213,6 +259,76 @@
             }, 300); // Waits 300ms after last keystroke before firing
         });
 
+        function blockOrUnblockUser(username) {
+            var action = document.getElementById('blockUnblockButton').innerText;
+            var body = {'username': username};
+            var requestMethod = 'POST';
+            if (action === 'Unblock') {
+                body['unblock'] = true;
+                requestMethod = 'PUT';
+            }
+            fetch('/block/', {
+                method: requestMethod,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify(body),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {      
+                if (action === 'Unblock') {
+                    blocked = document.getElementById(`blocked-user-${username}`);
+                    if (blocked) {
+                        blocked.remove();
+                    }
+                }          
+                $('#BlockUser').modal('hide');
+            })
+            .catch(error => {
+                console.error('Error fetching message:', error);
+            });
+        }
+
+        function getUserBlocked(username) {
+            fetch(`/is_blocked/?username=${username}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.message);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {                
+                    if (data['is_blocked']) {
+                        document.getElementById('BlockUserLabel').innerHTML = `Unblock ${username}?`;
+                        document.getElementById('blockUnblockButton').innerHTML = `Unblock`;
+                        document.getElementById('blockUnblockButton').onclick = function() {
+                            blockOrUnblockUser(username);
+                        };
+                        $('#BlockUser').modal('show');
+                    } else {
+                        document.getElementById('BlockUserLabel').innerHTML = `Block ${username}?`;
+                        document.getElementById('blockUnblockButton').innerHTML = `Block`;
+                        document.getElementById('blockUnblockButton').onclick = function() {
+                            blockOrUnblockUser(username);
+                        };
+                        $('#BlockUser').modal('show');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching message:', error);
+                });
+        }
+
         function updateSearchResults(data) {
             var userList = document.getElementById('userSearch');
             userList.innerHTML = '';
@@ -221,7 +337,7 @@
                 var userDiv = document.createElement('div');
                 userDiv.className = "user-item";
                 var challengeButton = document.createElement('button');
-                challengeButton.className = "challenge invisible";
+                challengeButton.className = "user-button invisible";
                 challengeButton.innerHTML = '<i class="fa-solid fa-handshake-simple"></i>';
                 challengeButton.id = `challenge-${username}`;
                 challengeButton.setAttribute('data-toggle', 'modal');
@@ -230,23 +346,92 @@
                     document.getElementById('CreateNewChallengeLabel').innerHTML= `Challenge ${username}`;
                     document.getElementById('CreateNewChallengeLabel').setAttribute('data-username', username);
                 };
+                var blockButton = document.createElement('button');
+                blockButton.className = "user-button invisible";
+                blockButton.innerHTML = '<i class="fa-solid fa-shield"></i>';
+                blockButton.id = `block-${username}`;
+                blockButton.setAttribute('data-toggle', 'modal');
+                blockButton.setAttribute('data-target', '#BlockUser');
+                blockButton.onclick = function() {
+                    document.getElementById('BlockUserLabel').setAttribute('data-username', username);
+                    getUserBlocked(username);
+                };
                 var usernameDiv = document.createElement('div');
                 usernameDiv.textContent = username;
                 var empty = document.createElement('div');
                 userDiv.addEventListener('mouseover', function() {
                     document.getElementById(`challenge-${username}`).classList.remove('invisible');
+                    document.getElementById(`block-${username}`).classList.remove('invisible');
                 });
                 userDiv.addEventListener('mouseleave', function() {
                     document.getElementById(`challenge-${username}`).classList.add('invisible');
+                    document.getElementById(`block-${username}`).classList.add('invisible');
                 });
                 userDiv.appendChild(empty);
                 userDiv.appendChild(usernameDiv);
-                userDiv.appendChild(challengeButton);
+                var buttonsContainer = document.createElement('div');
+                buttonsContainer.appendChild(challengeButton);
+                buttonsContainer.appendChild(blockButton);
+                userDiv.appendChild(buttonsContainer);
                 users.push(userDiv);
             });
             users.forEach(userElement => {
                 userList.appendChild(userElement);
             });
+        };
+        
+        function fetchBlockedPlayers() {
+            clearSearch();
+            clearActives();
+            fetch(`/existing_blocks/`)
+                    .then(response => response.json())
+                    .then(data => updateBlockedSearchResults(data['blocked']));
+        };
+
+        function updateBlockedSearchResults(data) {
+            var userList = document.getElementById('blockedUsersTab');
+            userList.innerHTML = '';
+            var users = [];
+            if (data.length === 0) {
+                var userDiv = document.createElement('div');
+                userDiv.className = "user-item";
+                userDiv.innerHTML = 'None Blocked';
+                userList.appendChild(userDiv);
+            } else {
+                data.forEach(username => {
+                    var userDiv = document.createElement('div');
+                    userDiv.className = "user-item";
+                    userDiv.id = `blocked-user-${username}`;
+                    var blockButton = document.createElement('button');
+                    blockButton.className = "user-button invisible";
+                    blockButton.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
+                    blockButton.id = `blocked-${username}`;
+                    blockButton.setAttribute('data-toggle', 'modal');
+                    blockButton.setAttribute('data-target', '#BlockUser');
+                    blockButton.onclick = function() {
+                        document.getElementById('BlockUserLabel').setAttribute('data-username', username);
+                        getUserBlocked(username);
+                    };
+                    var usernameDiv = document.createElement('div');
+                    usernameDiv.textContent = username;
+                    var empty = document.createElement('div');
+                    userDiv.addEventListener('mouseover', function() {
+                        document.getElementById(`blocked-${username}`).classList.remove('invisible');
+                    });
+                    userDiv.addEventListener('mouseleave', function() {
+                        document.getElementById(`blocked-${username}`).classList.add('invisible');
+                    });
+                    userDiv.appendChild(empty);
+                    userDiv.appendChild(usernameDiv);
+                    var buttonsContainer = document.createElement('div');
+                    buttonsContainer.appendChild(blockButton);
+                    userDiv.appendChild(buttonsContainer);
+                    users.push(userDiv);
+                });
+                users.forEach(userElement => {
+                    userList.appendChild(userElement);
+                });
+            }
         }
     </script>
 </div>

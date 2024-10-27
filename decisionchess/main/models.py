@@ -205,3 +205,8 @@ class ChallengeMessages(models.Model):
 	sender_username = models.CharField(max_length=150, blank=False, null=False, default="Anonymous")
 	message = models.TextField()
 	timestamp = models.DateTimeField(default=timezone.now)
+
+class Blocks(models.Model):
+	block_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	user = models.ForeignKey(User, related_name='blocked_users', on_delete=models.CASCADE)
+	blocked_user_id = models.UUIDField()
