@@ -2,10 +2,10 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from .models import ChessLobby, User, ActiveGames, Challenge
+from .models import ChessLobby, User, ActiveGames, Challenge, Notification
 
 @receiver(post_save, sender=ChessLobby)
-def notify_update_on_save(sender, instance, **kwargs):
+def notify_game_update_on_save(sender, instance, **kwargs):
     channel_layer = get_channel_layer()
 
     white_user = User.objects.filter(id=instance.white_id).first()
@@ -38,7 +38,7 @@ def notify_update_on_save(sender, instance, **kwargs):
     )
 
 @receiver(post_delete, sender=ChessLobby)
-def notify_update_on_delete(sender, instance, **kwargs):
+def notify_game_update_on_delete(sender, instance, **kwargs):
     channel_layer = get_channel_layer()
 
     async_to_sync(channel_layer.group_send)(
@@ -53,7 +53,7 @@ def notify_update_on_delete(sender, instance, **kwargs):
     )
 
 @receiver(post_save, sender=Challenge)
-def notify_update_on_save(sender, instance, **kwargs):
+def notify_challenge_update_on_save(sender, instance, **kwargs):
     channel_layer = get_channel_layer()
 
     if instance.challenge_accepted is None:
@@ -75,3 +75,38 @@ def notify_update_on_save(sender, instance, **kwargs):
                 'message': message
             }
         )
+
+@receiver(post_save, sender=Notification)
+def notify_notification_update_on_save(sender, instance, **kwargs):
+    channel_layer = get_channel_layer()
+    username = instance.user.username
+    async_to_sync(channel_layer.group_send)(
+        f'notifications_{username}',
+        {
+            'type': 'send_update',
+            'data': {
+                'action': 'save',
+                'notification_id': str(instance.notification_id),
+                'message_id': str(instance.message.message_id),
+                'created_at': instance.created_at.isoformat(),
+                'is_seen': instance.is_seen,
+                'sender_username': instance.message.sender.username,
+                'subject': instance.message.subject
+            }
+        }
+    )
+
+@receiver(post_delete, sender=Notification)
+def notify_notification_update_on_delete(sender, instance, **kwargs):
+    channel_layer = get_channel_layer()
+    username = instance.user.username
+    async_to_sync(channel_layer.group_send)(
+        f'notifications_{username}',
+        {
+            'type': 'send_update',
+            'data': {
+                'action': 'delete',
+                'notification_id': str(instance.notification_id)
+            }
+        }
+    )

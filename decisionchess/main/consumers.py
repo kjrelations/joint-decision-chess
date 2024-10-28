@@ -437,3 +437,34 @@ class ChallengeConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': message
         }))
+
+class NotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        user = await self.get_user()
+        username = user.username if user and user.is_authenticated else None
+        if username is not None:
+            self.username = username
+            self.room_group_name = f"notifications_{self.username}"
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+            await self.accept()
+        else:
+            await self.close()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    @database_sync_to_async
+    def get_user(self):
+        user_id = self.scope.get("session", {}).get("_auth_user_id")
+        User = get_user_model()
+        return User.objects.get(id=user_id) if user_id else None
+
+    async def send_update(self, event):
+        update_data = event['data']
+        await self.send(text_data=json.dumps(update_data))

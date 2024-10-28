@@ -3,6 +3,8 @@ from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
 from django_countries.fields import CountryField
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from . import user_settings
 import uuid
 
@@ -162,8 +164,18 @@ class Message(models.Model):
 		if not self.is_read:
 			recipient_inbox.unread_count += 1
 			recipient_inbox.save()
+		else:
+			try:
+				notification = Notification.objects.get(message=self)
+				notification.is_seen = True
+				notification.save()
+			except Notification.DoesNotExist:
+				pass
 
-		Notification.objects.create(user=self.recipient, message=self)
+@receiver(post_save, sender=Message)
+def create_notification(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(user=instance.recipient, message=instance)
 
 class Inbox(models.Model):
 	inbox_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -174,7 +186,7 @@ class Inbox(models.Model):
 class Notification(models.Model):
 	notification_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
-	message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
+	message = models.ForeignKey(Message, related_name='notification', on_delete=models.CASCADE)
 	created_at = models.DateTimeField(auto_now_add=True)
 	is_seen = models.BooleanField(default=False)
 

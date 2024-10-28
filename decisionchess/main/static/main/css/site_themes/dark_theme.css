@@ -21,6 +21,8 @@
     --sidenav-element: #818181;
     --sidenav-element-hover: #f1f1f1;
     --sidenav-new-game-hover: #465cda;
+    --notification-background: #00110f;
+    --nav-button-background-selected: #8d2828;
     --profile-dropdown-selected: #00201d;
     --profile-dropdown-hover-text: #f1f1f1;
     --profile-content-a-text: white;

@@ -79,27 +79,47 @@
 		<div class="row" style="max-width: 100%;">
 			<div id="header-column" class="col-12 col-hb-12 col-md-1">
 				<div class="sidenav">
-					<div class="nav-new-game" data-toggle="modal" data-target="#CreateNewGame">Play</div>
-					<a href="/news">News</a>
-					<a href="/lessons">Lessons</a>
-					<a href="/live">Live</a>
+					<i id="nav-backward-arrow" class="nav-arrow fa-solid fa-chevron-left"></i>
+					<div class="main-navs" id="mainNavs">
+						<div class="nav-new-game" data-toggle="modal" data-target="#CreateNewGame">Play</div>
+						<a href="/news">News</a>
+						<a href="/lessons">Lessons</a>
+						<a href="/live">Live</a>
+						{% if user %}
+							{% if user.is_authenticated %}
+							<a href="/account/themes">Settings</a>
+							{% endif %}
+						{% endif %}
+					</div>
+					<div class="last">
+						<i id="nav-forward-arrow" class="nav-arrow fa-solid fa-chevron-right"></i>
 					{% if user %}
 						{% if user.is_authenticated %}
-						<a href="/account/themes">Settings</a>
-						<div class="profile-dropdown last" id="profileDropdown">{{ user.username }}</div>
+						<div class="nav-buttons-row">
+							<button class="nav-button" id="notificationDropdown" onclick="updateNotifications()">
+								<i class="fa-regular fa-envelope"></i>
+								<div class="notification-count ml-1" id="notificationCount"></div>
+							</button>
+						</div>
+						<div class="profile-dropdown" id="profileDropdown">{{ user.username }}</div>
 						{% endif %}
 					{% else %}
-						<a class="last" href="/login">Sign in</a>
+						<a href="/login">Sign in</a>
 					{% endif %}
+					</div>
 				</div>
 			</div>
+			{% if user and user.is_authenticated %}
+			<div class="notification-content" id="notificationContent"></div>
 			<div class="profile-content" id="profileDropdownContent">
-				<a href="/profile/{{ user.username }}">Profile</a>
-				<form id="profile-logout" method="post" action="{% url 'logout' %}">
+				<a class="user-button" href="/inbox/">Inbox</a>
+				<a class="user-button" href="/profile/{{ user.username }}">Profile</a>
+				<form id="profile-logout" class="user-button" method="post" action="{% url 'logout' %}">
 					{% csrf_token %}
 					<button type="submit">Logout</button>
 				</form>
 			</div>
+			{% endif %}
 
 			<div class="col-12 col-hb-12 col-md-11" style="padding-right: 0px;">
 				<div class="main-wrapper">
@@ -157,11 +177,258 @@
 				$('#profileDropdown').toggleClass('selected');
 				$('#profileDropdownContent').toggle();
 			});
+			$('#notificationDropdown').click(function() {
+				const notifications = document.getElementById('notificationContent');
+				const children = Array.from(notifications.children);
+				if (children.length !== 0) {
+					$('#notificationDropdown').toggleClass('selected');
+					$('#notificationContent').toggle();
+				}
+			});
 		});
 
 		document.addEventListener("DOMContentLoaded", function() {
 			document.getElementById('profileDropdownContent').style.display = 'none';
 		});
+
+		const navScrollContainer = document.getElementById('mainNavs');
+		const scrollForwardArrow = document.getElementById("nav-forward-arrow");
+		const scrollBackwardArrow = document.getElementById("nav-backward-arrow");
+
+		function checkScrollability() {
+			const remainingScroll = navScrollContainer.scrollWidth - navScrollContainer.scrollLeft - navScrollContainer.clientWidth;
+			if (remainingScroll > 0) {
+				scrollForwardArrow.style.display = "block";
+			} else {
+				scrollForwardArrow.style.display = "none";
+			}
+
+			if (navScrollContainer.scrollLeft > 0) {
+				scrollBackwardArrow.style.display = "block";
+			} else {
+				scrollBackwardArrow.style.display = "none";
+			}
+		}
+
+		function getFirstPartiallyVisibleElement(right) {
+			var items = Array.from(navScrollContainer.children);
+			for (var i = 0; i < items.length; i++) {
+				var itemRect = items[i].getBoundingClientRect();
+				const containerRect = navScrollContainer.getBoundingClientRect();
+				
+				// Check if the element is partially visible
+				var scrollCondition = itemRect.left < containerRect.right && itemRect.right > containerRect.left;
+				var hidden = containerRect.left - itemRect.left;
+				var remainingScroll = navScrollContainer.scrollWidth - navScrollContainer.scrollLeft - navScrollContainer.clientWidth;
+				if (!right) {
+					remainingScroll = navScrollContainer.scrollLeft;
+				}
+				if (scrollCondition) {
+					if (!right) {
+						if (hidden === 0 && i !== 0) {
+							itemRect = items[i - 1].getBoundingClientRect();
+							hidden = itemRect.width;
+						}
+					}
+					const hiddenWidth = Math.max(0, hidden);
+					if (right) {
+						const visibleWidth = itemRect.width - hiddenWidth;
+						var scrollBy = visibleWidth;
+						if (scrollBy < 1) { // No scroll otherwise
+							continue;
+						}
+					} else {
+						var scrollBy = hiddenWidth;
+						if (scrollBy < 1 && i !== 0) {
+							scrollBy = items[i - 1].getBoundingClientRect().width;
+						}
+					}
+					if (scrollBy + 1 > remainingScroll) {
+						scrollBy = remainingScroll;
+					}
+					return Math.min(scrollBy, remainingScroll); // Amount needed to fully hide the element
+				}
+			}
+			return 0; // Default if no partially visible element found
+		}
+
+		function handleArrowClick(right) {
+			var scrollAmount = getFirstPartiallyVisibleElement(right);
+			navScrollContainer.scrollBy({ left: right ? scrollAmount : -scrollAmount, behavior: "smooth" });
+			
+			setTimeout(checkScrollability, 300); // Timeout for smooth scroll to complete
+		}
+
+		checkScrollability();
+		window.addEventListener("resize", checkScrollability);
+
+		navScrollContainer.addEventListener("scroll", checkScrollability);
+
+		scrollForwardArrow.addEventListener("click", () => handleArrowClick(true));
+		scrollBackwardArrow.addEventListener("click", () => handleArrowClick(false));
+
+		{% if user and user.is_authenticated %}
+		var notificationSocket;
+
+		function handleMessage(data) {
+			var notifications = document.getElementById('notificationContent');
+			var notificationChildren = Array.from(notifications.children);
+			if (data['action'] === 'save') {
+				var found = false;
+				notificationChildren.forEach(notification => {
+					if (notification.id === data['notification_id']) {
+						notification.classList.remove('unread');
+						found = true;
+					}
+				});
+				if (!found) {
+					const notificationElement = document.createElement('div');
+					notificationElement.id = data['notification_id'];
+					notificationElement.className = `notification unread`;
+					
+					const senderDiv = document.createElement('div');
+					senderDiv.textContent = data['sender_username'];
+					
+					const subjectDiv = document.createElement('div');
+					subjectDiv.className = 'notification-subject';
+					subjectDiv.textContent = data['subject'];
+
+					notificationElement.appendChild(senderDiv);
+					notificationElement.appendChild(subjectDiv);
+
+					notifications.insertBefore(notificationElement, notifications.firstChild);
+				}
+			} else if (data['action'] === 'delete') {
+				for (let i = 0; i < notificationChildren.length; i++) {
+					if (notificationChildren[i].id === data['notification_id']) {
+						document.getElementById(data['notification_id']).remove();
+						break;
+					}
+				}
+			}
+			var unread = 0;
+			notifications = document.getElementById('notificationContent');
+			notificationChildren = Array.from(notifications.children);
+			notificationChildren.forEach(notification => {
+				if (notification.classList.contains('unread')) {
+					unread += 1;
+				}
+			});
+			const notifsCount = document.getElementById('notificationCount');
+			unread = unread === 0 ? "": unread;
+			unread = unread > 99 ? "99+": unread;
+			notifsCount.innerHTML = unread;
+		}
+
+		function fetchNotifications() {
+			fetch('/notifications/')
+			.then(response => {
+				if (!response.ok) {
+					return response.json().then(err => {
+						throw new Error(err.message);
+					});
+				}
+				return response.json();
+			})
+			.then(data => {                
+				fillNotifications(data.notifications);
+			})
+			.catch(error => {
+				console.error('Error fetching message:', error);
+			});
+		};
+
+		function fillNotifications(notifications) {
+			var notificationContent = document.getElementById('notificationContent');
+			notificationContent.innerHTML = "";
+			var unread = 0;
+			notifications.forEach(notification => {
+				const notificationElement = document.createElement('div');
+				notificationElement.id = notification['notification_id'];
+				notificationElement.className = `notification ${!notification.is_seen ? 'unread' : ''}`;
+				
+				const senderDiv = document.createElement('div');
+				senderDiv.textContent = notification['sender_username'];
+				
+				const subjectDiv = document.createElement('div');
+				subjectDiv.className = 'notification-subject';
+				subjectDiv.textContent = notification['subject'];
+
+				notificationElement.appendChild(senderDiv);
+				notificationElement.appendChild(subjectDiv);
+				
+				if (!notification.is_seen) {
+					unread += 1;
+				}
+				notificationContent.appendChild(notificationElement);
+			});		
+			unread = unread === 0 ? "": unread;
+			unread = unread > 99 ? "99+": unread;
+			document.getElementById('notificationCount').innerHTML = unread;
+		}
+
+		function initializeNotificationWebSocket() {
+			if (window.location.protocol == 'https:') {
+				wsProtocol = 'wss://';
+			} else {
+				wsProtocol = 'ws://';
+			}
+			notificationSocket = new WebSocket(wsProtocol + window.location.host + "/ws/notifications/");
+
+			notificationSocket.onopen = function () {
+				fetchNotifications();
+			};
+
+			notificationSocket.onmessage = function (event) {
+				var chat_data = JSON.parse(event.data);
+				handleMessage(chat_data);
+			};
+		}
+
+		var notificationsInitialized = false;
+		function notificationsConnect() {
+			if (!notificationsInitialized) {
+				initializeNotificationWebSocket();
+				notificationsInitialized = true;
+			} else if (notificationsInitialized === true) {
+				if (typeof notificationSocket !== 'undefined' && notificationSocket instanceof WebSocket && notificationSocket.readyState === WebSocket.CLOSED) {
+					initializeNotificationWebSocket();
+				}
+			}
+		}
+
+		var notificationsConnectIntervalId = setInterval(notificationsConnect, 1000);
+
+		function updateNotifications() {
+			const notifications = document.getElementById('notificationContent');
+			var notificationChildren = Array.from(notifications.children);
+			var ids = [];
+			if (notificationChildren.length === 0 || document.getElementById('notificationDropdown').classList.contains('selected')) {
+				return;
+			}
+			notificationChildren.forEach(notification => {
+				ids.push(notification.id);
+			})
+			fetch('/update_notifications/', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': "{{ csrf_token|escapejs }}",
+				},
+				body: JSON.stringify({'notification_ids': ids}),
+			})
+			.then(response => {
+				if (!response.ok) {
+					return response.json().then(err => {
+						throw new Error(err.message);
+					});
+				}
+			})
+			.catch(error => {
+				console.error('Error fetching message:', error);
+			});
+		}
+		{% endif %}
 	</script>
 
     <script src="{% static 'main/js/bootstrap-4.3.1-dist/bootstrap.bundle.min.js' %}"></script>

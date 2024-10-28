@@ -22,7 +22,7 @@ from django.views.decorators.http import require_GET
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
-from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks
+from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
 from .user_settings import default_themes
 import uuid
@@ -1147,6 +1147,39 @@ def is_blocked(request):
     except User.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Not Found"}, status=404)
     return JsonResponse({'is_blocked': Blocks.objects.filter(user=request.user, blocked_user_id=user.id).exists()}, status=200)
+
+@login_required
+def notifications(request):
+    request.user.notifications.filter(
+        is_seen=True,
+        created_at__lt=timezone.now() - timedelta(days=1)
+    ).delete()
+    notifications = request.user.notifications.order_by('-created_at')
+    notifications_data = [
+        {
+            'notification_id': str(notification.notification_id),
+            'message_id': notification.message.message_id,
+            'subject': notification.message.subject,
+            'created_at': notification.created_at.isoformat(),
+            'sender_username': notification.message.sender.username,
+            'is_seen': notification.is_seen
+        } for notification in notifications
+    ]
+    return JsonResponse({'notifications': notifications_data}, status=200)
+
+@login_required
+def update_notifications(request):
+    if request.method == 'PUT':
+        data = json.loads(request.body)
+
+        notification_ids = data.get('notification_ids', [])
+        notifications = Notification.objects.filter(notification_id__in=notification_ids)
+        for notification in notifications:
+            notification.is_seen = True
+            notification.save()
+        return JsonResponse({"message": "updated"}, status=200)
+    else:
+        return JsonResponse({"status": "error", "message": "Method Not Allowed"}, status=405)
 
 def terms_of_service(request):
     return render(request, "main/terms.html", {})
