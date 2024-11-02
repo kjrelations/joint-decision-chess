@@ -1,0 +1,152 @@
+{% extends "main/base.html" %}
+
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+Board Editor
+{% endblock %}
+
+{% block style%}
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/play.css' %}">
+<style>
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .form-control:disabled {
+        background-color: var(--enpassant-disabled);
+    }
+
+    .position-placeholder {
+        border: none;
+        outline: none;
+        padding: 0px;
+    }
+
+    .position-placeholder:focus {
+        outline: none;
+    }
+
+    #div_id_match_type {
+        display: flex;
+        gap: 10px;
+    }
+
+    #div_id_match_type .form-check-label {
+        display: inline-block;
+        margin-right: 15px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .continue {
+        border: none;
+        background-color: transparent;
+        color: var(--action-button);
+        transition: color .5s;
+    }
+
+    .continue:hover {
+        background-color: transparent;
+        color: var(--homebutton-decision);
+    }
+
+    .continue:focus {
+        outline: none;
+    }
+</style>
+<script>
+    var webGameMetadata = {};
+    sessionStorage.setItem('web_game_metadata', JSON.stringify(webGameMetadata));
+</script>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto; height: 80vh;">
+        <!-- Given side bar maybe columns should instead be 2 5 4  and side bar width is a column width-->
+        <div class="col-10 col-md-7" style="padding-right: 0px;">
+            <div id="iframe-container" class="d-flex align-items-center h-100">
+                <iframe id="embedded-iframe" src="{% static 'main/html/builder.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+            </div>
+        </div>
+        <!-- 4 columns for command center-->
+        <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start command-column" style="margin-left: 30px; padding-left: 0px; padding-right: 0px;">
+            <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
+                <div style="width: 100%; padding: 5px;">
+                    <div class="d-flex">
+                        <div style="width: 25%;">Castling</div>
+                        <div style="width: 37.5%;">White</div>
+                        <div style="width: 37.5%;">Black</div>
+                    </div>
+                    <div class="d-flex">
+                        <div style="width: 25%;"></div>
+                        <div style="width: 37.5%;">{{ form.white_kingside_castle|as_crispy_field }}</div>
+                        <div style="width: 37.5%;">{{ form.black_kingside_castle|as_crispy_field }}</div>
+                    </div>
+                    <div class="d-flex">
+                        <div style="width: 25%;"></div>
+                        <div style="width: 37.5%;">{{ form.white_queenside_castle|as_crispy_field }}</div>
+                        <div style="width: 37.5%;">{{ form.black_queenside_castle|as_crispy_field }}</div>
+                    </div>
+                    <div class="w-100" style="text-align: center;">FEN</div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="FENInput" value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <button id="cycleThemeButton" class="action-button confirm hidden mr-2">Cycle Theme</button>
+                    <button id="flipButton" class="action-button confirm hidden">Flip</button>
+                </div>
+                <div class="w-100 d-flex justify-content-center">
+                    <button id="continue" class="continue" data-toggle="modal" data-target="#CreateNewChallenge">Begin From Here</button>
+                </div>
+            </div>
+            <div class="modal fade" id="CreateNewChallenge" tabindex="-1" role="dialog" aria-labelledby="CreateNewChallengeLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title text-center w-100" id="CreateNewChallengeLabel">New Custom Game</h5>
+                      <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="closeModal">
+                        <span aria-hidden="true">&times;</span>
+                      </button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="w-100" style="text-align: center;">Decision Game</div>
+                      <div>
+                        {{ form.match_type|as_crispy_field }}
+                      </div>
+                      <div id="decision-content-challenge">
+                        {{ game_form.reveal_stage_private|as_crispy_field }}
+                        {{ game_form.decision_stage_private|as_crispy_field }}
+                      </div>
+                      <div class="text-center">Choose Starting Side</div>
+                      <div class="d-flex justify-content-center align-items-center">
+                          <button class="position-placeholder mr-2" data-position="white" new-challenge="true">
+                              <img src="{% static 'main/images/white.png' %}" alt="White" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                          </button>
+                          <button class="position-placeholder mr-2" data-position="random" new-challenge="true">
+                              <img src="{% static 'main/images/random.png' %}" alt="Random" style="background-color: rgb(56, 56, 56); height: 106px; width: 100px;"></img>
+                          </button>
+                          <button class="position-placeholder mr-2" data-position="black" new-challenge="true">
+                              <img src="{% static 'main/images/black.png' %}" alt="Black" style="background-color: rgb(56, 56, 56); height: 77px; width: 50px;"></img>
+                          </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            sessionStorage.setItem('initialized', "false");
+            var csrftoken = "{{ csrf_token|escapejs }}";
+            sessionStorage.setItem('csrftoken', csrftoken);
+        </script>
+        <script src="{% static 'main/js/editor.js' %}"></script>                
+    </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% endblock %}

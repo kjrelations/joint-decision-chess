@@ -52,13 +52,14 @@ class ChessLobby(models.Model):
 	solo_game = models.BooleanField(default=False)
 	status = models.CharField(max_length=50, blank=False, null=False, default="waiting") # "playing" or "completed"
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	initial_state = models.TextField(blank=True, null=True)
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
 			self.timestamp = timezone.now()
 		if not self.expire:
 			self.expire = self.timestamp + timezone.timedelta(minutes=10)
-		if self.private:
+		if self.solo_game or self.computer_game:
 			self.is_open = False
 			self.status = "playing"
 		elif self.white_id and self.black_id:
@@ -94,6 +95,7 @@ class GameHistoryTable(models.Model):
 	FEN_outcome = models.CharField(max_length=85, blank=False, null=False, default="")
 	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
 	state = models.TextField(default="")
+	initial_state = models.TextField(blank=True, null=True)
 
 class ActiveChatMessages(models.Model):
 	active_message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

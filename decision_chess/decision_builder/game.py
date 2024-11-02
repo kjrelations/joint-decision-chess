@@ -1,4 +1,3 @@
-# cython: profile=True
 from math import copysign
 from helpers import *
 import json
@@ -20,7 +19,7 @@ class Game:
             self.moves = []
             self.alg_moves = []
             self.castle_attributes = {
-                'white_king_moved' : [False, None],
+                'white_king_moved' : [False, None], # TODO update using board
                 'left_white_rook_moved' : [False, None],
                 'right_white_rook_moved' : [False, None],
                 'black_king_moved' : [False, None],
@@ -377,23 +376,23 @@ class Game:
         
         def update_board(
             self,
-            board: list[list[str]], 
-            white_initial_pos: tuple[int, int], 
-            black_initial_pos: tuple[int, int], 
-            white_captured: bool, 
-            black_captured: bool, 
-            new_row_white: int, 
-            new_col_white: int, 
-            new_row_black: int, 
-            new_col_black: int,
-            white_piece: str,
-            black_piece: str,
-            enpassant_white: bool,
-            enpassant_black: bool,
-            castle_white: bool,
-            castle_black: bool,
-            update_positions: bool
-            ) -> list[list[str]]:
+            board, 
+            white_initial_pos, 
+            black_initial_pos, 
+            white_captured, 
+            black_captured, 
+            new_row_white, 
+            new_col_white, 
+            new_row_black, 
+            new_col_black,
+            white_piece,
+            black_piece,
+            enpassant_white,
+            enpassant_black,
+            castle_white,
+            castle_black,
+            update_positions
+            ):
             if not update_positions:
                 return board
             board[white_initial_pos[0]][white_initial_pos[1]] = ' '
@@ -552,7 +551,7 @@ class Game:
                 self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
             elif black_piece == 'r' and black_initial_pos == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
                 self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
-            
+
             if (new_row_white, new_col_white) == (0, 0) and potential_white_capture is not None and \
                'r' in potential_white_capture and not self.castle_attributes['left_black_rook_moved'][0]:
                 self.castle_attributes['left_black_rook_moved'] = [True, self._move_index]
@@ -567,6 +566,7 @@ class Game:
                  'R' in potential_black_capture and not self.castle_attributes['right_white_rook_moved'][0]:
                 self.castle_attributes['right_white_rook_moved'] = [True, self._move_index]
 
+            
             self.white_active_move = None
             self.black_active_move = None
 
@@ -604,16 +604,7 @@ class Game:
         
         return update_positions, False
 
-    def update_blocking_positions(self, pieces_info: dict) -> dict:
-        cdef str first, white_piece, black_piece, first_piece, second_piece, potential_capture
-        cdef object potential_white_capture, potential_black_capture
-        cdef tuple[int, int] white_initial_pos, black_initial_pos
-        cdef int new_row_white, new_row_black, new_col_white, new_col_black, first_init_row, first_init_col, 
-        cdef int first_new_row, first_new_col, second_init_row, second_init_col, second_new_row, second_new_col, 
-        cdef int current_row, current_col, first_row_increment, first_col_increment
-        cdef bint white_captured, black_captured, blocked
-        cdef list[tuple[int, int]] blocking_positions
-
+    def update_blocking_positions(self, pieces_info):
         first = pieces_info['first']
         white_initial_pos = pieces_info['white_initial_pos']
         white_piece = pieces_info['white_piece']
@@ -771,13 +762,7 @@ class Game:
         pieces_info['potential_black_capture'] = potential_black_capture
         pieces_info['black_captured'] = black_captured
 
-    def translate_into_notation(self, new_row: int, new_col: int, piece: str, selected_piece: tuple[int, int], potential_capture: object, castle: bool, temp_board: list[list[str]]) -> str:
-        cdef dict[int, str] file_conversion, rank_conversion
-        cdef str alg_move, other_piece, added_file, added_rank
-        cdef bint is_white
-        cdef list[tuple[int, int]] similar_pieces, other_moves
-        cdef int row, col
-        
+    def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, temp_board):
         file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
         rank_conversion = {i: str(8 - i) for i in range(8)}
         alg_move = ''

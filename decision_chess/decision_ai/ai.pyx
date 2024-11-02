@@ -285,10 +285,10 @@ def uct_value(node, previous_result, game, boards=None, exploration=1.414):
         else:
             first_term = (1 + previous_result / -1000) * 1000
         
-        piece = game.board[node.move['selected_piece'][0]][node.move['selected_piece'][1]]
+        piece_type = game.board[node.move['selected_piece'][0]][node.move['selected_piece'][1]].lower()
         row, col = node.move['move'][0], node.move['move'][1]
-        move_value = boards[piece_to_board[piece]][1][row][col]
-        move_visits = boards[piece_to_board[piece]][0][row][col]
+        move_value = boards[piece_to_board[piece_type]][1][row][col]
+        move_visits = boards[piece_to_board[piece_type]][0][row][col]
         total_visits = sum_boards(boards, 0)
         total_sig_moves = sum(1 for key in boards.keys() for i in boards[key][0] for j in i if j != 0)
         avg_visit = sum(sum(i) for key in boards.keys() for i in boards[key][0]) / total_sig_moves
@@ -475,10 +475,12 @@ def simulate_random_playout(game, pos, depth, search_depth, boards, factor, fina
                 del running_black_moves[j]
                 black_special_index = black_special_index - 1 if j < black_special_index else black_special_index
             if final_sim:
-                if illegal_side == "White":
+                if illegal_side == "White" and not game._starting_player:
                     del probabilities[i]
-                else:
+                elif illegal_side == "Black" and game._starting_player:
                     del probabilities[j]
+                else:
+                    continue
                 if len(probabilities) != 0:
                     shift = min(min(probabilities), 0)
                     probabilities = [x + shift for x in probabilities]

@@ -722,6 +722,7 @@ def calculate_moves(
             if (
                 start[0] == previous_pawn and end[0] == previous_pawn and
                 start[1] == previous_start_row and end[1] == previous_end_row and
+                board[int(end[1])][int(end[2])] == previous_pawn and
                 abs(col - int(end[2])) == 1
             ):
                 special_moves.append((destination_row, int(end[2])))
@@ -887,7 +888,7 @@ def is_checkmate_or_stalemate(board: list[list[str]], is_color: bool, moves: lis
                     if move not in [(7, 2), (7, 6), (0, 2), (0, 6)]:
                         temp_board[move[0]][move[1]] = temp_board[row][col]
                         temp_board[row][col] = ' '
-                        capture_row = 4 if move[0] == 3 else 5
+                        capture_row = 4 if move[0] == 5 else 3
                         old_pawn = temp_board[capture_row][move[1]]
                         temp_board[capture_row][move[1]] = ' '
                         if not is_check(temp_board, is_color):

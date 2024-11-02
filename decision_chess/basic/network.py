@@ -611,8 +611,9 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 print(node.proto, node.users)
                 count = sum(1 for key in node.users.keys() if key.startswith("u_") and "spec" not in key)
                 if count == 1:
-                    if init["starting_position"] is not None:
-                        init["waiting"] = False # Can be dependant on starting position later/game state
+                    # Only advace if the retrieved position isn't the custom starting position
+                    if init["starting_position"] is not None and init["starting_position"].get('custom_start') != True:
+                        init["waiting"] = False
                     if not init["reloaded"]:
                         confirmed_state = None
                         if not init["local_debug"]:

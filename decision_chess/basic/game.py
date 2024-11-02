@@ -201,7 +201,7 @@ class Game:
                 temp_board = [rank[:] for rank in self.board]  
                 temp_board[move[0]][move[1]] = temp_board[selected_piece[0]][selected_piece[1]]
                 temp_board[selected_piece[0]][selected_piece[1]] = ' '
-                capture_row = 4 if move[0] == 3 else 5
+                capture_row = 4 if move[0] == 5 else 3
                 temp_board[capture_row][move[1]] = ' '
                 if is_check(temp_board, is_white):
                     valid_specials.remove(move)

@@ -110,6 +110,8 @@
     --displayed-move-border: rgb(179, 179, 179);
     /* Live */
     --headerFocused: #756026;
+    /* Board Editor */
+    --enpassant-disabled: #323232;
     /* Profile */
     --bio-border: rgb(76, 76, 76);
     --bio-background: #090e0f;

@@ -2,8 +2,6 @@ import pygame
 import sys
 import asyncio
 import json
-import copy
-from constants import *
 
 ## General Helpers
 # Helper function to dynamically generate keys between board conventions and image naming to avoid a hardcoded mapping
@@ -107,8 +105,15 @@ def print_d(*args, debug=False, **kwargs):
         return
 
 # Helper function for generating bespoke Game moves
-def output_move(piece, selected_piece, new_row, new_col, potential_capture, special_string= ''):
-    return [piece+str(selected_piece[0])+str(selected_piece[1]), piece+str(new_row)+str(new_col), potential_capture, special_string]
+def output_move(piece, selected_piece, new_row, new_col, potential_capture, priority, annihilation_superposition, special_string= ''):
+    return [
+        piece+str(selected_piece[0])+str(selected_piece[1]), 
+        piece+str(new_row)+str(new_col), 
+        potential_capture, 
+        priority, 
+        annihilation_superposition,
+        special_string
+        ]
 
 # Helper function for translating a simple FEN into a board position
 def translate_FEN_into_board(FEN):
@@ -127,15 +132,19 @@ def translate_FEN_into_board(FEN):
 # Helper function for loading a historic game parameters from sessionStorage values
 def load_historic_game(json_game):
     starting_player = True
-    # Would depend on starting for games that start at a different position
-    whites_turn = len(json_game["comp_moves"]) % 2 == 0
 
     move = json_game["comp_moves"][-1]
-    prev, curr = list(move[0]), list(move[1])
-    prev_row, prev_col = int(prev[1]), int(prev[2])
-    curr_row, curr_col = int(curr[1]), int(curr[2])
-    previous_position = (prev_row, prev_col)
-    current_position = (curr_row, curr_col)
+    white_prev, white_curr = list(move[0][0]), list(move[0][1])
+    white_prev_row, white_prev_col = int(white_prev[1]), int(white_prev[2])
+    white_curr_row, white_curr_col = int(white_curr[1]), int(white_curr[2])
+    white_previous_position = (white_prev_row, white_prev_col)
+    white_current_position = (white_curr_row, white_curr_col)
+
+    black_prev, black_curr = list(move[1][0]), list(move[1][1])
+    black_prev_row, black_prev_col = int(black_prev[1]), int(black_prev[2])
+    black_curr_row, black_curr_col = int(black_curr[1]), int(black_curr[2])
+    black_previous_position = (black_prev_row, black_prev_col)
+    black_current_position = (black_curr_row, black_curr_col)
 
     _castle_attributes = {
         'white_king_moved' : [False, None],
@@ -147,40 +156,67 @@ def load_historic_game(json_game):
     }
 
     for move_index, comp_move in enumerate(json_game["comp_moves"]):
-        piece = comp_move[0][0]
-        prev_pos = (int(comp_move[0][1]), int(comp_move[0][2]))
-        if comp_move[3] == 'castle':
-            side = 'left' if comp_move[1][2] == '2' else 'right'
-            _castle_attributes['white_king_moved' if piece == 'K' else 'black_king_moved'] = [True, move_index]
-            if side == 'left':
-                _castle_attributes['left_white_rook_moved' if piece == 'K' else 'left_black_rook_moved'] = [True, move_index]
-            else:
-                _castle_attributes['right_white_rook_moved' if piece == 'K' else 'right_black_rook_moved'] = [True, move_index]
-        if piece == 'K' and not _castle_attributes['white_king_moved'][0]:
+        white_piece = comp_move[0][0][0]
+        black_piece = comp_move[1][0][0]
+        white_prev_pos = (int(comp_move[0][0][1]), int(comp_move[0][0][2]))
+        black_prev_pos = (int(comp_move[1][0][1]), int(comp_move[1][0][2]))
+        if comp_move[0][3] == 'castle':
+            side = 'left' if comp_move[0][1][2] == '2' else 'right'
             _castle_attributes['white_king_moved'] = [True, move_index]
-        elif piece == 'k' and not _castle_attributes['black_king_moved'][0]:
+            if side == 'left':
+                _castle_attributes['left_white_rook_moved'] = [True, move_index]
+            else:
+                _castle_attributes['right_white_rook_moved'] = [True, move_index]
+        if comp_move[1][3] == 'castle':
+            side = 'left' if comp_move[1][1][2] == '2' else 'right'
             _castle_attributes['black_king_moved'] = [True, move_index]
-        elif piece == 'R' and prev_pos in [(7, 0), (7, 7)]:
-            _castle_attributes['left_white_rook_moved' if prev_pos == (7, 0) else 'right_white_rook_moved'] = [True, move_index]
-        elif piece == 'r' and prev_pos in [(0, 0), (0, 7)]:
-            _castle_attributes['left_black_rook_moved' if prev_pos == (0, 0) else 'right_black_rook_moved'] = [True, move_index]
+            if side == 'left':
+                _castle_attributes['left_black_rook_moved'] = [True, move_index]
+            else:
+                _castle_attributes['right_black_rook_moved'] = [True, move_index]
+        if white_piece == 'K' and not _castle_attributes['white_king_moved'][0]:
+            _castle_attributes['white_king_moved'] = [True, move_index]
+        elif black_piece == 'k' and not _castle_attributes['black_king_moved'][0]:
+            _castle_attributes['black_king_moved'] = [True, move_index]
+        elif white_piece == 'R' and white_prev_pos in [(7, 0), (7, 7)]:
+            _castle_attributes['left_white_rook_moved' if white_prev_pos == (7, 0) else 'right_white_rook_moved'] = [True, move_index]
+        elif black_piece == 'r' and black_prev_pos in [(0, 0), (0, 7)]:
+            _castle_attributes['left_black_rook_moved' if black_prev_pos == (0, 0) else 'right_black_rook_moved'] = [True, move_index]
 
     game_param_dict = {
-        "whites_turn": whites_turn,
+        "white_played": False,
+        "black_played": False,
+        "reveal_stage_enabled": False,
+        "decision_stage_enabled": False,
+        "playing_stage": True,
+        "reveal_stage": False,
+        "decision_stage": False,
         "board": translate_FEN_into_board(json_game["FEN_final_pos"]),
         "moves": json_game["comp_moves"],
         "alg_moves": json_game["alg_moves"],
         "castle_attributes": _castle_attributes,
-        "current_position": current_position,
-        "previous_position": previous_position,
+        "white_active_move": None,
+        "black_active_move": None,
+        "white_current_position": white_current_position,
+        "white_previous_position": white_previous_position,
+        "black_current_position": black_current_position,
+        "black_previous_position": black_previous_position,
         "board_states": {},
         "max_states": 500,
         "end_position": True,
         "forced_end": json_game["forced_end"],
-        "_debug": False,
+        "white_lock": False,
+        "black_lock": False,
+        "decision_stage_complete": False,
+        "white_undo_count": 0,
+        "black_undo_count": 0,
         "_starting_player": starting_player,
         "_move_undone": False,
-        "_sync": True
+        "_sync": True,
+        "_promotion_white": None,
+        "_promotion_black": None,
+        "_set_last_move": False,
+        "_max_states_reached": False
     }
     return game_param_dict
 
@@ -242,6 +278,33 @@ def reset_request(request, init, node, client_state_actions, window):
         client_state_actions[offer_reset] = True
         client_state_actions[request_sent] = False
 
+# Helper to load drawings from a json loaded object
+def load_drawings(drawings):
+    right_clicked_squares = []
+    drawn_arrows = []
+    opposing_right_clicked_squares = []
+    opposing_drawn_arrows = []
+    for square in drawings["right_clicked_squares"]:
+        right_clicked_squares.append((square[0], square[1]))
+    for arrow in drawings["drawn_arrows"]:
+        drawn_arrows.append([(arrow[0][0], arrow[0][1]), (arrow[1][0], arrow[1][1])])
+    if drawings.get("opposing_right_clicked_squares"):
+        for square in drawings["opposing_right_clicked_squares"]:
+            opposing_right_clicked_squares.append((square[0], square[1]))
+        for arrow in drawings["opposing_drawn_arrows"]:
+            opposing_drawn_arrows.append([(arrow[0][0], arrow[0][1]), (arrow[1][0], arrow[1][1])])
+    return right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows
+
+# Helper for fast deepcopy of list of lists of strings
+def deepcopy_list_of_lists(original):
+    n = len(original)
+    copy = [None] * n
+    
+    for i in range(n):
+        copy[i] = original[i][:]
+    
+    return copy
+
 ## Move logic
 # Helper function to calculate moves for a pawn
 def pawn_moves(board, row, col, is_white):
@@ -249,6 +312,9 @@ def pawn_moves(board, row, col, is_white):
     captures = []
 
     forwards = -1 if is_white else 1
+
+    if row in [0, 7]:
+        return moves, captures
 
     # Pawn moves one square forward
     if board[row + forwards][col] == ' ':
@@ -268,7 +334,7 @@ def pawn_moves(board, row, col, is_white):
         new_col = col + c
         if 0 <= new_col <= 7:
             piece = board[row + forwards][new_col]
-            if piece != ' ' and piece.islower() == is_white:
+            if piece != ' ' and piece.lower() != 'k': # Can guard own pieces; no capturing kings
                 moves.append((row + forwards, new_col))
                 captures.append((row + forwards, new_col))
     
@@ -294,44 +360,48 @@ def pawn_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a rook
-def rook_moves(board, row, col, is_white):
+def rook_moves(board, row, col):
     moves = []
     captures = []
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].islower() == is_white:
+            if piece.lower() != 'k':
                 moves.append((row, i))
                 captures.append((row, i))
             break
 
     for i in range(col - 1, -1, -1):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             moves.append((row, i))
         else:
-            if board[row][i].islower() == is_white:
+            if piece.lower() != 'k':
                 moves.append((row, i))
                 captures.append((row, i))
             break
 
     # Rook moves vertically
     for i in range(row + 1, 8):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].islower() == is_white:
+            if piece.lower() != 'k':
                 moves.append((i, col))
                 captures.append((i, col))
             break
 
     for i in range(row - 1, -1, -1):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             moves.append((i, col))
         else:
-            if board[i][col].islower() == is_white:
+            if piece.lower() != 'k':
                 moves.append((i, col))
                 captures.append((i, col))
             break
@@ -344,7 +414,8 @@ def rook_captures_king(board, row, col, is_white):
 
     # Rook moves horizontally
     for i in range(col + 1, 8):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             continue
         elif board[row][i] == opposite_king:
             return True
@@ -352,26 +423,29 @@ def rook_captures_king(board, row, col, is_white):
             break
 
     for i in range(col - 1, -1, -1):
-        if board[row][i] == ' ':
+        piece = board[row][i]
+        if piece == ' ':
             continue
-        elif board[row][i] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
 
     # Rook moves vertically
     for i in range(row + 1, 8):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             continue
-        elif board[i][col] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
 
     for i in range(row - 1, -1, -1):
-        if board[i][col] == ' ':
+        piece = board[i][col]
+        if piece == ' ':
             continue
-        elif board[i][col] == opposite_king:
+        elif piece == opposite_king:
             return True
         else:
             break
@@ -379,7 +453,7 @@ def rook_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a knight
-def knight_moves(board, row, col, is_white):
+def knight_moves(board, row, col):
     moves = []
     captures = []
 
@@ -389,11 +463,11 @@ def knight_moves(board, row, col, is_white):
     # Remove moves that are out of bounds
     valid_knight_moves = [(move[0], move[1]) for move in knight_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
 
-    # Remove moves that would capture the player's own pieces
-    valid_knight_moves = [move for move in valid_knight_moves if board[move[0]][move[1]] == " " or board[move[0]][move[1]].islower() == is_white]
+    # Cannot superimpose with own king or capture enemy king
+    valid_knight_moves = [(move[0], move[1]) for move in valid_knight_moves if board[move[0]][move[1]].lower() != 'k']
 
     # Valid captures
-    captures = [move for move in valid_knight_moves if board[move[0]][move[1]] != " " and board[move[0]][move[1]].islower() == is_white]
+    captures = [move for move in valid_knight_moves if board[move[0]][move[1]] != " "]
 
     moves.extend(valid_knight_moves)
 
@@ -414,7 +488,7 @@ def knight_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a bishop
-def bishop_moves(board, row, col, is_white):
+def bishop_moves(board, row, col):
     moves = []
     captures = []
     directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Top-left, Top-right, Bottom-left, Bottom-right
@@ -425,11 +499,10 @@ def bishop_moves(board, row, col, is_white):
             if 0 <= new_row < 8 and 0 <= new_col < 8:
                 if board[new_row][new_col] == ' ':
                     moves.append((new_row, new_col))
-                elif board[new_row][new_col].islower() == is_white:
-                    moves.append((new_row, new_col))
-                    captures.append((new_row, new_col))
-                    break
                 else:
+                    if board[new_row][new_col].lower() != 'k':
+                        moves.append((new_row, new_col))
+                        captures.append((new_row, new_col))
                     break
             else:
                 break
@@ -457,17 +530,17 @@ def bishop_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a queen
-def queen_moves(board, row, col, is_white):
+def queen_moves(board, row, col):
     moves = []
     captures = []
 
     # Bishop-like moves
-    b_moves, b_captures = bishop_moves(board, row, col, is_white)
+    b_moves, b_captures = bishop_moves(board, row, col)
     moves.extend(b_moves)
     captures.extend(b_captures)
 
     # Rook-like moves
-    r_moves, r_captures = rook_moves(board, row, col, is_white)
+    r_moves, r_captures = rook_moves(board, row, col)
     moves.extend(r_moves)
     captures.extend(r_captures)
 
@@ -486,7 +559,7 @@ def queen_captures_king(board, row, col, is_white):
     return False
 
 # Helper function to calculate moves for a king
-def king_moves(board, row, col, is_white):
+def king_moves(board, row, col):
     moves = []
     captures = []
 
@@ -495,20 +568,17 @@ def king_moves(board, row, col, is_white):
                   (row, col - 1),                     (row, col + 1),
                   (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)]
 
-    # Remove moves that are out of bounds
-    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8]
-
-    # Remove moves that would capture the player's own pieces
-    valid_king_moves = [move for move in valid_king_moves if board[move[0]][move[1]] == " " or board[move[0]][move[1]].islower() == is_white]
+    # Remove moves that are out of bounds and capture kings
+    valid_king_moves = [move for move in king_moves if 0 <= move[0] < 8 and 0 <= move[1] < 8 and board[move[0]][move[1]].lower() != 'k']
 
     # Valid captures
-    captures = [move for move in valid_king_moves if board[move[0]][move[1]] != " " and board[move[0]][move[1]].islower() == is_white]
+    captures = [move for move in valid_king_moves if board[move[0]][move[1]] != " "]
 
     moves.extend(valid_king_moves)
 
     return moves, captures
 
-# Helper to calculate if the king can capture the opposite king
+# Helper to calculate if the king can capture the opposite king, redundant since illegal
 def king_captures_king(board, row, col, is_white):
     opposite_king = 'k' if is_white else 'K'
 
@@ -546,27 +616,27 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             captures.extend(p_captures)
 
         elif piece_type == 'r':
-            r_moves, r_captures = rook_moves(board, row, col, is_white)
+            r_moves, r_captures = rook_moves(board, row, col)
             moves.extend(r_moves)
             captures.extend(r_captures)
 
         elif piece_type == 'n':
-            n_moves, n_captures = knight_moves(board, row, col, is_white)
+            n_moves, n_captures = knight_moves(board, row, col)
             moves.extend(n_moves)
             captures.extend(n_captures)
 
         elif piece_type == 'b':
-            b_moves, b_captures = bishop_moves(board, row, col, is_white)
+            b_moves, b_captures = bishop_moves(board, row, col)
             moves.extend(b_moves)
             captures.extend(b_captures)
 
         elif piece_type == 'q':
-            q_moves, q_captures = queen_moves(board, row, col, is_white)
+            q_moves, q_captures = queen_moves(board, row, col)
             moves.extend(q_moves)
             captures.extend(q_captures)
 
         elif piece_type == 'k':
-            k_moves, k_captures = king_moves(board, row, col, is_white)
+            k_moves, k_captures = king_moves(board, row, col)
             moves.extend(k_moves)
             captures.extend(k_captures)
         
@@ -574,10 +644,10 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             return [], [], []
         else:
             return ValueError
-        
+
     # Special moves
     if piece_type == 'p' and game_history is not None and len(game_history) != 0:
-        previous_turn = game_history[-1]
+        previous_turn = game_history[-1][0] if not is_white else game_history[-1][1]
         
         pawn_data = {
             'white': ('p', '1', '3', 2),
@@ -596,6 +666,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
             if (
                 start[0] == previous_pawn and end[0] == previous_pawn and
                 start[1] == previous_start_row and end[1] == previous_end_row and
+                board[int(end[1])][int(end[2])] == previous_pawn and
                 abs(col - int(end[2])) == 1
             ):
                 special_moves.append((destination_row, int(end[2])))
@@ -604,15 +675,15 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     # and instead use a temp board
     if piece_type == 'k' and castle_attributes is not None:
         if is_white:
-            moved_king = castle_attributes['white_king_moved'][0]
-            left_rook_moved = castle_attributes['left_white_rook_moved'][0]
-            right_rook_moved = castle_attributes['right_white_rook_moved'][0]
+            moved_king = castle_attributes['white_king_moved'][0] or board[7][4] != 'K'
+            left_rook_moved = castle_attributes['left_white_rook_moved'][0] or board[7][0] != 'R'
+            right_rook_moved = castle_attributes['right_white_rook_moved'][0] or board[7][7] != 'R'
             king_row = 7
             king_piece = 'K'
         else:
-            moved_king = castle_attributes['black_king_moved'][0]
-            left_rook_moved = castle_attributes['left_black_rook_moved'][0]
-            right_rook_moved = castle_attributes['right_black_rook_moved'][0]
+            moved_king = castle_attributes['black_king_moved'][0] or board[0][4] != 'k'
+            left_rook_moved = castle_attributes['left_black_rook_moved'][0] or board[0][0] != 'r'
+            right_rook_moved = castle_attributes['right_black_rook_moved'][0] or board[0][7] != 'r'
             king_row = 0
             king_piece = 'k'
 
@@ -626,7 +697,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     for placement_col in [4, 3, 2]:
                         temp_board[king_row][4] = ' '
                         temp_board[king_row][placement_col] = king_piece
-                        temp_boards.append(copy.deepcopy(temp_board))
+                        temp_boards.append(deepcopy_list_of_lists(temp_board))
                         # Undo
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
@@ -641,7 +712,7 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
                     for placement_col in [4, 5, 6]:
                         temp_board[king_row][4] = ' '
                         temp_board[king_row][placement_col] = king_piece
-                        temp_boards.append(copy.deepcopy(temp_board))
+                        temp_boards.append(deepcopy_list_of_lists(temp_board))
                         # Undo
                         temp_board[king_row][4] = king_piece
                         temp_board[king_row][placement_col] = ' '
@@ -652,32 +723,25 @@ def calculate_moves(board, row, col, game_history, castle_attributes=None, only_
     return moves, captures, special_moves
 
 # Helper function to check if the opposite king can be captured
-def king_is_captured(board, row, col, piece, piece_type):
-    is_white = piece.isupper()
+def king_is_captured(board, row, col, piece_type, is_white):
 
     if piece_type == 'p':
-        if pawn_captures_king(board, row, col, is_white):
-            return True
+        return pawn_captures_king(board, row, col, is_white)
 
     elif piece_type == 'r':
-        if rook_captures_king(board, row, col, is_white):
-            return True
+        return rook_captures_king(board, row, col, is_white)
 
     elif piece_type == 'n':
-        if knight_captures_king(board, row, col, is_white):
-            return True
+        return knight_captures_king(board, row, col, is_white)
 
     elif piece_type == 'b':
-        if bishop_captures_king(board, row, col, is_white):
-            return True
+        return bishop_captures_king(board, row, col, is_white)
 
     elif piece_type == 'q':
-        if queen_captures_king(board, row, col, is_white):
-            return True
+        return queen_captures_king(board, row, col, is_white)
 
     elif piece_type == 'k':
-        if king_captures_king(board, row, col, is_white):
-            return True
+        return king_captures_king(board, row, col, is_white)
         
     elif piece_type == ' ':
         return False
@@ -685,29 +749,16 @@ def king_is_captured(board, row, col, piece, piece_type):
         return ValueError
 
 ## Board State Check Logic
-# Helper function to calculate if a board does not have a colored king
-def is_invalid_capture(board, is_color):
-    # Find the king's position
-    king = 'K' if is_color else 'k'
-    king_position = None
-    for row_index, row in enumerate(board):
-        if king in row:
-            col = row.index(king)
-            king_position = (row_index, col)
-            break
-    if king_position is None:
-        return True # Illegal move that is not allowed, likely in debug mode
-    else:
-        return False
-
 # Helper function to search for checks
-def is_check(board, is_color):
+def is_check(board, is_white):
     # Check if any of the opponent's pieces can attack the king
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
-            if piece != ' ' and piece.islower() == is_color:
-                king_captured = king_is_captured(board, row, col, piece, piece.lower())
+            piece_is_black = piece.islower()
+            is_opposite_piece = piece_is_black == is_white
+            if piece != ' ' and is_opposite_piece:
+                king_captured = king_is_captured(board, row, col, piece.lower(), not piece_is_black)
                 if king_captured:
                     return True
     return False
@@ -731,6 +782,8 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                     # Try each move and see if it removes the check
                     # Before making the move, create a copy of the board where the piece has moved
                     old_position = board[move[0]][move[1]]
+                    if old_position != ' ' and old_position.isupper() == is_color:
+                        continue
                     temp_board[move[0]][move[1]] = temp_board[row][col]
                     temp_board[row][col] = ' '
                     if not is_check(temp_board, is_color):
@@ -764,14 +817,13 @@ def is_checkmate_or_stalemate(board, is_color, moves):
 # Set check or checkmate draw flags
 def set_check_or_checkmate_settings(drawing_settings, client_game):
     drawing_settings["check_white"] = is_check(client_game.board, True)
-    if drawing_settings["check_white"]:
-        drawing_settings["checkmate_white"] = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)[0]
-        return
-    else:
-        drawing_settings["check_black"] = is_check(client_game.board, False)
+    drawing_settings["check_black"] = is_check(client_game.board, False)
+    if drawing_settings["check_white"] or drawing_settings["check_black"]:
+        if drawing_settings["check_white"]:
+            drawing_settings["checkmate_white"] = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)[0]
         if drawing_settings["check_black"]:
             drawing_settings["checkmate_black"] = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)[0]
-            return
+        return
     if drawing_settings["checkmate_white"] or drawing_settings["checkmate_black"]:
         drawing_settings["checkmate_white"] = False
         drawing_settings["checkmate_black"] = False
@@ -798,11 +850,15 @@ def generate_chessboard(theme):
     GRID_SIZE, WHITE_SQUARE, BLACK_SQUARE, WIDTH, HEIGHT = \
     theme.GRID_SIZE, theme.WHITE_SQUARE, theme.BLACK_SQUARE, theme.WIDTH, theme.HEIGHT
 
-    chessboard = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    chessboard = pygame.Surface((WIDTH + 2 * GRID_SIZE, HEIGHT), pygame.SRCALPHA)
     for row in range(8):
         for col in range(8):
             color = WHITE_SQUARE if (row + col) % 2 == 0 else BLACK_SQUARE
             pygame.draw.rect(chessboard, color, (col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE))
+    for row in range(8):
+        for col in [8, 9]:
+            column_color = (91, 128, 141)
+            pygame.draw.rect(chessboard, column_color, (col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE))
     return chessboard
 
 # Helper function to generate coordinate fonts and their surface depending on view
@@ -885,6 +941,26 @@ def draw_pieces(window, theme, board, pieces):
             piece = board[row][col]
             if piece != ' ':
                 window.blit(pieces[piece], (col * theme.GRID_SIZE, row * theme.GRID_SIZE))
+    piece_positions = [
+        ('p', 2),
+        ('P', 2),
+        ('n', 3),
+        ('N', 3),
+        ('b', 4),
+        ('B', 4),
+        ('r', 5),
+        ('R', 5),
+        ('q', 6),
+        ('Q', 6),
+        ('k', 7),
+        ('K', 7)
+    ]
+
+    window.blit(pieces['d'], (9 * theme.GRID_SIZE, theme.GRID_SIZE))
+    for i, (piece, row) in enumerate(piece_positions):
+        x_position = (8 + i % 2) * theme.GRID_SIZE
+        y_position = row * theme.GRID_SIZE
+        window.blit(pieces[piece], (x_position, y_position))
 
 # Helper function to draw transparent circles on half of the tiles
 def draw_transparent_circles(theme, valid_moves, valid_captures, valid_specials):
@@ -916,11 +992,11 @@ def get_coordinates(row, col, GRID_SIZE):
     return x, y
 
 # Helper function to draw an arrow
-def draw_arrow(theme, arrow):
+def draw_arrow(theme, arrow, side):
     ARROW_WHITE, ARROW_BLACK, WIDTH, HEIGHT, GRID_SIZE = \
         theme.ARROW_WHITE, theme.ARROW_BLACK, theme.WIDTH, theme.HEIGHT, theme.GRID_SIZE
     
-    arrow_color = ARROW_WHITE if not theme.INVERSE_PLAYER_VIEW else ARROW_BLACK
+    arrow_color = ARROW_WHITE if side else ARROW_BLACK
     transparent_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     # Arrows as row, col -> y, x
     start, end = pygame.Vector2(get_coordinates(arrow[0][1], arrow[0][0], GRID_SIZE)), pygame.Vector2(get_coordinates(arrow[1][1], arrow[1][0], GRID_SIZE))
@@ -1031,18 +1107,29 @@ def draw_arrow(theme, arrow):
     return transparent_surface
 
 # Helper function to highlight selected squares on left or right click
-def draw_highlight(window, theme, row, col, left):
-    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
-    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
+def draw_highlight(window, theme, row, col, left, is_white, player_side=True):
+    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_BLACK, HIGHLIGHT_BLACK_BLACK, \
+    HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK, HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT = \
+    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_BLACK, theme.HIGHLIGHT_BLACK_BLACK, \
+    theme.HIGHLIGHT_WHITE_RCLICK, theme.HIGHLIGHT_BLACK_RCLICK, theme.HIGHLIGHT_WHITE_RCLICK_OPPONENT, theme.HIGHLIGHT_BLACK_RCLICK_OPPONENT
 
     square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
-    colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else [HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED]
-    HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
+    secondary = [HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK] if player_side else [HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT]
+    if col < 8:
+        if not left:
+            colors = secondary
+        else:
+            colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if is_white else [HIGHLIGHT_WHITE_BLACK, HIGHLIGHT_BLACK_BLACK]
+        HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
+    else:
+        HIGHLIGHT_COLOR = (45, 70, 77)
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
 
 # Helper function to shift coordinates as inputs to those of a reversed board
 def map_to_reversed_board(original_row, original_col, board_size=8):
+    if original_col > 7:
+        return original_row, original_col
     reversed_row = board_size - 1 - original_row
     reversed_col = board_size - 1 - original_col
     
@@ -1059,7 +1146,16 @@ def reverse_chessboard(board):
 # Helper function for reversing coordinates of input parameters
 def reverse_coordinates(params):
     params['board'] = reverse_chessboard(params['board'])
-    for key in ['selected_piece', 'current_position', 'previous_position', 'hovered_square']:
+    for key in [
+        'selected_piece', 
+        'white_active_position', 
+        'black_active_position', 
+        'white_current_position', 
+        'white_previous_position', 
+        'black_current_position', 
+        'black_previous_position', 
+        'hovered_square'
+        ]:
         if params[key] is not None:
             params[key] = map_to_reversed_board(params[key][0], params[key][1])
 
@@ -1074,15 +1170,36 @@ def reverse_coordinates(params):
     params['valid_captures'] = reversed_valid_captures
     params['valid_specials'] = reversed_valid_specials
 
-    reversed_right_click_squares, reversed_drawn_arrows = [], []
-    for square in params['right_clicked_squares']:
-        reversed_right_click_squares.append(map_to_reversed_board(square[0], square[1]))
-    for arrow in params['drawn_arrows']:
-        reversed_start, reversed_end = map_to_reversed_board(arrow[0][0], arrow[0][1]), map_to_reversed_board(arrow[1][0], arrow[1][1])
-        reversed_drawn_arrows.append([reversed_start, reversed_end])
-    params['right_clicked_squares'], params['drawn_arrows'] = reversed_right_click_squares, reversed_drawn_arrows
+    for right_clicked_squares, drawn_arrows in [['right_clicked_squares', 'drawn_arrows'], ['opposing_right_clicked_squares', 'opposing_drawn_arrows']]:
+        reversed_right_click_squares, reversed_drawn_arrows = [], []
+        for square in params['drawing_settings'][right_clicked_squares]:
+            reversed_right_click_squares.append(map_to_reversed_board(square[0], square[1]))
+        for arrow in params['drawing_settings'][drawn_arrows]:
+            reversed_start, reversed_end = map_to_reversed_board(arrow[0][0], arrow[0][1]), map_to_reversed_board(arrow[1][0], arrow[1][1])
+            reversed_drawn_arrows.append([reversed_start, reversed_end])
+        params['drawing_settings'][right_clicked_squares], params['drawing_settings'][drawn_arrows] = reversed_right_click_squares, reversed_drawn_arrows
 
     return params
+
+# Helper function for getting transparent pieces for the active moves
+def get_transparent_active_piece(game, transparent_pieces):
+    if game.white_active_move is not None:
+        if game._promotion_white is None:
+            white_piece = game.board[game.white_active_move[0][0]][game.white_active_move[0][1]]
+        else:
+            white_piece = game._promotion_white
+        white_selected_piece_image = transparent_pieces[white_piece]
+    else: 
+        white_selected_piece_image = None
+    if game.black_active_move is not None:
+        if game._promotion_black is None:
+            black_piece = game.board[game.black_active_move[0][0]][game.black_active_move[0][1]]
+        else:
+            black_piece = game._promotion_black
+        black_selected_piece_image = transparent_pieces[black_piece]
+    else: 
+        black_selected_piece_image = None
+    return white_selected_piece_image, black_selected_piece_image
 
 # Helper function for drawing the board
 def draw_board(params):
@@ -1091,19 +1208,28 @@ def draw_board(params):
     if theme.INVERSE_PLAYER_VIEW:
         params = reverse_coordinates(params)
     board = params['board']
+    starting_player = params['starting_player']
     chessboard = params['drawing_settings']['chessboard'].copy()
     selected_piece = params['selected_piece']
-    current_position = params['current_position']
-    previous_position = params['previous_position']
-    right_clicked_squares = params['right_clicked_squares']
+    white_current_position = params['white_current_position']
+    white_previous_position = params['white_previous_position']
+    black_current_position = params['black_current_position']
+    black_previous_position = params['black_previous_position']
     coordinate_surface = params['drawing_settings']['coordinate_surface'].copy()
-    drawn_arrows = params['drawn_arrows']
+    right_clicked_squares = params['drawing_settings']['right_clicked_squares']
+    drawn_arrows = params['drawing_settings']['drawn_arrows']
+    opposing_right_clicked_squares = params['drawing_settings']['opposing_right_clicked_squares']
+    opposing_drawn_arrows = params['drawing_settings']['opposing_drawn_arrows']
     valid_moves = params['valid_moves']
     valid_captures = params['valid_captures']
     valid_specials = params['valid_specials']
     king_outlines = params['drawing_settings']['king_outlines']
     pieces = params['pieces']
     hovered_square = params['hovered_square']
+    white_active_position = params['white_active_position']
+    black_active_position = params['black_active_position']
+    white_selected_piece_image = params['white_selected_piece_image']
+    black_selected_piece_image = params['black_selected_piece_image']
     selected_piece_image = params['selected_piece_image']
     
     window.blit(chessboard, (0, 0))
@@ -1111,16 +1237,22 @@ def draw_board(params):
     # Highlight left clicked selected squares
     left = True
     if selected_piece is not None:
-        draw_highlight(window, theme, selected_piece[0], selected_piece[1], left)
-    if current_position is not None:
-        draw_highlight(window, theme, current_position[0], current_position[1], left)
-    if previous_position is not None:
-        draw_highlight(window, theme, previous_position[0], previous_position[1], left)
+        draw_highlight(window, theme, selected_piece[0], selected_piece[1], left, True)
+    if white_current_position is not None:
+        draw_highlight(window, theme, white_current_position[0], white_current_position[1], left, True)
+    if white_previous_position is not None:
+        draw_highlight(window, theme, white_previous_position[0], white_previous_position[1], left, True)
+    if black_current_position is not None:
+        draw_highlight(window, theme, black_current_position[0], black_current_position[1], left, False)
+    if black_previous_position is not None:
+        draw_highlight(window, theme, black_previous_position[0], black_previous_position[1], left, False)
 
     # Highlight right clicked selected squares
     left = False
     for square in right_clicked_squares:
-        draw_highlight(window, theme, square[0], square[1], left)
+        draw_highlight(window, theme, square[0], square[1], left, None, starting_player)
+    for square in opposing_right_clicked_squares:
+        draw_highlight(window, theme, square[0], square[1], left, None, not starting_player)
 
     # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))
@@ -1135,11 +1267,22 @@ def draw_board(params):
     if hovered_square is not None:
         draw_hover_outline(window, theme, hovered_square[0], hovered_square[1])
 
+    # Preference your own arrows overtop your opponents
+    for arrow in opposing_drawn_arrows:
+        transparent_arrow = draw_arrow(theme, arrow, not starting_player)
+        # Blit each arrow separately to not blend them with each other
+        window.blit(transparent_arrow, (0, 0))
     for arrow in drawn_arrows:
-        transparent_arrow = draw_arrow(theme, arrow)
+        transparent_arrow = draw_arrow(theme, arrow, starting_player)
         # Blit each arrow separately to not blend them with each other
         window.blit(transparent_arrow, (0, 0))
     
+    if white_active_position is not None:
+        x, y = theme.GRID_SIZE * white_active_position[1], theme.GRID_SIZE * white_active_position[0]
+        window.blit(white_selected_piece_image, (x, y))
+    if black_active_position is not None:
+        x, y = theme.GRID_SIZE * black_active_position[1], theme.GRID_SIZE * black_active_position[0]
+        window.blit(black_selected_piece_image, (x, y))
     # On mousedown and a piece is selected draw a transparent copy of the piece
     # Draw after/above outline and previous layers
     if selected_piece_image is not None:

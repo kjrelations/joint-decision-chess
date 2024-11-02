@@ -187,9 +187,11 @@
 			});
 		});
 
+		{% if user and user.is_authenticated %}
 		document.addEventListener("DOMContentLoaded", function() {
 			document.getElementById('profileDropdownContent').style.display = 'none';
 		});
+		{% endif %}
 
 		const navScrollContainer = document.getElementById('mainNavs');
 		const scrollForwardArrow = document.getElementById("nav-forward-arrow");

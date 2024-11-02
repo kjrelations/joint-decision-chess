@@ -23,8 +23,9 @@ from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
 from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification
-from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm
+from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm
 from .user_settings import default_themes
+from .game_helpers import *
 import uuid
 import json
 import random
@@ -194,7 +195,7 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.computer_game = True
                     new_open_game.private = True
                     new_open_game.opponent_name = "minimax" # Later look up name with more bots
-                if data.get('solo'):
+                elif data.get('solo'):
                     new_open_game.solo_game = True
                     new_open_game.private = True
                 position = data.get('position')
@@ -242,6 +243,13 @@ def create_new_game(request, optional_uuid = None):
                         new_open_game.gametype = data.get('main_mode')
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                state = None
+                if data.get('FEN'):
+                    new_open_game.private = True
+                    state = custom_state(data.get('FEN'), data.get('castling_rights'), new_open_game.gametype)
+                    if state is None or data.get('main_mode') != 'Decision':
+                        return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
+                    new_open_game.initial_state = state
                 new_open_game.save()
                 return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
         elif optional_uuid:
@@ -285,7 +293,7 @@ def get_lobby_games(request):
     expired_games = ChessLobby.objects.filter(expire__lt=timezone.now(), is_open=True)
     expired_games.delete()
 
-    lobby_games = ChessLobby.objects.filter(is_open=True)
+    lobby_games = ChessLobby.objects.filter(is_open=True, private=False, computer_game=False, solo_game=False)
     position_filter = request.GET.get('position')
     username_filter = request.GET.get('username')
 
@@ -616,6 +624,8 @@ def update_connected(request):
                         black_id = game.black_id,
                         gametype = game.gametype
                     )
+                    if game.initial_state is not None:
+                        active_game.state = game.initial_state
                     active_game.save()
             return JsonResponse(message, status=200)
         except ChessLobby.DoesNotExist:
@@ -662,11 +672,20 @@ def get_or_update_state(request, game_uuid):
             return JsonResponse({"token": token}, status=200)
         except ActiveGames.DoesNotExist:
             try:
-                finished_game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
-                token = jwt.encode(json.loads(finished_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
+                lobby_game = ChessLobby.objects.get(lobby_id=game_uuid)
+                if lobby_game.initial_state is None:
+                    raise ChessLobby.DoesNotExist
+                initial_state = json.loads(lobby_game.initial_state)
+                initial_state["custom_start"] = True
+                token = jwt.encode(initial_state, settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
                 return JsonResponse({"token": token}, status=200)
-            except GameHistoryTable.DoesNotExist:
-                return JsonResponse({"message": "DNE"}, status=200)
+            except ChessLobby.DoesNotExist:
+                try:
+                    finished_game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
+                    token = jwt.encode(json.loads(finished_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
+                    return JsonResponse({"token": token}, status=200)
+                except GameHistoryTable.DoesNotExist:
+                    return JsonResponse({"message": "DNE"}, status=200)
 
 def save_game(request):
     if request.method == 'PUT':
@@ -691,7 +710,7 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
             lobby_game = ChessLobby.objects.get(lobby_id=completed_game_uuid)
             try:
-                save_chat_and_game(active_game, data)
+                save_chat_and_game(active_game, lobby_game, data)
             except Exception:
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
@@ -705,7 +724,7 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Game DNE"}, status=400)
 
 @transaction.atomic
-def save_chat_and_game(active_game, data):
+def save_chat_and_game(active_game, lobby_game, data):
     game_chat_messages = ActiveChatMessages.objects.filter(game_id=active_game.active_game_id).order_by('timestamp')
 
     for chat_message in game_chat_messages:
@@ -734,6 +753,8 @@ def save_chat_and_game(active_game, data):
         termination_reason=data.get('termination_reason'),
         state = active_game.state
     )
+    if lobby_game.initial_state is not None:
+        completed_game.initial_state = lobby_game.initial_state
     completed_game.save()
 
 def lessons(request):
@@ -846,6 +867,11 @@ def live(request):
     context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
     context['standard_svg'] = open(".\\static\\images\\decision-icon-colored.svg").read()
     return render(request, "main/live.html", context)
+
+def board_editor(request):
+    form = BoardEditorForm()
+    game_form = CreateNewGameForm()
+    return render(request, "main/board_editor.html", {'form': form, 'game_form': game_form})
 
 def profile(request, username):
     try:

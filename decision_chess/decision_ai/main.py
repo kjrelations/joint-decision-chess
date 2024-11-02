@@ -14,7 +14,7 @@ from network import *
 
 production = False
 local = "http://127.0.0.1:8000"
-local_debug = True
+local_debug = False
 
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
@@ -580,12 +580,6 @@ async def main():
                 while not retrieved:
                     try:
                         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
-                        init["starting_position"] = json.loads(retrieved_state)
-                        if init["starting_player"]:
-                            played_condition = init["starting_player"] == init["starting_position"]["white_played"]
-                        else:
-                            played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
-                        init["sent"] = int(played_condition)
                         retrieved = True
                     except Exception as e:
                         err = 'Game State retreival Failed. Reattempting...'
@@ -593,6 +587,13 @@ async def main():
                         window.eval(js_code)
                         print(err)
             
+            if retrieved_state is not None:
+                init["starting_position"] = json.loads(retrieved_state)
+                if init["starting_player"]:
+                    played_condition = init["starting_player"] == init["starting_position"]["white_played"]
+                else:
+                    played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
+                init["sent"] = int(played_condition)
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Setting Up")
             window.sessionStorage.setItem("connected", "true")

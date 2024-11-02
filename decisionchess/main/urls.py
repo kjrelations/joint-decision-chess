@@ -21,6 +21,7 @@ urlpatterns = [
     path("lessons/<str:lesson>/", views.lesson, name="lesson"),
     path("news/", views.news, name="news"),
     path("live/", views.live, name='live'),
+    path("board_editor/", views.board_editor, name='board_editor'),
     path("profile/<str:username>/", views.profile, name="profile"),
     path("inbox/", views.inbox, name="inbox"),
     path("message/<uuid:message_id>/", views.message, name="message"),

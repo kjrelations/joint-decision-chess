@@ -24,6 +24,18 @@ class CreateNewGameForm(forms.Form):
     decision_stage_multiplayer = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-multiplayer-checkbox'}))
     decision_stage_private = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-private-checkbox'}))
 
+class BoardEditorForm(forms.Form):
+    white_kingside_castle = forms.BooleanField(label="O-O", required=False, widget=forms.CheckboxInput(attrs={'id': 'white-kingside-castle'}))
+    white_queenside_castle = forms.BooleanField(label="O-O-O", required=False, widget=forms.CheckboxInput(attrs={'id': 'white-queenside-castle'}))
+    black_kingside_castle = forms.BooleanField(label="O-O", required=False, widget=forms.CheckboxInput(attrs={'id': 'black-kingside-castle'}))
+    black_queenside_castle = forms.BooleanField(label="O-O-O", required=False, widget=forms.CheckboxInput(attrs={'id': 'black-queenside-castle'}))
+    match_type = forms.ChoiceField(
+        choices=[('multiplayer', 'Multiplayer Game'), ('computer', 'Computer Game'), ('solo', 'Solo Game')],
+        widget=forms.RadioSelect,
+        label="Match Type",
+        required=True
+    )
+
 class ChangeThemesForm(forms.Form):
     def __init__(self, *args, **kwargs):
         themes = [

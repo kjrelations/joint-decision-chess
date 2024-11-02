@@ -846,7 +846,7 @@ async def main():
                 else:
                     played_condition = not init["starting_player"] == init["starting_position"]["black_played"]
                 init["sent"] = int(played_condition)
-                init["initializing"] = True
+                init["initializing"] = True if init["starting_position"].get("custom_start") != True else False
                 init["loaded"] = True
                 continue
 
