@@ -22,6 +22,7 @@ urlpatterns = [
     path("news/", views.news, name="news"),
     path("live/", views.live, name='live'),
     path("board_editor/", views.board_editor, name='board_editor'),
+    path("game_search/", views.game_search, name="game_search"),
     path("profile/<str:username>/", views.profile, name="profile"),
     path("inbox/", views.inbox, name="inbox"),
     path("message/<uuid:message_id>/", views.message, name="message"),

@@ -36,6 +36,92 @@ class BoardEditorForm(forms.Form):
         required=True
     )
 
+class GameSearch(forms.Form):
+    player_1 = forms.CharField(
+        max_length=150,
+        label="Player 1",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Enter a username'
+        })
+    )
+    player_2 = forms.CharField(
+        max_length=150,
+        label="Player 2",
+        required=False,
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Enter a username'
+        })
+    )
+    white = forms.CharField(max_length=150, label="White", required=False, widget=forms.Select(
+        choices=[('', '')], 
+        attrs={'id': 'white-player'}
+    ))
+    black = forms.CharField(max_length=150, label="Black", required=False, widget=forms.Select(
+        choices=[('', '')], 
+        attrs={'id': 'black-player'}
+    ))
+    outcome = forms.CharField(max_length=10, label="Outcome", required=False, widget=forms.Select(
+        choices=[('', ''), ('1-0', '1-0'), ('0-1', '0-1'), ('1-0 or 0-1', '1-0 or 0-1'), ('1-1', '1-1'), ('½-½', '½-½'),], 
+        attrs={'id': 'outcome'}
+    ))
+    winning_player = forms.CharField(max_length=150, label="Winner", required=False, widget=forms.Select(
+        choices=[('', '')], 
+        attrs={'id': 'winner'}
+    ))
+    losing_player = forms.CharField(max_length=150, label="Loser", required=False, widget=forms.Select(
+        choices=[('', '')], 
+        attrs={'id': 'loser'}
+    ))
+    game_type = forms.CharField(max_length=150, label="Game Type", required=False, widget=forms.Select(
+        choices=[('', ''), ('Standard', 'Standard'), ('Complete', 'Complete'), ('Relay', 'Relay'), ('Countdown', 'Countdown')], 
+        attrs={'id': 'game-type'}
+    ))
+    start_date = forms.DateField(
+        label="Start Date",
+        required=False,
+        widget=forms.DateInput(attrs={
+            "type": "date",
+            "placeholder": "YYYY-MM-DD"
+        })
+    )
+
+    def clean_white(self):
+        white = self.cleaned_data.get('white')
+        
+        if white and white != '' and \
+           (white != self.cleaned_data.get('player_1') and white != self.cleaned_data.get('player_2')):
+            raise ValidationError("Invalid white player selected.")
+        
+        return white
+    
+    def clean_black(self):
+        black = self.cleaned_data.get('black')
+        
+        if black and black != '' and \
+           (black != self.cleaned_data.get('player_1') and black != self.cleaned_data.get('player_2')):
+            raise ValidationError("Invalid black player selected.")
+        
+        return black
+    
+    def clean_winning_player(self):
+        winning_player = self.cleaned_data.get('winning_player')
+        
+        if winning_player and winning_player != '' and \
+           (winning_player != self.cleaned_data.get('player_1') and winning_player != self.cleaned_data.get('player_2')):
+            raise ValidationError("Invalid white player selected.")
+        
+        return winning_player
+    
+    def clean_losing_player(self):
+        losing_player = self.cleaned_data.get('losing_player')
+        
+        if losing_player and losing_player != '' and \
+           (losing_player != self.cleaned_data.get('player_1') and losing_player != self.cleaned_data.get('player_2')):
+            raise ValidationError("Invalid black player selected.")
+        
+        return losing_player
+
 class ChangeThemesForm(forms.Form):
     def __init__(self, *args, **kwargs):
         themes = [

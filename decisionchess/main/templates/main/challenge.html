@@ -6,6 +6,10 @@
 <link rel="stylesheet" type="text/css" href="{% static 'main/css/challenge.css' %}">
 {% endblock %}
 
+{% block title %}
+Challenge {{ challenge.initiator_name }} vs {{ challenge.opponent_name }}
+{% endblock %}
+
 {% block content %}
 <div id="content" name="content" class="content">
     <div class="row justify-content-center" style="max-width: 100%; margin: auto;">

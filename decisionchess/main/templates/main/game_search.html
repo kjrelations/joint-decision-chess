@@ -1,0 +1,277 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block style %}
+<style>
+    .uniform-label {
+        width: 200px;
+    }
+
+    .flex-grow-1 {
+        flex-grow: 1;
+    }
+    input, select, textarea {
+        width: 100%;
+    }
+
+    .historic-game {
+        position: relative;
+    }
+
+    .historic-game::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to right, transparent, transparent);
+        pointer-events: none;
+    }
+
+    .historic-game:hover::before {
+        background: linear-gradient(to right, transparent, rgba(115, 101, 59, 0.22), transparent);
+    }
+</style>
+{% endblock %}
+
+{% block title %}
+Search Games
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <div class="col-11 block ml-auto">
+            <h1 class="w-100" style="text-align: center;">Search Games</h1>
+            <form method="get">
+                <div class="row">
+                    <div class="col-md-6 mb-1">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.player_1.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.player_1 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-1">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.player_2.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.player_2 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-1 d-none" name="player-color-dropdown">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.white.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.white }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-1 d-none" name="player-color-dropdown">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.black.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.black }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-1">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.outcome.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.outcome }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-1 d-none" name="winning-losing-dropdown">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.winning_player.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.winning_player }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-1 d-none" name="winning-losing-dropdown">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.losing_player.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.losing_player }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-1">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.game_type.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.game_type }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-1">
+                        <div class="d-flex align-items-center">
+                            <label class="col-form-label uniform-label">{{ form.start_date.label_tag }}</label>
+                            <div class="flex-grow-1">{{ form.start_date }}</div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="timezone" name="timezone">
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const timezoneOffset = new Date().getTimezoneOffset();
+                            document.getElementById("timezone").value = timezoneOffset;
+                        });
+                    </script>
+                </div>
+                <button class="btn btn-success mb-2" type="submit">Search</button>
+            </form>
+            {% if games_details|length > 0 %}
+                <hr style="border-color: white; margin: 0px;">
+            {% endif %}
+            {% for game in games_details %}
+                <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
+                    <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
+                        <div class="d-flex flex-column justify-content-start">
+                            <h3>{{ game.outcome }}</h3>
+                            <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                            <div style="text-align: center; padding: 10px 0;">
+                                <h3>{{ game.game_type }}</h3>
+                                <div>{{ game.white_name|safe }} Vs. {{ game.black_name|safe }}</div>
+                            </div>
+                            <i>{{ game.formatted_moves_string }}</i>
+                        </div>
+                    </a>
+                    <hr style="border-color: white; margin-bottom: 0px;">
+                </div>
+            {% endfor %}
+            <div style="padding-bottom: 20px;"></div>
+        </div>
+    </div>
+    <script>
+        const player1Input = document.getElementById('{{ form.player_1.id_for_label }}');
+        const player2Input = document.getElementById('{{ form.player_2.id_for_label }}');
+        const colorDropdowns = document.getElementsByName('player-color-dropdown');
+        const winLossDropdowns = document.getElementsByName('winning-losing-dropdown');
+        const outcomeInput = document.getElementById('{{ form.outcome.id_for_label }}');
+        const winningPlayerInput = document.getElementById('{{ form.winning_player.id_for_label }}');
+        const losingPlayerInput = document.getElementById('{{ form.losing_player.id_for_label }}');
+    
+        function togglePlayerDropdowns() {
+            const player1Value = player1Input.value.trim();
+            const player2Value = player2Input.value.trim();
+            
+            if (player1Value || player2Value) {
+                colorDropdowns.forEach(dropdown => {
+                    dropdown.classList.remove('d-none');
+                });
+                populatePlayerDropdowns(player1Value, player2Value);
+            } else {
+                colorDropdowns.forEach(dropdown => {
+                    dropdown.classList.add('d-none');
+                });
+            }
+        }
+    
+        function toggleWinningLosingDropdowns() {
+            const outcomeValue = outcomeInput.value;
+            const player1Value = player1Input.value.trim();
+            const player2Value = player2Input.value.trim();
+
+            if ((player1Value || player2Value) && 
+                (outcomeValue === '0-1' || outcomeValue === '1-0' || outcomeValue === '1-0 or 0-1')) {
+                winLossDropdowns.forEach(dropdown => {
+                    dropdown.classList.remove('d-none');
+                });
+                populateWinningLosingDropdowns();
+            } else {
+                winLossDropdowns.forEach(dropdown => {
+                    dropdown.classList.add('d-none');
+                });
+            }
+        }
+
+        function populatePlayerDropdowns(player1, player2) {
+            const whiteDropdown = document.getElementById('{{ form.white.id_for_label }}');
+            const blackDropdown = document.getElementById('{{ form.black.id_for_label }}');
+            
+            whiteDropdown.innerHTML = '';
+            blackDropdown.innerHTML = '';
+
+            whiteDropdown.add(new Option('', ''));
+            blackDropdown.add(new Option('', ''));
+            if (player1) {
+                whiteDropdown.add(new Option(player1, player1));
+                blackDropdown.add(new Option(player1, player1));
+            }
+            if (player2) {
+                whiteDropdown.add(new Option(player2, player2));
+                blackDropdown.add(new Option(player2, player2));
+            }
+        }
+
+        function populateWinningLosingDropdowns() {
+            const outcome = outcomeInput.value;
+            if (outcome !== '1-0' || outcome !== '0-1') {
+                return;
+            }
+            var winners = [''];
+            var losers = [''];
+
+            if (player1Input.value !== '') {
+                winners.push(player1Input.value);
+                losers.push(player1Input.value);
+            }
+            if (player2Input.value !== '') {
+                winners.push(player2Input.value);
+                losers.push(player2Input.value);
+            }
+
+            const whiteDropdown = document.getElementById('{{ form.white.id_for_label }}');
+            const blackDropdown = document.getElementById('{{ form.black.id_for_label }}');
+
+            if (blackDropdown.value !== '') {
+                if (outcome === '0-1') {
+                    losers.filter(name => name !== blackDropdown.value);
+                    winners.filter(name => name === blackDropdown.value || name === '');
+                } else if (outcome === '1-0') {
+                    winners = winners.filter(name => name !== blackDropdown.value);
+                    losers = losers.filter(name => name === blackDropdown.value || name === '');
+                }
+            }
+            if (whiteDropdown.value !== '') {
+                if (outcome === '0-1') {
+                    winners = winners.filter(name => name !== whiteDropdown.value);
+                    losers = losers.filter(name => name === whiteDropdown.value || name === '');
+                } else if (outcome === '1-0') {
+                    losers = losers.filter(name => name !== whiteDropdown.value);
+                    winners = winners.filter(name => name === whiteDropdown.value || name === '');
+                }
+            }
+
+            winningPlayerInput.innerHTML = '';
+            losingPlayerInput.innerHTML = '';
+
+            winners.forEach(winner => {
+                winningPlayerInput.add(new Option(winner, winner));
+            });
+            losers.forEach(loser => {
+                losingPlayerInput.add(new Option(loser, loser));
+            });
+        }
+
+        player1Input.addEventListener('change', function () {
+            togglePlayerDropdowns();
+            populateWinningLosingDropdowns();
+        });
+    
+        player2Input.addEventListener('change', function () {
+            togglePlayerDropdowns();
+            populateWinningLosingDropdowns();
+        });
+    
+        outcomeInput.addEventListener('change', function () {
+            toggleWinningLosingDropdowns();
+        });
+    
+        document.getElementById('{{ form.white.id_for_label }}').addEventListener('change', function () {
+            populateWinningLosingDropdowns();
+        });
+
+        document.getElementById('{{ form.black.id_for_label }}').addEventListener('change', function () {
+            populateWinningLosingDropdowns();
+        });
+
+        window.addEventListener('load', function() {
+            togglePlayerDropdowns();
+            toggleWinningLosingDropdowns();
+        });
+    </script>
+</div>
+{% endblock %}

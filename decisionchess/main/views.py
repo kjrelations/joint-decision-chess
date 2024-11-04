@@ -23,7 +23,7 @@ from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
 from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification
-from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm
+from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm, GameSearch
 from .user_settings import default_themes
 from .game_helpers import *
 import uuid
@@ -872,6 +872,161 @@ def board_editor(request):
     form = BoardEditorForm()
     game_form = CreateNewGameForm()
     return render(request, "main/board_editor.html", {'form': form, 'game_form': game_form})
+
+def game_search(request):
+    form = GameSearch(request.GET or None)
+    games_details = []
+    context = {
+        "form": form,
+        "games_details": games_details
+    }
+
+    if form.is_valid():
+        player_1 = form.cleaned_data.get('player_1')
+        player_2 = form.cleaned_data.get('player_2')
+        white = form.cleaned_data.get('white')
+        black = form.cleaned_data.get('black')
+        outcome = form.cleaned_data.get('outcome')
+        winning_player = form.cleaned_data.get('winning_player')
+        losing_player = form.cleaned_data.get('losing_player')
+        game_type = form.cleaned_data.get('game_type')
+        start_date = form.cleaned_data.get('start_date')
+        timezone_offset = request.GET.get('timezone', None)
+
+        player_1 = player_1.strip() or None
+        player_2 = player_2.strip() or None
+        player_1_id = None
+        player_2_id = None
+        try:
+            if player_1 is not None:
+                    player_1_id = User.objects.get(username=player_1).id
+            if player_2 is not None:
+                    player_2_id = User.objects.get(username=player_2).id
+        except User.DoesNotExist:
+            return render(request, "main/game_search.html", context)
+        
+        white = None if white.strip() == '' else white
+        black = None if black.strip() == '' else black
+        white_id = player_1_id if white == player_1 else player_2_id if white == player_2 else None
+        black_id = player_1_id if black == player_1 else player_2_id if black == player_2 else None
+        
+        outcome = None if outcome.strip() == '' else outcome
+        
+        winning_player = None if winning_player.strip() == '' else winning_player
+        losing_player = None if losing_player.strip() == '' else losing_player
+        winning_id = player_1_id if winning_player == player_1 else player_2_id
+        losing_id = player_1_id if losing_player == player_1 else player_2_id
+        
+        game_type = None if game_type.strip() == '' else game_type
+
+        player_filter = Q()
+        if white_id and black_id:
+            player_filter = Q(white_id=white_id, black_id=black_id)
+        elif white_id:
+            remaining_player_id = player_1_id if player_1_id != white_id else player_2_id
+            if remaining_player_id is not None:
+                player_filter = Q(white_id=white_id, black_id=remaining_player_id)
+            else:
+                player_filter = Q(white_id=white_id)
+        elif black_id:
+            remaining_player_id = player_1_id if player_1_id != black_id else player_2_id
+            if remaining_player_id is not None:
+                player_filter = Q(white_id=remaining_player_id, black_id=black_id)
+            else:
+                player_filter = Q(black_id=black_id)
+        elif player_1_id or player_2_id:
+            if player_1_id is not None and player_2_id is not None:
+                player_filter = Q(white_id=player_1_id) & Q(black_id=player_2_id) | \
+                                Q(white_id=player_2_id) & Q(black_id=player_1_id)
+            elif player_1_id is not None:
+                player_filter |= Q(white_id=player_1_id) | Q(black_id=player_1_id)
+            elif player_2_id is not None:
+                player_filter |= Q(white_id=player_2_id) | Q(black_id=player_2_id)
+
+        outcome_filter = Q()
+        if outcome:
+            if outcome == '1-0 or 0-1':
+                outcome_filter = Q(outcome__in=['1-0', '0-1'])
+            else:
+                outcome_filter = Q(outcome=outcome)
+
+        if outcome in ['1-0', '0-1', '1-0 or 0-1'] and winning_player:
+            if outcome == '1-0':
+                outcome_filter &= Q(white_id=winning_id)
+            elif outcome == '0-1':
+                outcome_filter &= Q(black_id=winning_id)
+
+        if outcome in ['1-0', '0-1', '1-0 or 0-1'] and losing_player:
+            if outcome == '1-0':
+                outcome_filter &= Q(black_id=losing_id)
+            elif outcome == '0-1':
+                outcome_filter &= Q(white_id=losing_id)
+
+        game_type_filter = Q(gametype=game_type) if game_type else Q()
+
+        date_filter = Q()
+        if start_date and timezone_offset:
+            start_date = datetime.combine(start_date, datetime.min.time())
+            start_date = start_date - timedelta(minutes=int(timezone_offset))
+            start_date = timezone.make_aware(start_date)
+            date_filter = Q(start_time__gte=start_date)
+
+        filters = (
+            player_filter &
+            outcome_filter &
+            game_type_filter &
+            date_filter
+        )
+        historic_games = GameHistoryTable.objects.filter(filters).order_by('-start_time')
+        for game in historic_games:
+            try:
+                black_username = User.objects.get(id=game.black_id).username
+            except User.DoesNotExist:
+                black_username = "Anonymous"
+
+            try:
+                white_username = User.objects.get(id=game.white_id).username
+            except User.DoesNotExist:
+                white_username = "Anonymous"
+            relative_game_time = timesince(game.end_time, datetime.utcnow().replace(tzinfo=dt_timezone.utc))
+            result = []
+            if game.gametype == 'classical':
+                move_list = game.algebraic_moves.split(',')
+            else:
+                move_list = json.loads(game.algebraic_moves)
+            end_scores = ['0-0', '1-0', '0-1', '½–½', '1-1']
+            for string in end_scores:
+                if string in move_list:
+                    move_list.remove(string)
+            if game.gametype == 'classical':
+                for i in range(0, len(move_list), 2):
+                    pair = move_list[i:i+2]
+                    pair_string = " ".join(pair)
+                    result.append(f"{(i//2) + 1}. {pair_string}")
+            else:
+                for i in range(0, len(move_list)):
+                    pair_string = ", ".join(move_list[i])
+                    result.append(f"{i + 1}. {pair_string}")
+            
+            init_index = 2 if len(move_list) > 5 else len(result)
+            formatted_moves_string = " ".join(result[:init_index])
+            if len(move_list) > 5:
+                formatted_moves_string += f" ... {result[-1]}"
+            games_details.append({
+                'game_id': game.historic_game_id,
+                'outcome': game.outcome,
+                'white_name': white_username,
+                'black_name': black_username,
+                'game_type': game.gametype.capitalize(),
+                'relative_game_time': relative_game_time,
+                'formatted_moves_string': formatted_moves_string
+            })
+        context["games_details"] = games_details
+            
+    else:
+        form = GameSearch()
+    
+    return render(request, "main/game_search.html", context)
 
 def profile(request, username):
     try:
