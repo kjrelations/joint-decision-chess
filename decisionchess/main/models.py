@@ -52,6 +52,7 @@ class ChessLobby(models.Model):
 	solo_game = models.BooleanField(default=False)
 	status = models.CharField(max_length=50, blank=False, null=False, default="waiting") # "playing" or "completed"
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	initial_state = models.TextField(blank=True, null=True)
 
 	def save(self, *args, **kwargs):
@@ -90,6 +91,7 @@ class GameHistoryTable(models.Model):
 	start_time = models.DateTimeField(blank=False, null=False)
 	end_time = models.DateTimeField(blank=False, null=False, auto_now_add=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	outcome = models.CharField(max_length=7, blank=False, null=False, default="")
 	computed_moves = models.TextField(blank=False, null=False, default="")
 	FEN_outcome = models.CharField(max_length=85, blank=False, null=False, default="")
@@ -201,6 +203,7 @@ class Challenge(models.Model):
 	timestamp = models.DateTimeField()
 	initiator_color = models.CharField(max_length=5, null=True)
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
+	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal") # TODO
 	challenge_accepted = models.BooleanField(default=None, null=True)
 	choices = [('Random', 'Random'), ('White', 'White'), ('Black', 'Black')]
 	initiator_choice = models.CharField(max_length=6, choices=choices, default='Random')

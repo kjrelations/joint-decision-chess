@@ -422,6 +422,8 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': False,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,

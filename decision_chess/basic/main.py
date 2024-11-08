@@ -120,6 +120,8 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
         promotion_required = True
         promotion_square = (row, col)
 
+    if not illegal and not update_positions and game.suggestive_stage_enabled:
+        game.suggestive_stage = True
     return promotion_square, promotion_required
 
 def handle_piece_special_move(game, selected_piece, row, col, init, update_positions=False):
@@ -162,6 +164,8 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
             game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
             return piece, is_white
 
+    if not illegal and not update_positions and game.suggestive_stage_enabled:
+        game.suggestive_stage = True
     return piece, is_white
 
 def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
@@ -266,6 +270,9 @@ async def promotion_state(
             client_game.black_lock = False
             client_game.reveal_stage = False
             client_game.decision_stage = False
+            client_game.suggestive_stage = False
+            client_game.white_suggested_move = None
+            client_game.black_suggested_move = None
             client_game.playing_stage = True
             client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
             print(client_game.forced_end)
@@ -291,6 +298,18 @@ async def promotion_state(
                 client_game.black_played = False
             offer_data = {node.CMD: "draw_accept"}
             node.tx(offer_data)
+            client_game.white_active_move = None
+            client_game.black_active_move = None
+            client_game.white_played = False
+            client_game.black_played = False
+            client_game.white_lock = False
+            client_game.black_lock = False
+            client_game.reveal_stage = False
+            client_game.decision_stage = False
+            client_game.suggestive_stage = False
+            client_game.white_suggested_move = None
+            client_game.black_suggested_move = None
+            client_game.playing_stage = True
             client_game.forced_end = "Draw by mutual agreement"
             print(client_game.forced_end)
             client_game.end_position = True
@@ -393,8 +412,10 @@ async def promotion_state(
         game_window.fill((0, 0, 0))
         
         # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
-        # the reverse_coordinates helper
-        draw_board(draw_board_params.copy())
+        # the reverse_coordinates helper also suggestive hover should always be off
+        draw_board_params_copy = draw_board_params.copy()
+        draw_board_params_copy["suggestive_stage"] = False
+        draw_board(draw_board_params_copy)
         
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
@@ -431,10 +452,10 @@ def initialize_game(init, game_id, node, drawing_settings):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
     else:
         client_game = Game(custom_params=init["starting_position"])
-    if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
+    if client_game.reveal_stage_enabled and client_game.decision_stage_enabled: # do we need this?
         init["game_type"] = "Complete"
     elif client_game.reveal_stage_enabled and not client_game.decision_stage_enabled:
         init["game_type"] = "Relay"
@@ -578,6 +599,8 @@ async def waiting_screen(init, game_window, client_game, drawing_settings):
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': False,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': None,
             'white_current_position': None,
@@ -625,6 +648,7 @@ async def main():
         "config_retrieved": False,
         "starting_player": None,
         "game_type": None,
+        "subvariant": None,
         "starting_position": None,
         "sent": None,
         "drawings_sent": 1,
@@ -733,7 +757,7 @@ async def main():
     left_mouse_button_down = False
     right_mouse_button_down = False
 
-    drawing_settings = {
+    drawing_settings = { # add hovered?
         # Only draw these surfaces as needed; once per selection of theme
         "chessboard": generate_chessboard(current_theme),
         "coordinate_surface": generate_coordinate_surface(current_theme),
@@ -807,6 +831,10 @@ async def main():
                         init["game_type"] = data["message"]["game_type"]
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["subvariant"]:
+                        init["subvariant"] = data["message"]["subvariant"]
+                    else:
+                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     log_err_and_print(e, window)
@@ -838,6 +866,7 @@ async def main():
             else:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = init["starting_player"]
+                init["starting_position"]["subvariant"] = init["subvariant"]
                 client_game = Game(custom_params=init["starting_position"])
                 init["player"] = "white" if init["starting_player"] else "black"
                 init["opponent"] = "black" if init["starting_player"] else "white"
@@ -951,6 +980,9 @@ async def main():
                 client_game.black_lock = False
                 client_game.reveal_stage = False
                 client_game.decision_stage = False
+                client_game.suggestive_stage = False
+                client_game.white_suggested_move = None
+                client_game.black_suggested_move = None
                 client_game.playing_stage = True
                 client_game.forced_end = "White Resigned" if client_game._starting_player else "Black Resigned"
                 print(client_game.forced_end)
@@ -970,6 +1002,18 @@ async def main():
                     client_game.step_to_move(len(client_game.moves) - 1)
                 offer_data = {node.CMD: "draw_accept"}
                 node.tx(offer_data)
+                client_game.white_active_move = None
+                client_game.black_active_move = None
+                client_game.white_played = False
+                client_game.black_played = False
+                client_game.white_lock = False
+                client_game.black_lock = False
+                client_game.reveal_stage = False
+                client_game.decision_stage = False
+                client_game.suggestive_stage = False
+                client_game.white_suggested_move = None
+                client_game.black_suggested_move = None
+                client_game.playing_stage = True
                 client_game.forced_end = "Draw by mutual agreement"
                 print(client_game.forced_end)
                 client_game.end_position = True
@@ -1114,7 +1158,20 @@ async def main():
                         piece = client_game.board[row][col]
                         is_white = piece.isupper()
                         
-                        if client_game.playing_stage and not selected_piece:
+                        if client_game.suggestive_stage and client_game._latest:
+                            suggested_move = [row, col]
+                            if client_game._starting_player:
+                                client_game.white_suggested_move = suggested_move
+                            else:
+                                client_game.black_suggested_move = suggested_move
+                            client_game.suggestive_stage = False
+                            if client_game.white_played and client_game.black_played:
+                                if client_game.reveal_stage_enabled:
+                                    client_game.reveal_stage = True
+                                else:
+                                    client_game.decision_stage = True
+                        
+                        elif client_game.playing_stage and not selected_piece:
                             if piece != ' ':
                                 # Update states with new piece selection
                                 first_intent, selected_piece, selected_piece_image, valid_moves, valid_captures, valid_specials, hovered_square = \
@@ -1191,13 +1248,16 @@ async def main():
                     if left_mouse_button_down and selected_piece is not None:  
                         if (row, col) != hovered_square:
                             hovered_square = (row, col)
+                    elif client_game.suggestive_stage and client_game._latest:
+                        if (row, col) != hovered_square:
+                            hovered_square = (row, col)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         left_mouse_button_down = False
                         hovered_square = None
                         selected_piece_image = None
-                        if not client_game.playing_stage:
+                        if not client_game.playing_stage or client_game.suggestive_stage:
                             continue
                         # For the second time a mouseup occurs on the same square it deselects it
                         # This can be an arbitrary number of mousedowns later
@@ -1301,7 +1361,8 @@ async def main():
                 client_game.black_undo_count = 0
 
         if not client_game.decision_stage and not client_game.reveal_stage and \
-           client_game.white_active_move is not None and client_game.black_active_move is not None:
+           client_game.white_active_move is not None and client_game.black_active_move is not None and \
+           not client_game.suggestive_stage:
             piece_row, piece_col = client_game.white_active_move[0]
             row, col = client_game.white_active_move[1]
             if client_game.white_active_move[-1] == '':
@@ -1319,6 +1380,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': client_game.suggestive_stage,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -1364,9 +1427,11 @@ async def main():
                 client_game.playing_stage = True
                 client_game.reveal_stage = False
                 client_game.decision_stage = False
+                client_game.suggestive_stage = False
 
             set_check_or_checkmate_settings(drawing_settings, client_game)
 
+            # Do we need to redraw here if we do it right after?
             # Remove the overlay and buttons by redrawing the board
             game_window.fill((0, 0, 0))
             # We likely need to reinput the arguments and can't use the above params as they are updated.
@@ -1377,6 +1442,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': client_game.suggestive_stage,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -1398,7 +1465,7 @@ async def main():
             # We need to set the piece to be the pawn/new_piece to confirm checkmate immediately 
             # In the case of an undo this is fine and checkmate is always false
             piece = client_game.board[row][col]
-            is_white = piece.isupper()
+            is_white = piece.isupper() # needed?
 
             if client_game.white_active_move is None and client_game.black_active_move is None:
                 checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
@@ -1435,6 +1502,8 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': client_game.suggestive_stage,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,
@@ -1460,7 +1529,7 @@ async def main():
                (client_game.white_played and client_game._starting_player) or \
                (client_game.black_played and not client_game._starting_player) or \
                not client_game._sync or init["updated_board"] \
-               ) and not client_game.end_position:
+               ) and not client_game.end_position and not client_game.suggestive_stage:
                 txdata = {node.CMD: f"{init['player']}_update"}
                 if not client_game._sync:
                     txdata[node.CMD] += "_req_sync"
@@ -1577,6 +1646,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': True,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -1637,21 +1708,28 @@ async def main():
             metadata_update = True
 
         if not client_game.playing_stage:
-            if web_game_metadata_dict['playing_stage'] != False:
-                web_game_metadata_dict['playing_stage'] = False
-                metadata_update = True
-            
-            file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
-            rank_conversion = {i: str(8 - i) for i in range(8)}
-            web_white_move = file_conversion[client_game.white_active_move[1][1]] + rank_conversion[client_game.white_active_move[1][0]]
-            web_black_move = file_conversion[client_game.black_active_move[1][1]] + rank_conversion[client_game.black_active_move[1][0]]
-            if web_game_metadata_dict['white_active_move'] != web_white_move:
-                web_game_metadata_dict['white_active_move'] = web_white_move
-                metadata_update = True
+            if not client_game.suggestive_stage:
+                if web_game_metadata_dict['playing_stage'] != False:
+                    web_game_metadata_dict['playing_stage'] = False
+                    metadata_update = True
+                
+                file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
+                rank_conversion = {i: str(8 - i) for i in range(8)}
+                if client_game.suggestive_stage_enabled:
+                    white_move = client_game.white_suggested_move
+                    black_move = client_game.black_suggested_move
+                else:
+                    white_move = client_game.white_active_move[1]
+                    black_move = client_game.black_active_move[1]
+                web_white_move = file_conversion[white_move[1]] + rank_conversion[white_move[0]]
+                web_black_move = file_conversion[black_move[1]] + rank_conversion[black_move[0]]
+                if web_game_metadata_dict['white_active_move'] != web_white_move:
+                    web_game_metadata_dict['white_active_move'] = web_white_move
+                    metadata_update = True
 
-            if web_game_metadata_dict['black_active_move'] != web_black_move:
-                web_game_metadata_dict['black_active_move'] = web_black_move
-                metadata_update = True
+                if web_game_metadata_dict['black_active_move'] != web_black_move:
+                    web_game_metadata_dict['black_active_move'] = web_black_move
+                    metadata_update = True
         else:
             if web_game_metadata_dict['playing_stage'] != True:
                 web_game_metadata_dict['playing_stage'] = True

@@ -274,7 +274,7 @@
 		{% if user and user.is_authenticated %}
 		var notificationSocket;
 
-		function handleMessage(data) {
+		function handleNotificationMessage(data) {
 			var notifications = document.getElementById('notificationContent');
 			var notificationChildren = Array.from(notifications.children);
 			if (data['action'] === 'save') {
@@ -385,7 +385,7 @@
 
 			notificationSocket.onmessage = function (event) {
 				var chat_data = JSON.parse(event.data);
-				handleMessage(chat_data);
+				handleNotificationMessage(chat_data);
 			};
 		}
 

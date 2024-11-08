@@ -566,10 +566,11 @@ function generateRematchURL(position) {
     if (position !== "white" && position !== "black") {
         return console.error('Invalid position input')
     }
-    body = {
+    body = { // to eventually replace with game id and rematch param
         "position": position,
         "computer_game": true,
-        "main_mode": "Standard"
+        "main_mode": "Standard",
+        "subvariant": "Normal"
     }
     fetch('/create_new_game/', {
         method: 'POST',

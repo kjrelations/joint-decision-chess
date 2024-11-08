@@ -309,8 +309,10 @@ async def promotion_state(
         game_window.fill((0, 0, 0))
         
         # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
-        # the reverse_coordinates helper
-        draw_board(draw_board_params.copy())
+        # the reverse_coordinates helper also suggestive hover should always be off
+        draw_board_params_copy = draw_board_params.copy()
+        draw_board_params_copy["suggestive_stage"] = False
+        draw_board(draw_board_params_copy)
         
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
@@ -347,7 +349,7 @@ def initialize_game(init, game_id, drawing_settings):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
     else:
         client_game = Game(custom_params=init["starting_position"])
     if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
@@ -437,6 +439,7 @@ async def main():
         "config_retrieved": False,
         "starting_player": None,
         "game_type": None,
+        "subvariant": None,
         "starting_position": None,
         "sent": None,
         "updated_board": False,
@@ -555,6 +558,10 @@ async def main():
                         init["game_type"] = data["message"]["game_type"]
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["subvariant"]:
+                        init["subvariant"] = data["message"]["subvariant"]
+                    else:
+                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     log_err_and_print(e, window)
@@ -572,6 +579,7 @@ async def main():
                         retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         if retrieved_state is not None:
                             init["starting_position"] = json.loads(retrieved_state)
+                            init["starting_position"]["subvariant"] = init["subvariant"]
                         retrieved = True
                     except Exception as e:
                         err = 'Game State retreival Failed. Reattempting...'
@@ -904,6 +912,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -960,6 +970,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -1018,6 +1030,8 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': False,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,
@@ -1090,6 +1104,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,

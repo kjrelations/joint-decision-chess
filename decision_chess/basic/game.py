@@ -4,17 +4,22 @@ import json
 
 class Game:
 
-    def __init__(self, board=None, starting_player=None, game_type=None, custom_params=None):
+    def __init__(self, board=None, starting_player=None, game_type=None, subvariant=None, custom_params=None):
         if custom_params is None:
             if board is None or starting_player is None:
                 raise ValueError("board and starting_player are required parameters when custom_params is not provided.")
             self.white_played = False
             self.black_played = False
+            self.subvariant = subvariant
             self.reveal_stage_enabled = True if game_type in [None, "Complete", "Relay"] else False
             self.decision_stage_enabled = True if game_type in [None, "Complete", "Countdown"] else False
+            self.suggestive_stage_enabled = True if self.subvariant == "Suggestive" and (self.reveal_stage_enabled or self.decision_stage_enabled) else False
             self.playing_stage = True
             self.reveal_stage = False
             self.decision_stage = False
+            self.suggestive_stage = False
+            self.white_suggested_move = None
+            self.black_suggested_move = None
             self.board = board
             self.moves = []
             self.alg_moves = []
@@ -62,11 +67,16 @@ class Game:
         else:
             self.white_played = custom_params["white_played"]
             self.black_played = custom_params["black_played"]
+            self.subvariant = custom_params.get("subvariant")
             self.reveal_stage_enabled = custom_params["reveal_stage_enabled"]
             self.decision_stage_enabled = custom_params["decision_stage_enabled"]
+            self.suggestive_stage_enabled = True if self.subvariant == "Suggestive" and (self.reveal_stage_enabled or self.decision_stage_enabled) else False
             self.playing_stage = custom_params["playing_stage"]
             self.reveal_stage = custom_params["reveal_stage"]
             self.decision_stage = custom_params["decision_stage"]
+            self.suggestive_stage = False
+            self.white_suggested_move = custom_params.get("white_suggested_move")
+            self.black_suggested_move = custom_params.get("black_suggested_move")
             self.board = custom_params["board"]
             self.moves = custom_params["moves"]
             self.alg_moves = custom_params["alg_moves"]
@@ -144,6 +154,15 @@ class Game:
             self._promotion_black = new_game._promotion_black
         self.reveal_stage_enabled = new_game.reveal_stage_enabled
         self.decision_stage_enabled = new_game.decision_stage_enabled
+        if self.suggestive_stage_enabled:
+            if self._starting_player:
+                self.black_suggested_move = new_game.black_suggested_move
+            else:
+                self.white_suggested_move = new_game.white_suggested_move
+            if new_game._move_undone:
+                self.suggestive_stage = False
+                self.white_suggested_move = None
+                self.black_suggested_move = None
         self.playing_stage = new_game.playing_stage
         self.reveal_stage = new_game.reveal_stage
         self.decision_stage = new_game.decision_stage
@@ -452,7 +471,9 @@ class Game:
             update_positions
         )
 
-        if self.reveal_stage_enabled and self.playing_stage:
+        if self.suggestive_stage_enabled and self.playing_stage:
+            self.playing_stage = False
+        elif self.reveal_stage_enabled and self.playing_stage:
             self.playing_stage = False
             self.reveal_stage = True
         elif self.decision_stage_enabled and self.playing_stage:
@@ -1050,6 +1071,9 @@ class Game:
             self.playing_stage = True
             self.reveal_stage = False
             self.decision_stage = False
+            self.suggestive_stage = False
+            self.white_suggested_move = None
+            self.black_suggested_move = None
             self._temp_actives = None
             self._move_index -= 1
             self._move_undone = True
@@ -1089,6 +1113,9 @@ class Game:
             self.playing_stage = True
             self.reveal_stage = False
             self.decision_stage = False
+            self.suggestive_stage = False
+            self.white_suggested_move = None
+            self.black_suggested_move = None
             self._move_undone = True
             self._sync = False
     
@@ -1304,11 +1331,14 @@ class GameEncoder(json.JSONEncoder):
             data = {
                 "white_played": obj.white_played,
                 "black_played": obj.black_played,
+                "subvariant": obj.subvariant,
                 "reveal_stage_enabled": obj.reveal_stage_enabled,
                 "decision_stage_enabled": obj.decision_stage_enabled,
                 "playing_stage": obj.playing_stage,
                 "reveal_stage": obj.reveal_stage,
                 "decision_stage": obj.decision_stage,
+                "white_suggested_move": obj.white_suggested_move,
+                "black_suggested_move": obj.black_suggested_move,
                 "board": obj.board,
                 "moves": obj.moves,
                 "alg_moves": obj.alg_moves,

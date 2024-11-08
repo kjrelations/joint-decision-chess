@@ -42,6 +42,7 @@ const soloRadio = document.getElementById('id_match_type_2');
 
 const revealStageCheckbox = document.getElementById('reveal-stage-private-checkbox');
 const decisionStageCheckbox = document.getElementById('decision-stage-private-checkbox');
+const suggestiveCheckbox = document.getElementById('suggestive-private-checkbox');
 
 document.addEventListener("DOMContentLoaded", function() {
     multiplayerRadio.checked = false;
@@ -49,6 +50,8 @@ document.addEventListener("DOMContentLoaded", function() {
     soloRadio.checked = false;
     revealStageCheckbox.checked = false;
     decisionStageCheckbox.checked = false;
+    suggestiveCheckbox.checked = false;
+    suggestiveCheckbox.disabled = true;
 });
 
 
@@ -61,10 +64,25 @@ function updateState(selectedRadio) {
     decisionStageCheckbox.checked = false;
     revealStageCheckbox.disabled = isDisabled;
     decisionStageCheckbox.disabled = isDisabled;
+    suggestiveCheckbox.disabled = true;
+    suggestiveCheckbox.checked = false;
+}
+
+function updateSuggested() {
+    if (decisionStageCheckbox.checked || revealStageCheckbox.checked) {
+        suggestiveCheckbox.disabled = false;
+    } else {
+        suggestiveCheckbox.checked = false;
+        suggestiveCheckbox.disabled = true;
+    }
 }
 
 [multiplayerRadio, computerRadio, soloRadio].forEach(radio => {
     radio.addEventListener('change', (event) => updateState(event.target));
+});
+
+[revealStageCheckbox, decisionStageCheckbox].forEach(checkbox => {
+    checkbox.addEventListener('change', () => updateSuggested());
 });
 
 function updateCommandCenter() {
@@ -205,11 +223,13 @@ const newChallengeButtons = document.querySelectorAll('[new-challenge="true"]');
                 "private": true,
                 "computer_game": computer,
                 "FEN": sessionStorage.getItem('game_FEN'),
-                "castling_rights": getCastleRights()
+                "castling_rights": getCastleRights(),
+                "subvariant": "Normal"
             }
             if (body["main_mode"] === "Decision") {
                 body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;
                 body["decision_stage"] = document.getElementById('decision-stage-private-checkbox').checked;
+                body["subvariant"] = document.getElementById('suggestive-private-checkbox').checked ? "Suggestive": "Normal";
             }
             generateGame(body);
         });

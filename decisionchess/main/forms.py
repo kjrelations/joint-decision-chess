@@ -23,6 +23,8 @@ class CreateNewGameForm(forms.Form):
     reveal_stage_private = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-private-checkbox'}))
     decision_stage_multiplayer = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-multiplayer-checkbox'}))
     decision_stage_private = forms.BooleanField(label="Decision Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'decision-stage-private-checkbox'}))
+    suggestive_multiplayer = forms.BooleanField(label="Suggestive Variant", required=False, widget=forms.CheckboxInput(attrs={'id': 'suggestive-multiplayer-checkbox'}))
+    suggestive_private = forms.BooleanField(label="Suggestive Variant", required=False, widget=forms.CheckboxInput(attrs={'id': 'suggestive-private-checkbox'}))
 
 class BoardEditorForm(forms.Form):
     white_kingside_castle = forms.BooleanField(label="O-O", required=False, widget=forms.CheckboxInput(attrs={'id': 'white-kingside-castle'}))

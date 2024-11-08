@@ -157,6 +157,9 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             client_game.synchronize(game)
+                            if client_game.suggestive_stage_enabled:
+                                client_game.black_suggested_move = game.black_suggested_move
+                                client_game.white_suggested_move = game.white_suggested_move
                             drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
                                 if client_game.end_position:
@@ -204,6 +207,9 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             client_game.synchronize(game)
+                            if client_game.suggestive_stage_enabled:
+                                client_game.black_suggested_move = game.black_suggested_move
+                                client_game.white_suggested_move = game.white_suggested_move
                             drawing_settings["draw"] = True
                             if client_game.alg_moves != [] and temp_alg_moves != client_game.alg_moves:
                                 if client_game.end_position:

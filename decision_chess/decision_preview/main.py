@@ -51,7 +51,7 @@ def initialize_game(init, drawing_settings, game_key):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
     else:
         client_game = Game(custom_params=init["starting_position"])
     if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
@@ -95,6 +95,7 @@ async def main():
         "config_retrieved": False,
         "starting_player": None,
         "game_type": None,
+        "subvariant": None,
         "starting_position": None,
         "local_debug": local_debug,
         "access_keys": None,
@@ -211,6 +212,10 @@ async def main():
                         init["game_type"] = data["message"]["game_type"]
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["subvariant"]:
+                        init["subvariant"] = data["message"]["subvariant"]
+                    else:
+                        raise Exception("Bad request")
                 except Exception as e:
                     log_err_and_print(e, window)
                     raise Exception(str(e))
@@ -236,6 +241,7 @@ async def main():
             if retrieved_state is not None:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = True
+                init["starting_position"]["subvariant"] = init["subvariant"]
             init["initializing"] = True
             init["loaded"] = True
             drawing_settings["draw"] = True
@@ -272,6 +278,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': None,
                 'white_current_position': client_game.white_current_position,
@@ -315,6 +323,8 @@ async def main():
                     'theme': current_theme,
                     'board': client_game.board,
                     'starting_player': client_game._starting_player,
+                    'suggestive_stage': False,
+                    'latest': client_game._latest,
                     'drawing_settings': drawing_settings.copy(),
                     'selected_piece': None,
                     'white_current_position': client_game.white_current_position,

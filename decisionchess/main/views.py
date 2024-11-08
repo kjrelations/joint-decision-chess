@@ -189,7 +189,7 @@ def create_new_game(request, optional_uuid = None):
             if user_id is None:
                 user_id = uuid.uuid4()
                 request.session["guest_uuid"] = str(user_id)
-            if request.method == "POST":
+            if request.method == "POST": # do an earlier check and pass
                 data = json.loads(request.body.decode('utf-8'))
                 if data.get('computer_game'):
                     new_open_game.computer_game = True
@@ -198,6 +198,27 @@ def create_new_game(request, optional_uuid = None):
                 elif data.get('solo'):
                     new_open_game.solo_game = True
                     new_open_game.private = True
+                if data.get('rematch'):
+                    # Make rematches private?
+                    try:
+                        historic = GameHistoryTable.objects.get(historic_game_id=data.get('rematch'))
+                        opponent_id = getattr(historic, opponent_column_to_fill)
+                        setattr(new_open_game, opponent_column_to_fill, opponent_id)
+                        data["subvariant"] = historic.subvariant
+                        data["main_mode"] = "Decision" if historic.gametype in ["Complete", "Relay", "Countdown", "Standard"] else "Classical"
+                        if user_id == historic.white_id:
+                            data["position"] = "white"
+                        elif user_id == historic.black_id:
+                            data["position"] = "black"
+                        else:
+                            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)    
+                        try:
+                            opponent = User.objects.get(id=opponent_id)
+                            new_open_game.opponent_name = opponent.username
+                        except User.DoesNotExist:
+                            new_open_game.opponent_name = "Anonymous"
+                    except:
+                        return JsonResponse({"status": "error", "message": "Recent Game DNE"}, status=401)
                 position = data.get('position')
                 opponent_column_to_fill = "black_id"
                 if position == "white":
@@ -214,18 +235,6 @@ def create_new_game(request, optional_uuid = None):
                     opponent_column_to_fill = "white_id" if column_to_fill == "black_id" else "black_id"
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
-                if data.get('rematch'):
-                    try:
-                        historic = GameHistoryTable.objects.get(historic_game_id=data.get('rematch'))
-                        opponent_id = getattr(historic, opponent_column_to_fill)
-                        setattr(new_open_game, opponent_column_to_fill, opponent_id)
-                        try:
-                            opponent = User.objects.get(id=opponent_id)
-                            new_open_game.opponent_name = opponent.username
-                        except User.DoesNotExist:
-                            new_open_game.opponent_name = "Anonymous"
-                    except:
-                        return JsonResponse({"status": "error", "message": "Recent Game DNE"}, status=401)
                 private = data.get('private')
                 if private:
                     new_open_game.private = True
@@ -241,6 +250,11 @@ def create_new_game(request, optional_uuid = None):
                             new_open_game.gametype = 'Standard'
                     else:
                         new_open_game.gametype = data.get('main_mode')
+                else:
+                    return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                if (data.get('subvariant') in ["Normal", "Classical", "Rapid", "Blitz"] and new_open_game.gametype == "Standard") or\
+                   (data.get('subvariant') in ["Normal", "Suggestive"] and new_open_game.gametype in ["Complete", "Relay", "Countdown"]):
+                    new_open_game.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                 state = None
@@ -378,7 +392,14 @@ def get_config(request, game_uuid):
                 else:
                     return JsonResponse({"status": "error"}, status=401)
 
-            return JsonResponse({"message": {"starting_side": fill, "game_type": game.gametype, "theme_names": theme_names}}, status=200)
+            return JsonResponse({
+                "message": {
+                    "starting_side": fill, 
+                    "game_type": game.gametype, 
+                    "theme_names": theme_names, 
+                    "subvariant": game.subvariant
+                    }
+                }, status=200)
         except ChessLobby.DoesNotExist:
             # TODO check historic games and send a special refresh message if available
             return JsonResponse({"status": "error"}, status=401)
@@ -502,6 +523,7 @@ def play(request, game_uuid):
         try:
             historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
             historic_html = "main/historic.html" if historic.gametype == 'Classical' else "main/play/decision_historic.html"
+            # TODO move historic into script fetch
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -510,7 +532,8 @@ def play(request, game_uuid):
                 'FEN': historic.FEN_outcome,
                 'outcome': historic.outcome,
                 'forced_end': historic.termination_reason,
-                'game_type': historic.gametype
+                'game_type': historic.gametype,
+                'subvariant': historic.subvariant
             }
             try:
                 white_user = User.objects.get(id=historic.white_id)
@@ -747,6 +770,7 @@ def save_chat_and_game(active_game, lobby_game, data):
         algebraic_moves=data.get('alg_moves'),
         start_time=active_game.start_time,
         gametype=active_game.gametype,
+        subvariant=lobby_game.subvariant,
         outcome=data.get('outcome'),
         computed_moves=data.get('comp_moves'),
         FEN_outcome=data.get('FEN'),
@@ -1246,6 +1270,11 @@ def upsert_challenge(request):
                 new_challenge.gametype = data.get('main_mode')
         else:
             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        if (data.get('subvariant') in ["Normal", "Classical", "Rapid", "Blitz"] and new_challenge.gametype == "Standard") or\
+            (data.get('subvariant') in ["Normal", "Suggestive"] and new_challenge.gametype in ["Complete", "Relay", "Countdown"]):
+            new_challenge.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
+        else:
+            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
         new_challenge.save()
         return JsonResponse({'redirect': True, 'url': reverse('challenge', args=[str(new_challenge.challenge_id)]), "message": "Challenge sent"}, status=200)
     elif request.method == "PUT":
@@ -1273,7 +1302,8 @@ def upsert_challenge(request):
                 timestamp = challenge.timestamp,
                 is_open = False,
                 initiator_color = challenge.initiator_color,
-                gametype = challenge.gametype
+                gametype = challenge.gametype,
+                subvariant = challenge.subvariant
             )
             new_lobby.save()
             challenge.game_id = new_lobby.lobby_id

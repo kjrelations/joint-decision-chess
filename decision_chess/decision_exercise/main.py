@@ -272,8 +272,10 @@ async def promotion_state(
         game_window.fill((0, 0, 0))
         
         # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
-        # the reverse_coordinates helper
-        draw_board(draw_board_params.copy())
+        # the reverse_coordinates helper also suggestive hover should always be off
+        draw_board_params_copy = draw_board_params.copy()
+        draw_board_params_copy["suggestive_stage"] = False
+        draw_board(draw_board_params_copy)
         
         overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 128))
@@ -312,7 +314,7 @@ def initialize_game(init, drawing_settings):
     if init["board"] is None or init["game_type"] is None:
         raise Exception("No starting position or board or game type")
     else:
-        client_game = Game(init["board"], init["starting_player"], init["game_type"])
+        client_game = Game(init["board"], init["starting_player"], init["game_type"], init["subvariant"])
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     init["player"] = "white" if init["starting_player"] else "black"
@@ -384,6 +386,7 @@ async def main():
         "indexed_moves": None,
         "moves": None,
         "game_type": "Standard",
+        "subvariant": "Normal",
         # "starting_position": None,
         "player": None,
         "opponent": None,
@@ -889,6 +892,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -944,6 +949,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,
@@ -1002,6 +1009,8 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': False,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,
@@ -1059,6 +1068,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,

@@ -188,6 +188,7 @@ def load_historic_game(json_game):
     game_param_dict = {
         "white_played": False,
         "black_played": False,
+        "subvariant": json_game["subvariant"],
         "reveal_stage_enabled": False,
         "decision_stage_enabled": False,
         "playing_stage": True,
@@ -1268,6 +1269,8 @@ def draw_board(params):
         params = reverse_coordinates(params)
     board = params['board']
     starting_player = params['starting_player']
+    suggestive_stage = params['suggestive_stage']
+    latest = params['latest']
     chessboard = params['drawing_settings']['chessboard'].copy()
     selected_piece = params['selected_piece']
     white_current_position = params['white_current_position']
@@ -1312,6 +1315,9 @@ def draw_board(params):
         draw_highlight(window, theme, square[0], square[1], left, None, starting_player)
     for square in opposing_right_clicked_squares:
         draw_highlight(window, theme, square[0], square[1], left, None, not starting_player)
+
+    if suggestive_stage and hovered_square is not None and latest:
+        draw_highlight(window, theme, hovered_square[0], hovered_square[1], left, None, starting_player)
 
     # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))

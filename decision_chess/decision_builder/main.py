@@ -159,7 +159,7 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
 def initialize_game(init, drawing_settings):
     current_theme.INVERSE_PLAYER_VIEW = False
     pygame.display.set_caption("Chess - Setup")
-    client_game = Game(new_board.copy(), True, "Standard")
+    client_game = Game(new_board.copy(), True, "Standard", "Normal")
     drawing_settings["chessboard"] = generate_chessboard(current_theme)
     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
     web_game_metadata_dict = {
@@ -460,6 +460,8 @@ async def main():
             'theme': current_theme,
             'board': client_game.board,
             'starting_player': client_game._starting_player,
+            'suggestive_stage': False,
+            'latest': client_game._latest,
             'drawing_settings': drawing_settings.copy(),
             'selected_piece': selected_piece,
             'white_current_position': client_game.white_current_position,
@@ -497,6 +499,8 @@ async def main():
                 'theme': current_theme,
                 'board': client_game.board,
                 'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
                 'drawing_settings': drawing_settings.copy(),
                 'selected_piece': selected_piece,
                 'white_current_position': client_game.white_current_position,

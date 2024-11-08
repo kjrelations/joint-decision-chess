@@ -823,7 +823,7 @@ function handleMessage(data) {
                 let new_game_id;
                 fetchUUID(signed_uuid, currentGameID).then(data => {
                     new_game_id = data.uuid;
-                    generateRematchURL(playerColor, new_game_id);
+                    generateRematchURL(new_game_id);
                 });
                 document.getElementById("rematchButton").classList.add("used");
             }
@@ -853,14 +853,10 @@ function appendChatLog(message) {
     $(".chat-messages").append(log);
 }
 
-function generateRematchURL(position, game_id) {
-    if (position !== "white" && position !== "black") {
-        return console.error('Invalid position input')
-    }
+function generateRematchURL(game_id) {
     var currentGameID = sessionStorage.getItem('current_game_id');
-    currentGameID = currentGameID.replace(position + '-', '');
-    var gameType = sessionStorage.getItem('game_type');
-    body = {"position": position, "rematch": currentGameID, "main_mode": gameType};
+    currentGameID = currentGameID.replace("white" + '-', '').replace("black" + '-', '');
+    body = {"rematch": currentGameID};
     fetch('/create_new_game/' + game_id + '/', {
         method: 'POST',
         headers: {
