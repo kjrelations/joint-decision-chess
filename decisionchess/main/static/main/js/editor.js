@@ -39,6 +39,7 @@ document.getElementById('FENInput').addEventListener('input', function () {
 const multiplayerRadio = document.getElementById('id_match_type_0');
 const computerRadio = document.getElementById('id_match_type_1');
 const soloRadio = document.getElementById('id_match_type_2');
+const privateText = document.getElementById('multiplayer-modal-text');
 
 const revealStageCheckbox = document.getElementById('reveal-stage-private-checkbox');
 const decisionStageCheckbox = document.getElementById('decision-stage-private-checkbox');
@@ -66,6 +67,10 @@ function updateState(selectedRadio) {
     decisionStageCheckbox.disabled = isDisabled;
     suggestiveCheckbox.disabled = true;
     suggestiveCheckbox.checked = false;
+    privateText.classList.add('d-none');
+    if (selectedRadio.id === 'id_match_type_0' && selectedRadio.checked) {
+        privateText.classList.remove('d-none');
+    }
 }
 
 function updateSuggested() {
