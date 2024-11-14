@@ -21,9 +21,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
             raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
+        client_game_str = client_game.to_json(include_states=True).replace('"_sync": false', '"_sync": true')
         try:
             domain = 'https://decisionchess.com' if production else local
             url = f'{domain}/game-state/' + game_id + '/'
@@ -204,7 +202,6 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                             print("Syncing...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            init["desync"] = False if init["desync"] else False
                             if client_game.timed_mode:
                                 if not client_game.white_played:
                                     client_game.white_clock_running = True
@@ -332,7 +329,6 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                             print("Syncing...")
                             client_game._sync = True
                             client_game._move_undone = False
-                            init["desync"] = False if init["desync"] else False
                             if client_game.timed_mode:
                                 if not client_game.white_played:
                                     client_game.white_clock_running = True

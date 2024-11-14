@@ -89,15 +89,15 @@ class Game:
             self.black_played = custom_params["black_played"]
             self.subvariant = custom_params.get("subvariant")
             self.timed_mode = True if self.subvariant in ["Classical", "Rapid", "Blitz"] else False
-            self.increment = custom_params["increment"]
-            self.white_initial_time = custom_params["white_initial_time"]
-            self.black_initial_time = custom_params["black_initial_time"]
-            self.remaining_white_time = custom_params["remaining_white_time"]
-            self.remaining_black_time = custom_params["remaining_black_time"]
+            self.increment = custom_params.get("increment")
+            self.white_initial_time = custom_params.get("white_initial_time")
+            self.black_initial_time = custom_params.get("black_initial_time")
+            self.remaining_white_time = custom_params.get("remaining_white_time")
+            self.remaining_black_time = custom_params.get("remaining_black_time")
             self._temp_remaining_white_time = None
             self._temp_remaining_black_time = None
-            self.white_clock_running = custom_params["white_clock_running"]
-            self.black_clock_running = custom_params["black_clock_running"]
+            self.white_clock_running = custom_params.get("white_clock_running", False)
+            self.black_clock_running = custom_params.get("black_clock_running", False)
             self.reveal_stage_enabled = custom_params["reveal_stage_enabled"]
             self.decision_stage_enabled = custom_params["decision_stage_enabled"]
             self.suggestive_stage_enabled = True if self.subvariant == "Suggestive" and (self.reveal_stage_enabled or self.decision_stage_enabled) else False
@@ -111,7 +111,7 @@ class Game:
             self.moves = custom_params["moves"]
             self.alg_moves = custom_params["alg_moves"]
             self.castle_attributes = custom_params["castle_attributes"]
-            self.move_times = custom_params["move_times"]
+            self.move_times = custom_params.get("move_times", [])
             self.white_active_move = custom_params["white_active_move"]
             self.black_active_move = custom_params["black_active_move"]
             self.white_current_position = custom_params["white_current_position"]
@@ -1167,15 +1167,17 @@ class Game:
                 self.black_current_position = (new_black_curr_row, new_black_curr_col)
                 self.black_previous_position = (new_black_last_row, new_black_last_col)
                 
-                self.remaining_white_time = self.move_times[-1][0]
-                self.remaining_black_time = self.move_times[-1][1]
+                if self.timed_mode:
+                    self.remaining_white_time = self.move_times[-1][0]
+                    self.remaining_black_time = self.move_times[-1][1]
             else:
                 self.white_current_position = None
                 self.white_previous_position = None
                 self.black_current_position = None
                 self.black_previous_position = None
-                self.remaining_white_time = self.white_initial_time
-                self.remaining_black_time = self.black_initial_time
+                if self.timed_mode:
+                    self.remaining_white_time = self.white_initial_time
+                    self.remaining_black_time = self.black_initial_time
         else:
             self.white_active_move = None
             self.black_active_move = None
@@ -1189,8 +1191,9 @@ class Game:
             self.suggestive_stage = False
             self.white_suggested_move = None
             self.black_suggested_move = None
-            self.remaining_white_time = self.white_initial_time
-            self.remaining_black_time = self.black_initial_time
+            if self.timed_mode:
+                self.remaining_white_time = self.white_initial_time
+                self.remaining_black_time = self.black_initial_time
             self._move_undone = True
             self._sync = False
     
@@ -1418,6 +1421,7 @@ class GameEncoder(json.JSONEncoder):
                 "black_played": obj.black_played,
                 "subvariant": obj.subvariant,
                 "timed_mode": obj.timed_mode,
+                "increment": obj.increment,
                 "reveal_stage_enabled": obj.reveal_stage_enabled,
                 "decision_stage_enabled": obj.decision_stage_enabled,
                 "playing_stage": obj.playing_stage,
@@ -1460,7 +1464,6 @@ class GameEncoder(json.JSONEncoder):
 
             if obj.timed_mode:
                 data.update({
-                    "increment": obj.increment,
                     "white_initial_time": obj.white_initial_time,
                     "black_initial_time": obj.black_initial_time,
                     "remaining_white_time": obj.remaining_white_time,

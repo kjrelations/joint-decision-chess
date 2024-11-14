@@ -21,9 +21,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
             raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
+        client_game_str = client_game.to_json(include_states=True).replace('"_sync": false', '"_sync": true')
         try:
             domain = 'https://decisionchess.com' if production else local
             url = f'{domain}/game-state/' + game_id + '/'
@@ -283,32 +281,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     client_game.black_clock_running = True
                                 init["reference_time"] = time.monotonic()
                                 node.tx({node.CMD: f"{init["player"]} resume_clock"})
-                        # Handle double desync first to prevent infinite syncs sent back and forth
-                        elif not game._sync and not client_game._sync and not init["desync"]:
-                            confirmed_state = None
-                            if not init["local_debug"]:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                except:
-                                    err = 'Confirmed state retrieval failed. Quitting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
-                            if confirmed_state is not None:
-                                confirmed_state = json.loads(confirmed_state)
-                                confirmed_state["_starting_player"] = init["starting_player"]
-                                client_game = Game(custom_params=confirmed_state)
-                                init["sent"] = 1
-                                drawing_settings["recalc_selections"] = True
-                                drawing_settings["clear_selections"] = True
-                                node.tx({node.CMD: "_retrieve"})
-                                init["desync"] = True
-                                client_game._sync = False
-                            else:
-                                node.tx({node.CMD: "_fail"})
-                                await asyncio.sleep(1)
-                                node.quit()
-                                raise Exception("Desynced")
                         elif "req_sync" in cmd:
                             txdata = {node.CMD: "_sync"}
                             send_game = client_game.to_json()
@@ -502,33 +474,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     client_game.black_clock_running = True
                                 init["reference_time"] = time.monotonic()
                             node.tx({node.CMD: f"{init["player"]} resume_clock"})
-                        # Handle double desync first to prevent infinite syncs sent back and forth
-                        elif not game._sync and not client_game._sync and not init["desync"]:
-                            confirmed_state = None
-                            if not init["local_debug"]:
-                                try:
-                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                                except:
-                                    err = 'Confirmed state retrieval failed. Quitting...'
-                                    js_code = f"console.log('{err}')"
-                                    window.eval(js_code)
-                                    print(err)
-                            if confirmed_state is not None:
-                                confirmed_state = json.loads(confirmed_state)
-                                confirmed_state["_starting_player"] = init["starting_player"]
-                                client_game = Game(custom_params=confirmed_state)
-                                init["sent"] = 1
-                                drawing_settings["recalc_selections"] = True
-                                drawing_settings["clear_selections"] = True
-                                node.tx({node.CMD: "_retrieve"})
-                                init["desync"] = True
-                                client_game._sync = False
-                            else:
-                                node.tx({node.CMD: "_fail"})
-                                await asyncio.sleep(1)
-                                node.quit()
-                                raise Exception("Desynced")
-                        # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
                         elif "req_sync" in cmd:
                             txdata = {node.CMD: "_sync"}
                             send_game = client_game.to_json()
@@ -692,6 +637,8 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 # Only if it's the other main player here, spectators can have different prefix names
                 if "spec" not in u:
                     window.sessionStorage.setItem("connected", "false")
+                    if client_game is not None:
+                        client_game._sync = True
                 if u in node.users:
                     del node.users[u]
                 apply_resets(window, offers, client_state_actions)
