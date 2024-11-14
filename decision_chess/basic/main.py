@@ -6,6 +6,8 @@ import pygbag.aio as asyncio
 import fetch
 import pygbag_net
 import builtins
+import time
+from datetime import datetime
 from game import *
 from constants import *
 from helpers import *
@@ -79,9 +81,27 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
     if not (is_check(temp_board, is_white) and \
             not (piece.lower() == 'k' and temp_board[row][col].isupper() == is_white)): # redundant now? Not for premoves
         update, illegal = game.update_state(row, col, selected_piece, update_positions=update_positions)
-        if piece.lower() != 'p' or (piece.lower() == 'p' and (row != 7 and row != 0)) and update:
-            print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
         
+        end = time.monotonic()
+        if not illegal and not (piece.lower() == 'p' and (row == 7 or row == 0)) and game.timed_mode:
+            if game._starting_player:
+                game.white_clock_running = False
+                game.remaining_white_time = max(game.remaining_white_time - (end - init["reference_time"]), 0)
+            else:
+                game.black_clock_running = False
+                game.remaining_black_time = max(game.remaining_black_time - (end - init["reference_time"]), 0)
+        
+        if update and not (piece.lower() == 'p' and (row == 7 or row == 0)):
+            print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
+            if game.timed_mode:
+                game.move_times.append([game.remaining_white_time, game.remaining_black_time])
+                if init["white_grace_time"] is not None:
+                    init["white_grace_time"] = max(init["white_grace_time"] - (end - init["reference_time"]), 0)
+                if init["black_grace_time"] is not None:
+                    init["black_grace_time"] = max(init["black_grace_time"] - (end - init["reference_time"]), 0)
+                init["reference_time"] = time.monotonic()
+                game.white_clock_running = True
+                game.black_clock_running = True
         if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
             handle_play(window, capture_sound)
         elif update:
@@ -91,7 +111,7 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
         
         selected_piece = None
 
-        if update:
+        if update and not (piece.lower() == 'p' and (row == 0 or row == 7) and allow_promote):
             init["sent"] = 0
             init["updated_board"] = True
             checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
@@ -131,8 +151,25 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
 
     # Castling and Enpassant moves are already validated, we simply update state
     update, illegal = game.update_state(row, col, selected_piece, special=True, update_positions=update_positions)
+
+    end = time.monotonic()
+    if not illegal and game.timed_mode:
+        if game._starting_player:
+            game.white_clock_running = False
+            game.remaining_white_time = max(game.remaining_white_time - (end - init["reference_time"]), 0)
+        else:
+            game.black_clock_running = False
+            game.remaining_black_time = max(game.remaining_black_time - (end - init["reference_time"]), 0)
+    
     if update:
         print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
+        if game.timed_mode:
+            game.move_times.append([game.remaining_white_time, game.remaining_black_time])
+            if init["white_grace_time"] is not None:
+                init["white_grace_time"] = max(init["white_grace_time"] - (end - init["reference_time"]), 0)
+            if init["black_grace_time"] is not None:
+                init["black_grace_time"] = max(init["black_grace_time"] - (end - init["reference_time"]), 0)
+            init["reference_time"] = time.monotonic()
     if update and ("x" in game.alg_moves[-1][0] or "x" in game.alg_moves[-1][1]):
         handle_play(window, capture_sound)
     elif update:
@@ -166,7 +203,7 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
 
     if not illegal and not update_positions and game.suggestive_stage_enabled:
         game.suggestive_stage = True
-    return piece, is_white
+    return piece, is_white # Don't think I need these returns
 
 def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
     command_name, client_action_name, client_executed_name, *remaining = status_names
@@ -242,6 +279,8 @@ async def promotion_state(
             client_state_actions["undo_accept"] = False
             client_state_actions["undo_accept_executed"] = True
             promotion_required = False
+            if client_game.timed_mode:
+                init["reference_time"] = time.monotonic()
             continue
         # If we are the sender during a promotion we wish to exit this state and sync
         if client_state_actions["undo_response_received"]:
@@ -260,6 +299,14 @@ async def promotion_state(
             window.sessionStorage.setItem("undo_request", "false")
 
         if client_state_actions["resign"]:
+            if client_game.timed_mode:
+                end = time.monotonic()
+                if client_game.white_clock_running:
+                    client_game.white_clock_running = False
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                if client_game.black_clock_running:
+                    client_game.black_clock_running = False
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
             reset_data = {node.CMD: "reset"}
             node.tx(reset_data)
             client_game.white_active_move = None
@@ -290,12 +337,14 @@ async def promotion_state(
             node.tx(offer_data)
             client_state_actions["draw_offer_sent"] = True
         if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
-            if client_game._starting_player:
-                client_game.white_active_move = None
-                client_game.white_played = False
-            else:
-                client_game.black_active_move = None
-                client_game.black_played = False
+            if client_game.timed_mode:
+                end = time.monotonic()
+                if client_game.white_clock_running:
+                    client_game.white_clock_running = False
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                if client_game.black_clock_running:
+                    client_game.black_clock_running = False
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
             offer_data = {node.CMD: "draw_accept"}
             node.tx(offer_data)
             client_game.white_active_move = None
@@ -320,12 +369,18 @@ async def promotion_state(
             promotion_required = False
             continue
         if client_state_actions["draw_response_received"]:
-            if client_game._starting_player:
-                client_game.white_active_move = None
-                client_game.white_played = False
-            else:
-                client_game.black_active_move = None
-                client_game.black_played = False
+            if client_game.timed_mode:
+                end = time.monotonic()
+                if client_game.white_clock_running:
+                    client_game.white_clock_running = False
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                if client_game.black_clock_running:
+                    client_game.black_clock_running = False
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+            client_game.white_active_move = None
+            client_game.black_active_move = None
+            client_game.white_played = False
+            client_game.black_played = False
             client_game.forced_end = "Draw by mutual agreement"
             print(client_game.forced_end)
             client_game.end_position = True
@@ -399,7 +454,26 @@ async def promotion_state(
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
                         update = client_game.promote_to_piece(row, col, button.piece)
+                        if client_game.timed_mode:
+                            end = time.monotonic()
+                            if client_game._starting_player:
+                                client_game.white_clock_running = False
+                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                            else:
+                                client_game.black_clock_running = False
+                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                            if init["white_grace_time"] is not None:
+                                init["white_grace_time"] = max(init["white_grace_time"] - (end - init["reference_time"]), 0)
+                            if init["black_grace_time"] is not None:
+                                init["black_grace_time"] = max(init["black_grace_time"] - (end - init["reference_time"]), 0)
                         if update:
+                            if client_game.timed_mode:
+                                client_game.move_times.append([client_game.remaining_white_time, client_game.remaining_black_time])
+                                init["reference_time"] = time.monotonic()
+                                client_game.white_clock_running = True
+                                client_game.black_clock_running = True
+                            init["sent"] = 0
+                            init["updated_board"] = True
                             print_d("ALG_MOVES:", client_game.alg_moves, debug=debug_prints)
                         promotion_required = False
                         promoted = True
@@ -573,7 +647,7 @@ def initialize_game(init, game_id, node, drawing_settings):
         web_ready = False
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
         if web_game_metadata is not None:
-            web_game_metadata_dict = json.loads(web_game_metadata)
+            web_game_metadata_dict = json.loads(web_game_metadata) # needed?
             web_ready = True
             init["initializing"], init["initialized"] = False, True
             node.tx({node.CMD: f"{init['player']} initialized"})
@@ -583,6 +657,19 @@ def initialize_game(init, game_id, node, drawing_settings):
     else:
         init["initializing"] = False
         node.tx({node.CMD: f"{init['player']} initialized"})
+    if client_game.timed_mode:
+        client_game.white_clock_running = True if not client_game.white_played else False
+        client_game.black_clock_running = True if not client_game.black_played else False
+        if client_game.white_clock_running:
+            client_game.remaining_white_time -= init["delay"]
+        if client_game.black_clock_running:
+            client_game.remaining_black_time -= init["delay"]
+        curr_clock = [client_game.remaining_white_time, client_game.white_clock_running]
+        if not client_game._starting_player:
+            curr_clock = [client_game.remaining_black_time, client_game.black_clock_running]
+        node.tx({node.CMD: f"{init['player']} clock sync", "clock": curr_clock})
+        init["reference_time"] = time.monotonic()
+        init["delay"] = 0
     return client_game, game_tab_id
 
 async def waiting_screen(init, game_window, client_game, drawing_settings):
@@ -649,8 +736,17 @@ async def main():
         "starting_player": None,
         "game_type": None,
         "subvariant": None,
+        "reference_time": None,
+        "white_penalty_applied": False,
+        "white_grace_time": None,
+        "black_penalty_applied": False,
+        "black_grace_time": None,
+        "opponent_quit": False,
+        "delay": 0,
+        "retrieved_delay": 0,
         "starting_position": None,
         "sent": None,
+        "old_sent": None,
         "drawings_sent": 1,
         "updated_board": False,
         "player": None,
@@ -848,7 +944,7 @@ async def main():
                 retrieved = False
                 while not retrieved:
                     try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+                        retrieved_state, submitted_time, retrieved_time = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         retrieved = True
                     except Exception as e:
                         err = 'Game State retreival Failed. Reattempting...'
@@ -859,14 +955,20 @@ async def main():
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
             if retrieved_state is None:
-                client_game = Game(new_board.copy(), init["starting_player"])
-                init["player"] = "white"
-                init["opponent"] = "black"
+                client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
+                init["player"] = "white" if init["starting_player"] else "black"
+                init["opponent"] = "black" if init["starting_player"] else "white"
                 init["loaded"] = True
             else:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = init["starting_player"]
-                init["starting_position"]["subvariant"] = init["subvariant"]
+                if init["starting_position"]["timed_mode"] and submitted_time is not None:
+                    datetime_delay = retrieved_time - submitted_time
+                    delay = datetime_delay.total_seconds()
+                    if delay > 30:
+                        init["delay"] = delay - 30
+                    else:
+                        init["delay"] = 0
                 client_game = Game(custom_params=init["starting_position"])
                 init["player"] = "white" if init["starting_player"] else "black"
                 init["opponent"] = "black" if init["starting_player"] else "white"
@@ -883,14 +985,65 @@ async def main():
             await waiting_screen(init, game_window, client_game, drawing_settings)
             continue
 
-        if not init["reloaded"] and not init["reconnecting"]:
+        penalty_applied = (init["white_penalty_applied"] and client_game._starting_player) or \
+                          (init["black_penalty_applied"] and not client_game._starting_player)
+        if not init["reloaded"] and client_game.timed_mode and not penalty_applied:
+            end = time.monotonic()
+            if client_game._starting_player:
+                if client_game.white_clock_running:
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
+                    init["white_grace_time"] = 30
+                if client_game.black_clock_running:
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+            elif not client_game._starting_player:
+                if client_game.black_clock_running:
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
+                    init["black_grace_time"] = 30
+                if client_game.white_clock_running:
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+            client_game.white_clock_running = False
+            client_game.black_clock_running = False
+            if client_game._starting_player:
+                init["white_penalty_applied"] = True
+            else:
+                init["black_penalty_applied"] = True
+            init["reference_time"] = time.monotonic()
+
+        if not init["reloaded"] and not init["reconnecting"]: # TODO local debug handle
             if init["retrieved"] is None:
                 asyncio.create_task(reconnect(window, game_id, access_keys, init))
             else:
+                init["retrieved"]._starting_player = init["starting_player"]
                 client_game = init["retrieved"]
+                if client_game._starting_player:
+                    played_condition = client_game._starting_player == client_game.white_played
+                else:
+                    played_condition = not client_game._starting_player == client_game.black_played
+                init["sent"] = int(played_condition)
                 if not node.offline:
                     init["retrieved"] = None
                     init["reloaded"] = True
+                    if client_game.timed_mode:
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time -= init["retrieved_delay"]
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time -= init["retrieved_delay"]
+                        init["white_penalty_applied"] = False
+                        init["black_penalty_applied"] = False
+                        if not client_game.white_clock_running:
+                            init["white_grace_time"] = None
+                        if not client_game.black_clock_running:
+                            init["black_grace_time"] = None
+                        init["retrieved_delay"] = 0
+                        curr_clock = [client_game.remaining_white_time, client_game.white_clock_running]
+                        if not client_game._starting_player:
+                            curr_clock = [client_game.remaining_black_time, client_game.black_clock_running]
+                        node.tx({node.CMD: f"{init['player']} clock sync", "clock": curr_clock})
+                        init["reference_time"] = time.monotonic()
+                elif client_game.timed_mode:
+                    # Retrieve again as accurate timing delay is crucial for timed modes
+                    init["retrieved"] = None
+                    await asyncio.sleep(1)
                 drawing_settings["recalc_selections"] = True
                 drawing_settings["clear_selections"] = True
 
@@ -954,6 +1107,8 @@ async def main():
                 client_state_actions["undo_received"] = False
                 client_state_actions["undo_accept"] = False
                 client_state_actions["undo_accept_executed"] = True
+                if client_game.timed_mode:
+                    init["reference_time"] = time.monotonic()
             if client_state_actions["undo_response_received"]:
                 client_state_actions["undo_sent"] = False
                 client_state_actions["undo_response_received"] = False
@@ -968,6 +1123,14 @@ async def main():
                 window.sessionStorage.setItem("undo_request", "false")
 
             if client_state_actions["resign"]:
+                if client_game.timed_mode:
+                    end = time.monotonic()
+                    if client_game.white_clock_running:
+                        client_game.white_clock_running = False
+                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    if client_game.black_clock_running:
+                        client_game.black_clock_running = False
+                        client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
                 reset_data = {node.CMD: "reset"}
@@ -998,6 +1161,14 @@ async def main():
                 node.tx(offer_data)
                 client_state_actions["draw_offer_sent"] = True
             if client_state_actions["draw_accept"] and client_state_actions["draw_offer_received"]:
+                if client_game.timed_mode:
+                    end = time.monotonic()
+                    if client_game.white_clock_running:
+                        client_game.white_clock_running = False
+                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    if client_game.black_clock_running:
+                        client_game.black_clock_running = False
+                        client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
                 if not client_game._latest:
                     client_game.step_to_move(len(client_game.moves) - 1)
                 offer_data = {node.CMD: "draw_accept"}
@@ -1524,15 +1695,94 @@ async def main():
 
         draw_board(draw_board_params)
 
+        if client_game.timed_mode:
+            end = time.monotonic()
+            if client_game.white_clock_running:
+                white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+            else:
+                white_time = client_game.remaining_white_time
+            if client_game.black_clock_running:
+                black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+            else:
+                black_time = client_game.remaining_black_time
+            if (white_time == 0 or black_time == 0) and not client_game.end_position and not init["final_updates"]:
+                client_game.end_position = True
+                mssg = "White" if white_time == 0 else "Black"
+                win = True
+                if white_time == 0 and black_time == 0:
+                    mssg = "White and Black"
+                    win = False
+                client_game.forced_end = f"{mssg} out of time"
+                print(client_game.forced_end)
+                white_wins = True if black_time == 0 else False
+                client_game.add_end_game_notation(win, white_wins, not white_wins)
+                init["white_grace_time"] = None
+                init["black_grace_time"] = None
+                if not client_game._latest:
+                    client_game.step_to_move(len(client_game.moves) - 1)
+
+            end = time.monotonic()
+            if client_game._temp_remaining_white_time is not None:
+                white_time = client_game._temp_remaining_white_time
+            elif init["white_grace_time"] is not None:
+                if end - init["reference_time"] > init["white_grace_time"] or \
+                (client_game._starting_player and not init["white_penalty_applied"]):
+                    client_game.white_clock_running = True
+                    white_time = client_game.remaining_white_time
+                    init["white_grace_time"] = None
+                    if client_game.black_clock_running:
+                        client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                    if init["black_grace_time"] is not None:
+                        init["black_grace_time"] = max(init["black_grace_time"] - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                else:
+                    white_time = client_game.remaining_white_time
+            elif client_game.white_clock_running:
+                white_time = client_game.remaining_white_time - (end - init["reference_time"])
+            else:
+                white_time = client_game.remaining_white_time
+
+            if window.sessionStorage.getItem('white_time') != white_time:
+                window.sessionStorage.setItem('white_time', white_time)
+
+            end = time.monotonic()
+            if client_game._temp_remaining_black_time is not None:
+                black_time = client_game._temp_remaining_black_time
+            elif init["black_grace_time"] is not None:
+                if end - init["reference_time"] > init["black_grace_time"] or \
+                (not client_game._starting_player and not init["black_penalty_applied"]):
+                    client_game.black_clock_running = True
+                    black_time = client_game.remaining_black_time
+                    init["black_grace_time"] = None
+                    if client_game.white_clock_running:
+                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    if init["white_grace_time"] is not None:
+                        init["white_grace_time"] = max(init["white_grace_time"] - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                else:
+                    black_time = client_game.remaining_black_time
+            elif client_game.black_clock_running:
+                black_time = client_game.remaining_black_time - (end - init["reference_time"])
+            else:
+                black_time = client_game.remaining_black_time
+            
+            if window.sessionStorage.getItem('black_time') != black_time:
+                window.sessionStorage.setItem('black_time', black_time)
+
         try:
             if (
                (client_game.white_played and client_game._starting_player) or \
                (client_game.black_played and not client_game._starting_player) or \
-               not client_game._sync or init["updated_board"] \
+               not client_game._sync or init["updated_board"] or init["opponent_quit"] \
                ) and not client_game.end_position and not client_game.suggestive_stage:
                 txdata = {node.CMD: f"{init['player']}_update"}
                 if not client_game._sync:
                     txdata[node.CMD] += "_req_sync"
+                    if client_game.timed_mode:
+                        if client_game._starting_player:
+                            client_game.white_clock_running = False
+                        else:
+                            client_game.black_clock_running = False
                 send_game = client_game.to_json()
                 txdata.update({"game": send_game})
                 for potential_request in ["draw", "undo"]:
@@ -1540,8 +1790,18 @@ async def main():
                 if not init["sent"]:
                     if not init["local_debug"]:
                         await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
+                    if client_game.timed_mode:
+                        end = time.monotonic()
+                        if client_game.white_clock_running and not client_game._move_undone:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                        if client_game.black_clock_running and not client_game._move_undone:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                        init["reference_time"] = time.monotonic()
                     node.tx(txdata)
                     init["sent"] = 1 if not init["updated_board"] else 0
+                    if init["opponent_quit"]:
+                        init["opponent_quit"] = False
+                        init["sent"] = init["old_sent"]
                     init["updated_board"] = False
         except Exception as err:
             js_code = f"console.log('{err}')"
@@ -1577,6 +1837,19 @@ async def main():
             continue
 
         if client_game.end_position and not init["final_updates"] and init["reloaded"]:
+            if client_game.timed_mode:
+                end = time.monotonic()
+                if client_game.white_clock_running:
+                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                if client_game.black_clock_running:
+                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                init["reference_time"] = time.monotonic()
+                client_game.white_clock_running = False
+                client_game.black_clock_running = False
+                init["white_grace_time"] = None
+                init["black_grace_time"] = None
+                window.sessionStorage.setItem('white_time', client_game.remaining_white_time)
+                window.sessionStorage.setItem('black_time', client_game.remaining_black_time)
             try:
                 reset_data = {node.CMD: "reset"}
                 node.tx(reset_data)

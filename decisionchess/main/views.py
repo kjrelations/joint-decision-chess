@@ -195,7 +195,7 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.computer_game = True
                     new_open_game.private = True
                     new_open_game.opponent_name = "minimax" # Later look up name with more bots
-                elif data.get('solo'):
+                elif data.get('solo'): # TODO do validation of subvariant and main mode with this
                     new_open_game.solo_game = True
                     new_open_game.private = True
                 if data.get('rematch'):
@@ -254,7 +254,10 @@ def create_new_game(request, optional_uuid = None):
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                 if (data.get('subvariant') in ["Normal", "Classical", "Rapid", "Blitz"] and new_open_game.gametype == "Standard") or\
                    (data.get('subvariant') in ["Normal", "Suggestive"] and new_open_game.gametype in ["Complete", "Relay", "Countdown"]):
-                    new_open_game.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
+                    if new_open_game.gametype != "Standard":
+                        new_open_game.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
+                    else:
+                        new_open_game.subvariant = data.get('subvariant')
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                 state = None
@@ -404,8 +407,17 @@ def get_config(request, game_uuid):
             # TODO check historic games and send a special refresh message if available
             return JsonResponse({"status": "error"}, status=401)
     elif type == 'historic':
-        # TODO historic game type
-        return JsonResponse({"message": {"theme_names": theme_names}}, status=200)
+        try:
+            game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
+            return JsonResponse({
+                "message": {
+                    "game_type": game.gametype, 
+                    "theme_names": theme_names, 
+                    "subvariant": game.subvariant
+                    }
+                }, status=200)
+        except GameHistoryTable.DoesNotExist:
+            return JsonResponse({"status": "error"}, status=401)
     elif type == 'exercise':
         try:
             game = EmbeddedGames.objects.get(embedded_game_id=game_uuid)
@@ -666,6 +678,7 @@ def get_or_update_state(request, game_uuid):
         else:
             user_id = uuid.UUID(guest_uuid)
     if request.method == "POST":
+        submit_time = datetime.utcnow()
         data = json.loads(request.body.decode('utf-8'))
         if data.get("token"):
             decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
@@ -675,6 +688,7 @@ def get_or_update_state(request, game_uuid):
                     active_game.state = decoded['game']
                     if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
                         return JsonResponse({"status": "error"}, status=401)
+                    active_game.last_submission_time = submit_time
                     active_game.save()
                     return JsonResponse({"status": "updated"}, status=200)
                 except ActiveGames.DoesNotExist:
@@ -692,7 +706,9 @@ def get_or_update_state(request, game_uuid):
             if spectator is None and str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
                 return JsonResponse({"status": "error"}, status=401)
             token = jwt.encode(json.loads(active_game.state), settings.STATE_UPDATE_KEY + str(game_uuid), algorithm='HS256')
-            return JsonResponse({"token": token}, status=200)
+            last_submit = active_game.last_submission_time.isoformat() if active_game.last_submission_time is not None else None
+            retrieved = datetime.now(dt_timezone.utc).isoformat()
+            return JsonResponse({"token": token, "submitted": last_submit, "retrieved": retrieved}, status=200)
         except ActiveGames.DoesNotExist:
             try:
                 lobby_game = ChessLobby.objects.get(lobby_id=game_uuid)

@@ -15,8 +15,16 @@ class CreateNewGameForm(forms.Form):
         attrs={'id': 'main-mode-computer'}
         ))
     main_mode_private = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
-        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
+        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], # TODO Rename to Decision Chess and Chess later with 'Decision' and 'Traditional' values
         attrs={'id': 'main-mode-private'}
+        ))
+    timed_mode_multiplayer = forms.CharField(max_length=9, label="Timed Subvariant", required=False, widget=forms.Select(
+        choices=[('', 'None'), ('Classical', 'Classical'), ('Rapid', 'Rapid'), ('Blitz', 'Blitz')], 
+        attrs={'id': 'timed-mode-multiplayer'}
+        ))
+    timed_mode_private = forms.CharField(max_length=9, label="Standard Subvariants", required=False, widget=forms.Select(
+        choices=[('', ''), ('Classical', 'Classical'), ('Rapid', 'Rapid'), ('Blitz', 'Blitz')], 
+        attrs={'id': 'timed-mode-private'}
         ))
     solo_play = forms.BooleanField(label="Solo Play", required=False, widget=forms.CheckboxInput(attrs={'id': 'solo-play-checkbox'}))
     reveal_stage_multiplayer = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-multiplayer-checkbox'}))

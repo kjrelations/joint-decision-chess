@@ -43,7 +43,12 @@
         </div>
         <!-- 4 columns for command center-->
         <div class="col-10 col-md-4 d-flex flex-column justify-content-center align-items-start command-column" style="margin-left: 30px; padding-left: 0px; padding-right: 0px;">
-            <div class="decision-timer hidden" id="decision-timer" style="margin-bottom: -50px;"></div>
+            <div class="d-flex">
+                <div class="decision-timer hidden" id="decision-timer" style="margin-bottom: -50px;"></div>
+                <div class="hidden" id="topClock" name="initClockHidden" style="margin-bottom: -50px;">
+                    <div class="opponent-clock" id="opponentClock"></div>
+                </div>
+            </div>
             <div class="d-flex flex-wrap mt-auto" id="topPieces" style="height: 25px;"></div>
             <div id="command-center" class="command-center d-flex flex-column justify-content-start align-items-center" style="min-width: 100%;">
                 <div class="d-flex flex-row" style="min-height: 10%; min-width: 100%;">
@@ -81,6 +86,9 @@
                 </div>
             </div>
             <div class="d-flex flex-wrap mb-auto" id="bottomPieces" style="height: 25px;"></div>
+            <div class="hidden" id="bottomClock" name="initClockHidden" style="margin-top: -50px;">
+                <div class="player-clock" id="playerClock"></div>
+            </div>
         </div>
         <div class="col-2 d-none d-md-block" style="width: 100%;"></div>
         <div class="col-10 col-md-5 d-flex flex-column" style="width: 100%; padding-right: 0; padding-top: 10px;">
@@ -126,6 +134,8 @@
             sessionStorage.setItem('current_game_id', "{{ current_game_id }}");
             sessionStorage.setItem('initialized', "{{ initialized }}");
             sessionStorage.setItem('muted', "false");
+            sessionStorage.removeItem('white_time');
+            sessionStorage.removeItem('black_time');
             const pawnsrc = "{% static 'main/images/material/pawn_grayscale.svg' %}";
             const bishopsrc = "{% static 'main/images/material/bishop_grayscale.svg' %}";
             const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";

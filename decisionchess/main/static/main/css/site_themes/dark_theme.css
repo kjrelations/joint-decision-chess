@@ -108,6 +108,8 @@
     --move-button-disabled-background: #17568a;
     --displayed-move-background: rgb(117, 117, 117);
     --displayed-move-border: rgb(179, 179, 179);
+    --clock-background: #405860;
+    --clock-border: #8e8e8e;
     /* Live */
     --headerFocused: #756026;
     /* Board Editor */

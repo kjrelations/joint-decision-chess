@@ -6,6 +6,8 @@ import pygbag.aio as asyncio
 import fetch
 import pygbag_net
 import builtins
+import time
+from datetime import datetime
 import os
 from game import *
 from constants import *
@@ -68,6 +70,15 @@ def initialize_game(init, drawing_settings, game_key):
         init["initializing"], init["initialized"] = False, True
     else:
         init["initializing"] = False
+    if client_game.timed_mode:
+        client_game.white_clock_running = True if not client_game.white_played else False
+        client_game.black_clock_running = True if not client_game.black_played else False
+        if client_game.white_clock_running:
+            client_game.remaining_white_time -= init["delay"]
+        if client_game.black_clock_running:
+            client_game.remaining_black_time -= init["delay"]
+        init["reference_time"] = time.monotonic()
+        init["delay"] = 0
     window.sessionStorage.setItem(f'waiting-{game_key}', "false")
     return client_game
 
@@ -96,6 +107,11 @@ async def main():
         "starting_player": None,
         "game_type": None,
         "subvariant": None,
+        "reference_time": None,
+        "white_grace_time": None,
+        "black_grace_time": None,
+        "delay": 0,
+        "retrieved_delay": 0,
         "starting_position": None,
         "local_debug": local_debug,
         "access_keys": None,
@@ -226,7 +242,7 @@ async def main():
                 retrieved = False
                 while not retrieved:
                     try:
-                        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+                        retrieved_state, submitted_time, retrieved_time = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                         retrieved = True
                     except Exception as e:
                         if not isinstance(e, asyncio.TimeoutError):
@@ -241,7 +257,17 @@ async def main():
             if retrieved_state is not None:
                 init["starting_position"] = json.loads(retrieved_state)
                 init["starting_position"]["_starting_player"] = True
-                init["starting_position"]["subvariant"] = init["subvariant"]
+                if init["starting_position"]["timed_mode"] and submitted_time is not None:
+                    datetime_delay = retrieved_time - submitted_time
+                    delay = datetime_delay.total_seconds()
+                    if delay > 30:
+                        init["delay"] = delay - 30
+                    else:
+                        init["delay"] = 0
+                        if init["starting_position"]["white_clock_running"]:
+                            init["white_grace_time"] = 30
+                        if init["starting_position"]["black_clock_running"]:
+                            init["black_grace_time"] = 30
             init["initializing"] = True
             init["loaded"] = True
             drawing_settings["draw"] = True
@@ -251,10 +277,28 @@ async def main():
             if init["retrieved"] is None:
                 asyncio.create_task(reconnect(window, game_id, access_keys, init, drawing_settings))
             else:
+                init["retrieved"]._starting_player = True
                 client_game = init["retrieved"]
                 if not node.offline:
                     init["retrieved"] = None
                     init["reloaded"] = True
+                    if client_game.timed_mode:
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time -= init["retrieved_delay"]
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time -= init["retrieved_delay"]
+                        init["white_penalty_applied"] = False
+                        init["black_penalty_applied"] = False
+                        if not client_game.white_clock_running:
+                            init["white_grace_time"] = None
+                        if not client_game.black_clock_running:
+                            init["black_grace_time"] = None
+                        init["retrieved_delay"] = 0
+                        init["reference_time"] = time.monotonic()
+                elif client_game.timed_mode:
+                    # Retrieve again as accurate timing delay is crucial for timed modes
+                    init["retrieved"] = None
+                    await asyncio.sleep(1)
 
         # An ugly indent but we need to send the draw_offer and resign execution status and skip unnecessary events
         # TODO make this skip cleaner or move it into a function
@@ -351,6 +395,7 @@ async def main():
         await asyncio.sleep(0)
         drawing_settings["draw"] = False
 
+        # TODO set times in session
     pygame.quit()
     sys.exit()
 

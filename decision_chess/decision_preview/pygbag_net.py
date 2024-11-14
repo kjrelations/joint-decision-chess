@@ -530,6 +530,8 @@ class Node:
             else:
                 self.proto = "main"
 
+            _, pid, msgtype, data = line.split(":", 3)
+
             # ND rpid could be different from payload pid in case of message relaying
             # on a mesh.
             # rpid = int(pid)

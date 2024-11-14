@@ -209,6 +209,22 @@
     font-size: 30px;
 }
 
+.player-clock,
+.opponent-clock {
+    background-color: var(--clock-background);
+    border: solid 3px transparent;
+    border-radius: 10px;
+    background-image: linear-gradient(var(--clock-background), var(--clock-background)),
+                      conic-gradient(var(--clock-border), var(--clock-border));
+    color: var(--body-text);
+    height: 40px;
+    min-width: 40px;
+    text-align: center;
+    font-size: 20px;
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+}
+
 .circle {
     width: 20px;
     height: 20px;

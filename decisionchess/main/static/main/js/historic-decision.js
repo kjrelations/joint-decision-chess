@@ -82,6 +82,9 @@ var savedPieces = {};
 var selectedMoveId = "";
 var comp_moves = [];
 var flipped = false;
+var savedWhiteTime = null;
+var savedBlackTime = null;
+var move_index = -1;
 
 function movePieceTranslation(move) {
     var newMove = move
@@ -103,6 +106,19 @@ function updateCommandCenter() {
     var movesListContainer = document.getElementById('moves-list');
     var endState = webGameMetadata.end_state;
     comp_moves = webGameMetadata.comp_moves;
+
+    var whiteTime = JSON.parse(sessionStorage.getItem('white_time'));
+    var blackTime = JSON.parse(sessionStorage.getItem('black_time'));
+    if (whiteTime !== null && savedWhiteTime !== whiteTime) {
+        savedWhiteTime = whiteTime;
+        savedBlackTime = blackTime;
+        var hiddenElements = document.getElementsByName('initClockHidden');
+        hiddenElements.forEach(element => {
+            element.classList.remove('hidden');
+        })
+        var playerColor = JSON.parse(sessionStorage.getItem('init_flip'))? 'black' : 'white';
+        updateClocks(playerColor);
+    }
 
     var netPieces = webGameMetadata.net_pieces;
     if (!areEqual(savedPieces, netPieces, 'object')) {
@@ -352,6 +368,89 @@ window.addEventListener('load', updateCommandCenter);
 
 setInterval(updateCommandCenter, 100);
 
+function formatTime(time) {
+    let totalMilliseconds = Math.round(time * 1000);
+    
+    let minutes = Math.floor(totalMilliseconds / 60000);
+    let seconds = Math.floor((totalMilliseconds % 60000) / 1000);
+    let milliseconds = totalMilliseconds % 1000;
+    
+    let minutesStr = String(minutes).padStart(2, '0');
+    let secondsStr = String(seconds).padStart(2, '0');
+    
+    let millisecondsStr = `.<small>${String(milliseconds).padStart(3, '0')}</small>`;
+
+    return [`${minutesStr}:${secondsStr}${millisecondsStr}`, minutes];
+}
+
+function updateClockBorders(clockElement, remainingMilliseconds) {
+    if (clockElement.style.color !== 'red') {
+        clockElement.style.color = 'red';
+    }
+    const secondColorPercentage = ((60000 - remainingMilliseconds) / 60000) * 100;
+    
+    const gradients = `
+    linear-gradient(var(--clock-background), var(--clock-background)),
+    conic-gradient(
+        from 180deg,
+        var(--clock-border) 0deg,
+        var(--clock-border) ${360 - (secondColorPercentage * 3.6)}deg,
+        red ${360 - (secondColorPercentage * 3.6)}deg,
+        red 360deg
+    )`;
+    
+    clockElement.style.backgroundImage = `${gradients}`;
+}
+
+const defaultGradients = `
+linear-gradient(var(--clock-background), var(--clock-background)),
+conic-gradient(var(--clock-border), var(--clock-border))
+`;
+
+function updateClocks(playerColor) {
+    var whiteSeconds = JSON.parse(sessionStorage.getItem('white_time'));
+    if (whiteSeconds === null) {
+        return;
+    }
+    var blackSeconds = JSON.parse(sessionStorage.getItem('black_time'));
+
+    const [whiteTime, whiteMinutes] = formatTime(whiteSeconds);
+    const [blackTime, blackMinutes] = formatTime(blackSeconds);
+    const playerClock = document.getElementById('playerClock');
+    const opponentClock = document.getElementById('opponentClock');
+    if (playerColor === 'white') {
+        playerClock.innerHTML = whiteTime;
+        opponentClock.innerHTML = blackTime;
+        if (whiteMinutes === 0) {
+            updateClockBorders(playerClock, Math.round(whiteSeconds * 1000) % 60000);
+        } else if (playerClock.style.color === 'red') {
+            playerClock.style.color = 'var(--body-text)';
+            playerClock.style.backgroundImage = `${defaultGradients}`;
+        }
+        if (blackMinutes === 0) {
+            updateClockBorders(opponentClock, Math.round(blackSeconds * 1000) % 60000);
+        } else if (opponentClock.style.color === 'red') {
+            opponentClock.style.color = 'var(--body-text)';
+            opponentClock.style.backgroundImage = `${defaultGradients}`;
+        }
+    } else {
+        playerClock.innerHTML = blackTime;
+        opponentClock.innerHTML = whiteTime;
+        if (blackMinutes === 0) {
+            updateClockBorders(playerClock, Math.round(blackSeconds * 1000));
+        } else if (playerClock.style.color === 'red') {
+            playerClock.style.color = 'var(--body-text)';
+            playerClock.style.backgroundImage = `${defaultGradients}`;
+        }
+        if (whiteMinutes === 0) {
+            updateClockBorders(opponentClock, Math.round(whiteSeconds * 1000));
+        } else if (opponentClock.style.color === 'red') {
+            opponentClock.style.color = 'var(--body-text)';
+            opponentClock.style.backgroundImage = `${defaultGradients}`;
+        }
+    }
+}
+
 var initCheck = false;
 
 function checkInit() {
@@ -486,12 +585,19 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
 
         }
     } else if (sessionStorageObjectName == "flip_board") {
-        topElement = document.getElementById('topPlayer');
-        bottomElement = document.getElementById('bottomPlayer');
-        topHTML = topElement.innerHTML;
-        bottomHTML = bottomElement.innerHTML;
-        topElement.innerHTML = bottomHTML;
-        bottomElement.innerHTML = topHTML;
+        topUser = document.getElementById('topPlayer');
+        bottomUser = document.getElementById('bottomPlayer');
+        topHTML = topUser.innerHTML;
+        bottomHTML = bottomUser.innerHTML;
+        topUser.innerHTML = bottomHTML;
+        bottomUser.innerHTML = topHTML;
+
+        topClock = document.getElementById('topClock');
+        bottomClock = document.getElementById('bottomClock');
+        topClockHTML = topClock.innerHTML;
+        bottomClockHTML = bottomClock.innerHTML;
+        topClock.innerHTML = bottomClockHTML;
+        bottomClock.innerHTML = topClockHTML;
 
         topPiecesRow = document.getElementById('topPieces');
         bottomPiecesRow = document.getElementById('bottomPieces');

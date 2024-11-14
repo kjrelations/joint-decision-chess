@@ -1,6 +1,31 @@
+const soloCheckbox = document.getElementById('solo-play-checkbox');
+const revealStageCheckboxMultiplayer = document.getElementById('reveal-stage-multiplayer-checkbox');
+const decisionStageCheckboxMultiplayer = document.getElementById('decision-stage-multiplayer-checkbox');
+const suggestiveCheckboxMultiplayer = document.getElementById('suggestive-multiplayer-checkbox');
+const standardSubvariantDropdownMultiplayer = document.getElementById('timed-mode-multiplayer');
+const revealStageCheckboxPrivate = document.getElementById('reveal-stage-private-checkbox');
+const decisionStageCheckboxPrivate = document.getElementById('decision-stage-private-checkbox');
+const suggestiveCheckboxPrivate = document.getElementById('suggestive-private-checkbox');
+const standardSubvariantDropdownPrivate = document.getElementById('timed-mode-private');
+const mainModeMultiplayer = document.getElementById('main-mode-multiplayer');
+const mainModePrivate = document.getElementById('main-mode-private');
+document.addEventListener("DOMContentLoaded", function() {
+    soloCheckbox.checked = false;
+    revealStageCheckboxMultiplayer.checked = false;
+    decisionStageCheckboxMultiplayer.checked = false;
+    suggestiveCheckboxMultiplayer.checked = false;
+    suggestiveCheckboxMultiplayer.disabled = true;
+    standardSubvariantDropdownMultiplayer.value = '';
+    revealStageCheckboxPrivate.checked = false;
+    decisionStageCheckboxPrivate.checked = false;
+    suggestiveCheckboxPrivate.checked = false;
+    suggestiveCheckboxPrivate.disabled = true;
+    standardSubvariantDropdownPrivate.value = '';
+    mainModeMultiplayer.value = 'Decision';
+    mainModePrivate.value = 'Decision';
+});
+
 document.addEventListener('DOMContentLoaded', function () {
-    const mainModeMultiplayer = document.getElementById('main-mode-multiplayer');
-    const mainModePrivate = document.getElementById('main-mode-private');
     const decisionContentMultiplayer = document.getElementById('decision-content-multiplayer');
     const decisionContentPrivate = document.getElementById('decision-content-private');
 
@@ -73,30 +98,58 @@ function generateGame(body) {
     });
 }
 
-function updateSuggested(decisionStageCheckbox, revealStageCheckbox, suggestiveCheckbox) {
+function updateNonStandardInfo(decisionStageCheckbox, revealStageCheckbox, suggestiveCheckbox, standardSubvariantContainer) {
     if ((decisionStageCheckbox.checked || revealStageCheckbox.checked)) {
         suggestiveCheckbox.disabled = false;
+        standardSubvariantContainer.classList.add('d-none');
+        standardSubvariantContainer.classList.remove('d-flex');
     } else {
         suggestiveCheckbox.checked = false;
         suggestiveCheckbox.disabled = true;
+        standardSubvariantContainer.classList.add('d-flex');
+        standardSubvariantContainer.classList.remove('d-none');
     }
 }
 
-const revealStageCheckboxMultiplayer = document.getElementById('reveal-stage-multiplayer-checkbox');
-const decisionStageCheckboxMultiplayer = document.getElementById('decision-stage-multiplayer-checkbox');
-const suggestiveCheckboxMultiplayer = document.getElementById('suggestive-multiplayer-checkbox');
+function updateState(standardSubvariantDropdown, revealStageCheckbox, decisionStageCheckbox, suggestiveCheckbox) {
+    var isDisabled = standardSubvariantDropdown.value !== '';
+    revealStageCheckbox.checked = false;
+    decisionStageCheckbox.checked = false;
+    revealStageCheckbox.disabled = isDisabled;
+    decisionStageCheckbox.disabled = isDisabled;
+    suggestiveCheckbox.disabled = true;
+    suggestiveCheckbox.checked = false;
+}
+
+const standardSubvariantContainerMultiplayer = document.getElementById('timed-multiplayer');
 [revealStageCheckboxMultiplayer, decisionStageCheckboxMultiplayer].forEach(checkbox => {
-    checkbox.addEventListener('change', () => updateSuggested(decisionStageCheckboxMultiplayer, revealStageCheckboxMultiplayer, suggestiveCheckboxMultiplayer));
+    checkbox.addEventListener('change', () => 
+    updateNonStandardInfo(decisionStageCheckboxMultiplayer, revealStageCheckboxMultiplayer, suggestiveCheckboxMultiplayer, standardSubvariantContainerMultiplayer)
+    );
 });
 
-const revealStageCheckboxPrivate = document.getElementById('reveal-stage-private-checkbox');
-const decisionStageCheckboxPrivate = document.getElementById('decision-stage-private-checkbox');
-const suggestiveCheckboxPrivate = document.getElementById('suggestive-private-checkbox');
+const standardSubvariantContainerPrivate = document.getElementById('timed-private');
 [revealStageCheckboxPrivate, decisionStageCheckboxPrivate].forEach(checkbox => {
-    checkbox.addEventListener('change', () => updateSuggested(decisionStageCheckboxPrivate, revealStageCheckboxPrivate, suggestiveCheckboxPrivate));
+    checkbox.addEventListener('change', () => 
+    updateNonStandardInfo(decisionStageCheckboxPrivate, revealStageCheckboxPrivate, suggestiveCheckboxPrivate, standardSubvariantContainerPrivate)
+    );
 });
 
-const soloCheckbox = document.getElementById('solo-play-checkbox');
+standardSubvariantDropdownMultiplayer.addEventListener('change', () => 
+updateState(
+    standardSubvariantDropdownMultiplayer, 
+    revealStageCheckboxMultiplayer, 
+    decisionStageCheckboxMultiplayer, 
+    suggestiveCheckboxMultiplayer
+    ));
+    standardSubvariantDropdownPrivate.addEventListener('change', () => 
+    updateState(
+        standardSubvariantDropdownPrivate, 
+        revealStageCheckboxPrivate, 
+        decisionStageCheckboxPrivate, 
+        suggestiveCheckboxPrivate
+    ));
+
 soloCheckbox.addEventListener('change', function(event) {
     const revealStageCheckbox = document.getElementById('reveal-stage-multiplayer-checkbox');
     const decisionStageCheckbox = document.getElementById('decision-stage-multiplayer-checkbox');
@@ -107,22 +160,13 @@ soloCheckbox.addEventListener('change', function(event) {
         revealStageCheckbox.disabled = true;
         decisionStageCheckbox.disabled = true;
         suggestiveCheckboxMultiplayer.disabled = true;
+        standardSubvariantDropdownMultiplayer.disabled = true;
+        standardSubvariantDropdownMultiplayer.value = '';
     } else {
         revealStageCheckbox.disabled = false;
         decisionStageCheckbox.disabled = false;
+        standardSubvariantDropdownMultiplayer.disabled = false;
     }
-});
-
-document.addEventListener("DOMContentLoaded", function() {
-    soloCheckbox.checked = false;
-    revealStageCheckboxMultiplayer.checked = false;
-    decisionStageCheckboxMultiplayer.checked = false;
-    suggestiveCheckboxMultiplayer.checked = false;
-    suggestiveCheckboxMultiplayer.disabled = true;
-    revealStageCheckboxPrivate.checked = false;
-    decisionStageCheckboxPrivate.checked = false;
-    suggestiveCheckboxPrivate.checked = false;
-    suggestiveCheckboxPrivate.disabled = true;
 });
 
 const newGameButtons = document.querySelectorAll('[new-game="true"]');
@@ -140,8 +184,12 @@ newGameButtons.forEach(button => {
         }
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-multiplayer-checkbox').checked;
-            body["decision_stage"] = document.getElementById('decision-stage-multiplayer-checkbox').checked;
-            body["subvariant"] = document.getElementById('suggestive-multiplayer-checkbox').checked ? "Suggestive": "Normal";
+            body["decision_stage"] = document.getElementById('decision-stage-multiplayer-checkbox').checked; 
+            if (document.getElementById('suggestive-multiplayer-checkbox').checked) {
+                body["subvariant"] = "Suggestive";
+            } else if (standardSubvariantDropdownMultiplayer.value !== '') {
+                body["subvariant"] = standardSubvariantDropdownMultiplayer.value;
+            }
         }
         generateGame(body);
     });
@@ -180,7 +228,11 @@ newPrivateGameButtons.forEach(button => {
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;
             body["decision_stage"] = document.getElementById('decision-stage-private-checkbox').checked;
-            body["subvariant"] = document.getElementById('suggestive-private-checkbox').checked ? "Suggestive": "Normal";
+            if (document.getElementById('suggestive-private-checkbox').checked) {
+                body["subvariant"] = "Suggestive";
+            } else if (standardSubvariantDropdownPrivate.value !== '') {
+                body["subvariant"] = standardSubvariantDropdownPrivate.value;
+            }
         }
         generateGame(body);
     });

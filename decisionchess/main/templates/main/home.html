@@ -364,6 +364,9 @@ Decision Chess
                             </div>
                             {{ form.solo_play|as_crispy_field }}
                             <div class="d-none" id="decision-content-multiplayer">
+                              <div class="d-flex justify-content-center" id="timed-multiplayer">
+                                {{ form.timed_mode_multiplayer|as_crispy_field }}
+                              </div>
                               {{ form.reveal_stage_multiplayer|as_crispy_field }}
                               {{ form.decision_stage_multiplayer|as_crispy_field }}
                               {{ form.suggestive_multiplayer|as_crispy_field }}
@@ -428,6 +431,9 @@ Decision Chess
                             {{ form.main_mode_private|as_crispy_field }} 
                           </div>
                           <div class="d-none" id="decision-content-private">
+                            <div class="d-flex justify-content-center" id="timed-private">
+                              {{ form.timed_mode_private|as_crispy_field }}
+                            </div>
                             {{ form.reveal_stage_private|as_crispy_field }}
                             {{ form.decision_stage_private|as_crispy_field }}
                             {{ form.suggestive_private|as_crispy_field }}

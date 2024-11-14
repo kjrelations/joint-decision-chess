@@ -4,6 +4,8 @@ import asyncio
 import pygbag.aio as asyncio
 import pygbag_net
 import builtins
+import time
+from datetime import datetime
 from game import *
 from constants import *
 from helpers import *
@@ -70,7 +72,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             if data.get("status") and data["status"] == "error":
                 raise Exception('Request failed')
             elif data.get("message") and data["message"] == "DNE":
-                return None
+                return None, None, None
             elif data.get("token"):
                 response_token = data["token"]
             else:
@@ -103,7 +105,12 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
                 await asyncio.sleep(0)
             game_payload = window.payload
             window.payload = None
-            return game_payload
+            submitted, retrieved_time = None, None
+            if data.get('submitted'):
+                submitted = datetime.fromisoformat(data.get('submitted'))
+                if data.get('retrieved'):
+                    retrieved_time = datetime.fromisoformat(data.get('retrieved'))
+            return game_payload, submitted, retrieved_time
         except Exception as e:
             exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
             js_code = f"console.log('{exc_str}')".replace(secret_key, "####")
@@ -114,15 +121,23 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
 async def reconnect(window, game_id, access_keys, init, drawing_settings):
     init["reconnecting"] = True
     retrieved_state = None
+    delay = 0
     try:
-        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        retrieved_state, submitted_time, retrieved_time = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
         if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"])
+            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
         else:
             retrieved_state = json.loads(retrieved_state)
             init["retrieved"] = Game(custom_params=retrieved_state)
         drawing_settings["draw"] = True
-    except:
+        if init["retrieved"].timed_mode and submitted_time is not None:
+            datetime_delay = retrieved_time - submitted_time
+            delay = datetime_delay.total_seconds()
+            if delay > 30:
+                init["retrieved_delay"] = delay - 30
+            else:
+                init["retrieved_delay"] = 0
+    except Exception as e:
         err = 'Reconnection Failed. Reattempting...'
         js_code = f"console.log('{err}')"
         window.eval(js_code)
@@ -145,6 +160,8 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                     if node.data.get("starting_position"):
                         init["starting_position"] = json.loads(node.data.pop("starting_position"))
                         init["starting_position"]["_starting_player"] = True
+                    init["white_grace_time"] = node.data.get('white_grace_time')
+                    init["black_grace_time"] = node.data.get('black_grace_time')
                     init["initializing"] = True
                     init["reloaded"] = True
                     drawing_settings["draw"] = True
@@ -153,7 +170,14 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
-                            client_game.synchronize(game)
+                            illegal = client_game.synchronize(game)
+                            if not illegal and client_game.timed_mode and not client_game.end_position:
+                                end = time.monotonic()
+                                if client_game._starting_player and client_game.white_clock_running and client_game.black_played:
+                                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                                elif not client_game._starting_player and client_game.black_clock_running and client_game.white_played:
+                                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                                init["reference_time"] = time.monotonic()
                             if client_game.suggestive_stage_enabled:
                                 client_game.black_suggested_move = game.black_suggested_move
                                 client_game.white_suggested_move = game.white_suggested_move
@@ -166,6 +190,14 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
                                     break
+                            if illegal:
+                                end = time.monotonic()
+                                if client_game.timed_mode:
+                                    if client_game.white_clock_running:
+                                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                                    if client_game.black_clock_running:
+                                        client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                                    init["reference_time"] = time.monotonic()
                     if "_sync" in cmd:
                         # Need to set game here if no update cmd is trigerred, else we have an old game we're comparing to
                         if "game" in node.data:
@@ -175,6 +207,12 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                             client_game._sync = True
                             client_game._move_undone = False
                             init["desync"] = False if init["desync"] else False
+                            if client_game.timed_mode:
+                                if not client_game.white_played:
+                                    client_game.white_clock_running = True
+                                if not client_game.black_played:
+                                    client_game.black_clock_running = True
+                                init["reference_time"] = time.monotonic()
                 elif cmd == "drawings" and (spectator_pid is None or spectator_pid == node.data.get("spectator_pid")):
                     drawings = json.loads(node.data.pop("drawings"))
                     opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
@@ -184,6 +222,63 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
                     drawing_settings["draw"] = True
+                elif "resume_clock" in cmd:
+                    opponent_color = cmd.split(" ")[0]
+                    end = time.monotonic()
+                    if opponent_color == "white":
+                        client_game.white_clock_running = True
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                    elif opponent_color == "black":
+                        client_game.black_clock_running = True
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                elif "disconnect" in cmd:
+                    side = cmd.split(" ")[0]
+                    if side == 'white':
+                        end = time.monotonic()
+                        if client_game.white_clock_running:
+                            client_game.white_clock_running = False
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
+                            init["white_grace_time"] = 30
+                    else:
+                        if client_game.black_clock_running:
+                            client_game.black_clock_running = False
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
+                            init["black_grace_time"] = 30
+                    init["reference_time"] = time.monotonic()
+                elif "clock sync" in cmd:
+                    side = cmd.split(" ")[0]
+                    clock_settings = node.data.pop('clock')
+                    if side == 'white':
+                        client_game.remaining_white_time = clock_settings[0]
+                        client_game.white_clock_running = clock_settings[1]
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                    else:
+                        client_game.remaining_black_time = clock_settings[0]
+                        client_game.black_clock_running = clock_settings[1]
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                elif any(start_message in cmd for start_message in ["initialized", "ready"]):
+                    if client_game.timed_mode:
+                        side = cmd.split(" ")[0]
+                        if side == "white":
+                            init["white_grace_time"] = None
+                        else:
+                            init["black_grace_time"] = None
+                        end = time.monotonic()
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0) 
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                        if init["white_grace_time"] is not None:
+                            client_game.white_clock_running = True if not client_game.white_played else False
+                        if init["black_grace_time"] is not None:
+                            client_game.black_clock_running = True if not client_game.black_played else False
+                        init["reference_time"] = time.monotonic()
 
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
@@ -208,7 +303,14 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
-                            client_game.synchronize(game)
+                            illegal = client_game.synchronize(game)
+                            if not illegal and client_game.timed_mode and not client_game.end_position:
+                                end = time.monotonic()
+                                if client_game._starting_player and client_game.white_clock_running and client_game.black_played:
+                                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                                elif not client_game._starting_player and client_game.black_clock_running and client_game.white_played:
+                                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                                init["reference_time"] = time.monotonic()
                             if client_game.suggestive_stage_enabled:
                                 client_game.black_suggested_move = game.black_suggested_move
                                 client_game.white_suggested_move = game.white_suggested_move
@@ -221,6 +323,14 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
                                     break
+                            if illegal:
+                                end = time.monotonic()
+                                if client_game.timed_mode:
+                                    if client_game.white_clock_running:
+                                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                                    if client_game.black_clock_running:
+                                        client_game.remaining_black_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                                    init["reference_time"] = time.monotonic()
                     if "_sync" in cmd:
                         # Need to set game here if no update cmd is trigerred, else we have an old game we're comparing to
                         if "game" in node.data:
@@ -230,6 +340,12 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                             client_game._sync = True
                             client_game._move_undone = False
                             init["desync"] = False if init["desync"] else False
+                            if client_game.timed_mode:
+                                if not client_game.white_played:
+                                    client_game.white_clock_running = True
+                                if not client_game.black_played:
+                                    client_game.black_clock_running = True
+                                init["reference_time"] = time.monotonic()
                 elif cmd == "drawings" and (spectator_pid is None or spectator_pid == node.data.get("spectator_pid")):
                     drawings = json.loads(node.data.pop("drawings"))
                     opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
@@ -239,6 +355,63 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
                     drawing_settings["draw"] = True
+                elif "resume_clock" in cmd:
+                    opponent_color = cmd.split(" ")[0]
+                    end = time.monotonic()
+                    if opponent_color == "white":
+                        client_game.white_clock_running = True
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                    elif opponent_color == "black":
+                        client_game.black_clock_running = True
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                elif "disconnect" in cmd:
+                    side = cmd.split(" ")[0]
+                    if side == 'white':
+                        end = time.monotonic()
+                        if client_game.white_clock_running:
+                            client_game.white_clock_running = False
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
+                            init["white_grace_time"] = 30
+                    else:
+                        if client_game.black_clock_running:
+                            client_game.black_clock_running = False
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
+                            init["black_grace_time"] = 30
+                    init["reference_time"] = time.monotonic()
+                elif "clock sync" in cmd:
+                    side = cmd.split(" ")[0]
+                    clock_settings = node.data.pop('clock')
+                    if side == 'white':
+                        client_game.remaining_white_time = clock_settings[0]
+                        client_game.white_clock_running = clock_settings[1]
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                    else:
+                        client_game.remaining_black_time = clock_settings[0]
+                        client_game.black_clock_running = clock_settings[1]
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                    init["reference_time"] = time.monotonic()
+                elif any(start_message in cmd for start_message in ["initialized", "ready"]):
+                    if client_game.timed_mode:
+                        side = cmd.split(" ")[0]
+                        if side == "white":
+                            init["white_grace_time"] = None
+                        else:
+                            init["black_grace_time"] = None
+                        end = time.monotonic()
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0) 
+                        if client_game.white_clock_running:
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                        if init["white_grace_time"] is not None:
+                            client_game.white_clock_running = True if not client_game.white_played else False
+                        if init["black_grace_time"] is not None:
+                            client_game.black_clock_running = True if not client_game.black_played else False
+                        init["reference_time"] = time.monotonic()
                     
                 elif cmd == "join_game":
                     print(node.data["nick"], "joined game")
@@ -272,6 +445,21 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                 u = node.proto.split("!")[0]
                 if u in node.users:
                     del node.users[u]
+                if client_game.timed_mode and "spec" not in u:
+                    count = sum(1 for key in node.users.keys() if key.startswith("u_") and "spec" not in key)
+                    if count == 0:
+                        end = time.monotonic()
+                        if client_game.black_clock_running:
+                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
+                            client_game.black_clock_running = False
+                            if init["black_grace_time"] is None:
+                                init["black_grace_time"] = 30
+                        if client_game.white_clock_running:
+                            client_game.white_clock_running = False
+                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
+                            if init["white_grace_time"] is None:
+                                init["white_grace_time"] = 30
+                        init["reference_time"] = time.monotonic()
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
