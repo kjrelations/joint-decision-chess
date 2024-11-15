@@ -685,6 +685,16 @@ window.addEventListener('load', updateCommandCenter);
 
 setInterval(updateCommandCenter, 100);
 
+function duplicateCheck() {
+    var duplicate = sessionStorage.getItem('duplicate');
+    if (duplicate === 'true') {
+        appendChatLog("Game already opened");
+        sessionStorage.setItem('duplicate', 'false');
+        clearInterval(duplicateIntervalID);
+    }
+}
+var duplicateIntervalID = setInterval(duplicateCheck, 100);
+
 function formatTime(time) {
     let totalMilliseconds = Math.round(time * 1000);
     

@@ -38,7 +38,7 @@ Play
         <!-- Embedded game -->
         <div class="col-10 col-md-5" style="padding-right: 0px;">
             <div id="iframe-container">
-                <iframe id="embedded-iframe" src="{% static 'main/html/basic.html' %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+                <iframe id="embedded-iframe" src="{% static 'main/html/basic.html' %}?-i" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
             </div>
         </div>
         <!-- 4 columns for command center-->
@@ -167,6 +167,7 @@ Play
             sessionStorage.setItem('muted', "false");
             sessionStorage.removeItem('white_time');
             sessionStorage.removeItem('black_time');
+            sessionStorage.removeItem('duplicate');
             const pawnsrc = "{% static 'main/images/material/pawn_grayscale.svg' %}";
             const bishopsrc = "{% static 'main/images/material/bishop_grayscale.svg' %}";
             const knightsrc = "{% static 'main/images/material/knight_grayscale.svg' %}";

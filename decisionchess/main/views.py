@@ -383,9 +383,9 @@ def get_config(request, game_uuid):
             if type == 'live':
                 if str(user_id) == str(game.white_id) == str(game.black_id):
                     if game.initiator_color == "black":
-                        fill = "white"
+                        fill = "white" if game.opponent_connected else "black"
                     elif game.initiator_color == "white":
-                        fill = "black"
+                        fill = "black" if game.opponent_connected else "white"
                     else:
                         return JsonResponse({"status": "error"}, status=401)
                 elif str(user_id) == str(game.white_id):
@@ -487,6 +487,7 @@ def play(request, game_uuid):
                 return render(request, "main/play/decision_spectate.html", sessionVariables)
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
+            # This logic not for ranked modes later
             if game.black_id is None and game.initiator_connected:
                 game.black_id = user_id
                 game.opponent_connected = True
@@ -497,28 +498,14 @@ def play(request, game_uuid):
                 game.opponent_connected = True
                 game.opponent_name = player
                 game.save()
-            # Later we change the below conditions to allow for reconnection ONLY not multiple tabs of the same game unless it's a spectator view
             elif str(user_id) == str(game.white_id) == str(game.black_id):
-                if game.opponent_connected and game.initiator_connected:
-                    return redirect('home')
-                else:
-                    game.opponent_connected = False
+                if game.initiator_connected:
+                    game.opponent_connected = True
                     game.initiator_connected = False
-                    game.save()
-            elif str(user_id) == str(game.white_id) and game.black_id is not None:
-                if game.initiator_connected and game.opponent_connected:
-                    return redirect('home')
-                else:
-                    game.initiator_connected = False
+                elif game.opponent_connected:
+                    game.initiator_connected = True
                     game.opponent_connected = False
-                    game.save()
-            elif str(user_id) == str(game.black_id) and game.white_id is not None:
-                if game.initiator_connected and game.opponent_connected:
-                    return redirect('home')
-                else:
-                    game.initiator_connected = False
-                    game.opponent_connected = False
-                    game.save()
+                game.save()
             game_chat_messages = ActiveChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
             return render(request, play_html, sessionVariables)
@@ -643,13 +630,9 @@ def update_connected(request):
                 if game.initiator_color == message_sending_player:
                     field_to_update = "initiator_connected" if web_connect else "opponent_connected"
                     setattr(game, field_to_update, web_connect)
-                    if not web_connect:
-                        setattr(game, "initiator_connected", web_connect)
                 else:
                     field_to_update = "opponent_connected" if web_connect else "initiator_connected"
                     setattr(game, field_to_update, web_connect)
-                    if not web_connect:
-                        setattr(game, "opponent_connected", web_connect)
                 game.save()
                 active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
                 if not active_game_exists:

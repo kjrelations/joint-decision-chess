@@ -618,9 +618,16 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
 
             elif ev == node.JOINED:
                 print("Entered channel", node.joined)
+                count_side = sum(1 for key in node.users.keys() if key.startswith("u_" + node.side) and "spec" not in key)
                 game_channel = f"{node.lobby}-{init['game_id']}"
+                if not node.in_game and node.joined == game_channel and count_side >= 2:
+                    node.quit()
+                    window.sessionStorage.setItem('duplicate', 'true')
+                    break
                 if node.joined == node.lobby_channel and not node.in_game:
                     node.tx({node.CMD: "join_game", 'nick': node.nick}) # tx() joins the game lobby and sends another JOINED event
+                    continue
+                if node.joined == game_channel and not node.in_game:
                     node.in_game = True
                 if node.joined == game_channel and not init["reloaded"] and node.in_game:
                     node.pstree[node.pid]["forks"] = []
@@ -634,40 +641,50 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
             elif ev == node.QUIT:
                 print(f"Quit: {node.proto}, Reason: {node.data}")
                 u = node.proto.split("!")[0]
-                # Only if it's the other main player here, spectators can have different prefix names
+                count_white = sum(1 for key in node.users.keys() if key.startswith("u_white") and "spec" not in key)
+                count_black = sum(1 for key in node.users.keys() if key.startswith("u_black") and "spec" not in key)
+                if u in node.users:
+                    del node.users[u]
                 if "spec" not in u:
+                    if count_white >= 2 or count_black >= 2:
+                        side = 'white' 
+                        if count_white >= 2 and count_black >= 2:
+                            side = 'white and black'
+                        elif count_black >= 2:
+                            side = 'black'
+                        print(f"Second window/tab opened by {side}")
+                        continue
+                    # Only if it's the other main player here, spectators can have different prefix names
                     window.sessionStorage.setItem("connected", "false")
                     if client_game is not None:
                         client_game._sync = True
-                if u in node.users:
-                    del node.users[u]
-                apply_resets(window, offers, client_state_actions)
-                if "spec" not in u and client_game is not None and client_game.timed_mode:
-                    end = time.monotonic()
-                    if client_game._starting_player:
-                        if client_game.black_clock_running:
-                            client_game.black_clock_running = False
-                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
-                        if client_game.white_clock_running:
-                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                        init["black_grace_time"] = 30
-                        init["reference_time"] = time.monotonic()
-                    else:
-                        if client_game.white_clock_running:
-                            client_game.white_clock_running = False
-                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
-                        if client_game.black_clock_running:
-                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                        init["white_grace_time"] = 30
-                        init["reference_time"] = time.monotonic()
-                    side = 'white' if not init["starting_player"] else 'black'
-                    node.tx({node.CMD: f"{side} disconnect"})
-                    init["old_sent"] = init["sent"]
-                    init["sent"] = 0
-                    init["opponent_quit"] = True
-                if node.fork and "spec" not in u:
-                    node.fork = 0
-                    node.publish(True)
+                    apply_resets(window, offers, client_state_actions)
+                    if client_game is not None and client_game.timed_mode:
+                        end = time.monotonic()
+                        if client_game._starting_player:
+                            if client_game.black_clock_running:
+                                client_game.black_clock_running = False
+                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
+                            if client_game.white_clock_running:
+                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
+                            init["black_grace_time"] = 30
+                            init["reference_time"] = time.monotonic()
+                        else:
+                            if client_game.white_clock_running:
+                                client_game.white_clock_running = False
+                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
+                            if client_game.black_clock_running:
+                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
+                            init["white_grace_time"] = 30
+                            init["reference_time"] = time.monotonic()
+                        side = 'white' if not init["starting_player"] else 'black'
+                        node.tx({node.CMD: f"{side} disconnect"})
+                        init["old_sent"] = init["sent"]
+                        init["sent"] = 0
+                        init["opponent_quit"] = True
+                    if node.fork:
+                        node.fork = 0
+                        node.publish(True)
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
@@ -675,6 +692,8 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 if cmd == node.HELLO:
                     print("Lobby/Game:", "Welcome", nick)
                     spectator = "spec" in nick
+                    if nick not in node.users.keys():
+                        node.users[nick] = {}
                     if not spectator:
                         game_status = window.sessionStorage.getItem("connected")
                         if game_status != "true":

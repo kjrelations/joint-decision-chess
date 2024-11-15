@@ -877,13 +877,6 @@ async def main():
     # Main game loop
     while init["running"]:
 
-        try:
-            if not init["final_updates"]:
-                await handle_node_events(node, window, init, client_game, client_state_actions, offers, drawing_settings)
-        except Exception as e:
-            log_err_and_print(e, window)
-            raise Exception(str(e))
-
         if init["initializing"]:
             client_game, game_tab_id = initialize_game(init, game_id, node, drawing_settings)
 
@@ -954,6 +947,7 @@ async def main():
             
             current_theme.INVERSE_PLAYER_VIEW = not init["starting_player"]
             pygame.display.set_caption("Chess - Waiting on Connection")
+            node.side = 'white' if init["starting_player"] else 'black'
             if retrieved_state is None:
                 client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
                 init["player"] = "white" if init["starting_player"] else "black"
@@ -980,6 +974,13 @@ async def main():
                 init["initializing"] = True if init["starting_position"].get("custom_start") != True else False
                 init["loaded"] = True
                 continue
+
+        try:
+            if not init["final_updates"]:
+                await handle_node_events(node, window, init, client_game, client_state_actions, offers, drawing_settings)
+        except Exception as e:
+            log_err_and_print(e, window)
+            raise Exception(str(e))
 
         if init["waiting"]:
             await waiting_screen(init, game_window, client_game, drawing_settings)

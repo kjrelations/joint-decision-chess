@@ -210,6 +210,8 @@ class Node:
 
         self.closed = False
 
+        self.side = None
+
     async def connect(self, host):
         while True:
             try:
@@ -645,7 +647,7 @@ class Node:
                 if self.pid:
                     self.oid = self.pid 
                 self.pid = int(stime)
-                self.nick = "u_" + str(self.pid)
+                self.nick = "u_" + self.side + "_" + str(self.pid)
                 self.pscheck(self.pid, self.nick)
 
                 # TODO: maybe do not list as channels members people who don't want to chat
