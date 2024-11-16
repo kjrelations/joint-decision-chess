@@ -5,6 +5,7 @@ from django_countries.fields import CountryField
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.validators import MinValueValidator
 from . import user_settings
 import uuid
 
@@ -54,6 +55,7 @@ class ChessLobby(models.Model):
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	initial_state = models.TextField(blank=True, null=True)
+	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)]) # Max constraint later
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
@@ -99,6 +101,7 @@ class GameHistoryTable(models.Model):
 	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
 	state = models.TextField(default="")
 	initial_state = models.TextField(blank=True, null=True)
+	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)])
 
 class ActiveChatMessages(models.Model):
 	active_message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

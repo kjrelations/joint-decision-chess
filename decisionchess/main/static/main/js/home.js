@@ -3,10 +3,12 @@ const revealStageCheckboxMultiplayer = document.getElementById('reveal-stage-mul
 const decisionStageCheckboxMultiplayer = document.getElementById('decision-stage-multiplayer-checkbox');
 const suggestiveCheckboxMultiplayer = document.getElementById('suggestive-multiplayer-checkbox');
 const standardSubvariantDropdownMultiplayer = document.getElementById('timed-mode-multiplayer');
+const incrementMultiplayerDropdown = document.getElementById('increment-multiplayer');
 const revealStageCheckboxPrivate = document.getElementById('reveal-stage-private-checkbox');
 const decisionStageCheckboxPrivate = document.getElementById('decision-stage-private-checkbox');
 const suggestiveCheckboxPrivate = document.getElementById('suggestive-private-checkbox');
 const standardSubvariantDropdownPrivate = document.getElementById('timed-mode-private');
+const incrementPrivateDropdown = document.getElementById('increment-private');
 const mainModeMultiplayer = document.getElementById('main-mode-multiplayer');
 const mainModePrivate = document.getElementById('main-mode-private');
 document.addEventListener("DOMContentLoaded", function() {
@@ -16,11 +18,15 @@ document.addEventListener("DOMContentLoaded", function() {
     suggestiveCheckboxMultiplayer.checked = false;
     suggestiveCheckboxMultiplayer.disabled = true;
     standardSubvariantDropdownMultiplayer.value = '';
+    incrementMultiplayerDropdown.disabled = true;
+    incrementMultiplayerDropdown.value = '0';
     revealStageCheckboxPrivate.checked = false;
     decisionStageCheckboxPrivate.checked = false;
     suggestiveCheckboxPrivate.checked = false;
     suggestiveCheckboxPrivate.disabled = true;
     standardSubvariantDropdownPrivate.value = '';
+    incrementPrivateDropdown.disabled = true;
+    incrementPrivateDropdown.value = '0';
     mainModeMultiplayer.value = 'Decision';
     mainModePrivate.value = 'Decision';
 });
@@ -103,6 +109,7 @@ function updateNonStandardInfo(decisionStageCheckbox, revealStageCheckbox, sugge
         suggestiveCheckbox.disabled = false;
         standardSubvariantContainer.classList.add('d-none');
         standardSubvariantContainer.classList.remove('d-flex');
+        // standard timed mode value to none and increment to 0
     } else {
         suggestiveCheckbox.checked = false;
         suggestiveCheckbox.disabled = true;
@@ -111,14 +118,15 @@ function updateNonStandardInfo(decisionStageCheckbox, revealStageCheckbox, sugge
     }
 }
 
-function updateState(standardSubvariantDropdown, revealStageCheckbox, decisionStageCheckbox, suggestiveCheckbox) {
-    var isDisabled = standardSubvariantDropdown.value !== '';
+function updateState(standardSubvariantDropdown, incrementDropdown, revealStageCheckbox, decisionStageCheckbox, suggestiveCheckbox) {
+    var isTimedMode = standardSubvariantDropdown.value !== '';
     revealStageCheckbox.checked = false;
     decisionStageCheckbox.checked = false;
-    revealStageCheckbox.disabled = isDisabled;
-    decisionStageCheckbox.disabled = isDisabled;
+    revealStageCheckbox.disabled = isTimedMode;
+    decisionStageCheckbox.disabled = isTimedMode;
     suggestiveCheckbox.disabled = true;
     suggestiveCheckbox.checked = false;
+    incrementDropdown.disabled = !isTimedMode;
 }
 
 const standardSubvariantContainerMultiplayer = document.getElementById('timed-multiplayer');
@@ -138,17 +146,19 @@ const standardSubvariantContainerPrivate = document.getElementById('timed-privat
 standardSubvariantDropdownMultiplayer.addEventListener('change', () => 
 updateState(
     standardSubvariantDropdownMultiplayer, 
+    incrementMultiplayerDropdown,
     revealStageCheckboxMultiplayer, 
     decisionStageCheckboxMultiplayer, 
     suggestiveCheckboxMultiplayer
     ));
-    standardSubvariantDropdownPrivate.addEventListener('change', () => 
-    updateState(
-        standardSubvariantDropdownPrivate, 
-        revealStageCheckboxPrivate, 
-        decisionStageCheckboxPrivate, 
-        suggestiveCheckboxPrivate
-    ));
+standardSubvariantDropdownPrivate.addEventListener('change', () => 
+updateState(
+    standardSubvariantDropdownPrivate, 
+    incrementPrivateDropdown,
+    revealStageCheckboxPrivate, 
+    decisionStageCheckboxPrivate, 
+    suggestiveCheckboxPrivate
+));
 
 soloCheckbox.addEventListener('change', function(event) {
     const revealStageCheckbox = document.getElementById('reveal-stage-multiplayer-checkbox');
@@ -162,10 +172,15 @@ soloCheckbox.addEventListener('change', function(event) {
         suggestiveCheckboxMultiplayer.disabled = true;
         standardSubvariantDropdownMultiplayer.disabled = true;
         standardSubvariantDropdownMultiplayer.value = '';
+        incrementMultiplayerDropdown.disabled = true;
+        incrementMultiplayerDropdown.value = '0';
     } else {
         revealStageCheckbox.disabled = false;
         decisionStageCheckbox.disabled = false;
         standardSubvariantDropdownMultiplayer.disabled = false;
+        if (standardSubvariantDropdownMultiplayer.value !== '') {
+            incrementMultiplayerDropdown.disabled = false;
+        }
     }
 });
 
@@ -180,7 +195,8 @@ newGameButtons.forEach(button => {
             "decision_stage": false,
             "private": document.getElementById('solo-play-checkbox').checked ? true : null,
             "computer_game": null,
-            "subvariant": "Normal"
+            "subvariant": "Normal",
+            "increment": document.getElementById('increment-multiplayer').value
         }
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-multiplayer-checkbox').checked;
@@ -223,7 +239,8 @@ newPrivateGameButtons.forEach(button => {
             "decision_stage": false,
             "private": true,
             "computer_game": null,
-            "subvariant": "Normal"
+            "subvariant": "Normal",
+            "increment": document.getElementById('increment-private').value
         }
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;

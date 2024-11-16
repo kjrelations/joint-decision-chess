@@ -84,12 +84,17 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
         
         end = time.monotonic()
         if not illegal and not (piece.lower() == 'p' and (row == 7 or row == 0)) and game.timed_mode:
+            increment = 0
             if game._starting_player:
                 game.white_clock_running = False
-                game.remaining_white_time = max(game.remaining_white_time - (end - init["reference_time"]), 0)
+                if game.increment is not None:
+                    increment = game.increment
+                game.remaining_white_time = max(game.remaining_white_time + increment - (end - init["reference_time"]), 0)
             else:
                 game.black_clock_running = False
-                game.remaining_black_time = max(game.remaining_black_time - (end - init["reference_time"]), 0)
+                if game.increment is not None:
+                    increment = game.increment
+                game.remaining_black_time = max(game.remaining_black_time + increment - (end - init["reference_time"]), 0)
         
         if update and not (piece.lower() == 'p' and (row == 7 or row == 0)):
             print_d("ALG_MOVES:", game.alg_moves, debug=debug_prints)
@@ -526,7 +531,7 @@ def initialize_game(init, game_id, node, drawing_settings):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"], init["increment"])
     else:
         client_game = Game(custom_params=init["starting_position"])
     if client_game.reveal_stage_enabled and client_game.decision_stage_enabled: # do we need this?
@@ -744,6 +749,7 @@ async def main():
         "opponent_quit": False,
         "delay": 0,
         "retrieved_delay": 0,
+        "increment": None,
         "starting_position": None,
         "sent": None,
         "old_sent": None,
@@ -924,6 +930,10 @@ async def main():
                         init["subvariant"] = data["message"]["subvariant"]
                     else:
                         raise Exception("Bad request")
+                    if data["message"]["increment"]:
+                        init["increment"] = data["message"]["increment"]
+                    else:
+                        raise Exception("Bad request")
                     window.sessionStorage.setItem("color", data["message"]["starting_side"])
                 except Exception as e:
                     log_err_and_print(e, window)
@@ -949,7 +959,7 @@ async def main():
             pygame.display.set_caption("Chess - Waiting on Connection")
             node.side = 'white' if init["starting_player"] else 'black'
             if retrieved_state is None:
-                client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
+                client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"], init["increment"])
                 init["player"] = "white" if init["starting_player"] else "black"
                 init["opponent"] = "black" if init["starting_player"] else "white"
                 init["loaded"] = True

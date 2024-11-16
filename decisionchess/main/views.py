@@ -195,7 +195,7 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.computer_game = True
                     new_open_game.private = True
                     new_open_game.opponent_name = "minimax" # Later look up name with more bots
-                elif data.get('solo'): # TODO do validation of subvariant and main mode with this
+                elif data.get('solo'): # TODO do validation of subvariant and main mode with this and not timed mode
                     new_open_game.solo_game = True
                     new_open_game.private = True
                 if data.get('rematch'):
@@ -258,6 +258,10 @@ def create_new_game(request, optional_uuid = None):
                         new_open_game.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
                     else:
                         new_open_game.subvariant = data.get('subvariant')
+                        increment = data.get('increment')
+                        if increment is None or not (increment.isdigit() and int(increment) >= 0):
+                            return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                        new_open_game.increment = int(increment)
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                 state = None
@@ -400,7 +404,8 @@ def get_config(request, game_uuid):
                     "starting_side": fill, 
                     "game_type": game.gametype, 
                     "theme_names": theme_names, 
-                    "subvariant": game.subvariant
+                    "subvariant": game.subvariant,
+                    "increment": game.increment
                     }
                 }, status=200)
         except ChessLobby.DoesNotExist:
@@ -413,7 +418,8 @@ def get_config(request, game_uuid):
                 "message": {
                     "game_type": game.gametype, 
                     "theme_names": theme_names, 
-                    "subvariant": game.subvariant
+                    "subvariant": game.subvariant,
+                    "increment": game.increment
                     }
                 }, status=200)
         except GameHistoryTable.DoesNotExist:
@@ -774,7 +780,8 @@ def save_chat_and_game(active_game, lobby_game, data):
         computed_moves=data.get('comp_moves'),
         FEN_outcome=data.get('FEN'),
         termination_reason=data.get('termination_reason'),
-        state = active_game.state
+        state = active_game.state,
+        increment = lobby_game.increment
     )
     if lobby_game.initial_state is not None:
         completed_game.initial_state = lobby_game.initial_state

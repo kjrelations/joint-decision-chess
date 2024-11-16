@@ -258,12 +258,16 @@ async def main():
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     else:
                         raise Exception("Bad request")
-                    if data["message"]["game_type"]:
+                    if data["message"]["game_type"]: # don't think I need any of these
                         init["game_type"] = data["message"]["game_type"]
                     else:
                         raise Exception("Bad request")
                     if data["message"]["subvariant"]:
                         init["subvariant"] = data["message"]["subvariant"]
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["increment"]:
+                        init["increment"] = data["message"]["increment"]
                     else:
                         raise Exception("Bad request")
                 except Exception as e:
@@ -274,7 +278,7 @@ async def main():
                 try:
                     retrieved_state, _, _ = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
                     retrieved = True
-                except Exception as e:
+                except Exception as e: # Handle DNE with failure
                     err = 'Game State retreival Failed. Reattempting...'
                     js_code = f"console.log('{str(e)}')"
                     window.eval(js_code)

@@ -26,6 +26,14 @@ class CreateNewGameForm(forms.Form):
         choices=[('', ''), ('Classical', 'Classical'), ('Rapid', 'Rapid'), ('Blitz', 'Blitz')], 
         attrs={'id': 'timed-mode-private'}
         ))
+    increment_multiplayer = forms.CharField(max_length=9, label="Increment", required=False, widget=forms.Select(
+        choices=[('0', '0'), ('1', '1'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5'), ('10', '10')], 
+        attrs={'id': 'increment-multiplayer'}
+        ))
+    increment_private = forms.CharField(max_length=9, label="Increment", required=False, widget=forms.Select(
+        choices=[('0', '0'), ('1', '1'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5'), ('10', '10')], 
+        attrs={'id': 'increment-private'}
+        ))
     solo_play = forms.BooleanField(label="Solo Play", required=False, widget=forms.CheckboxInput(attrs={'id': 'solo-play-checkbox'}))
     reveal_stage_multiplayer = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-multiplayer-checkbox'}))
     reveal_stage_private = forms.BooleanField(label="Reveal Stage", required=False, widget=forms.CheckboxInput(attrs={'id': 'reveal-stage-private-checkbox'}))

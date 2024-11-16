@@ -53,7 +53,7 @@ def initialize_game(init, drawing_settings, game_key):
     else:
         pygame.display.set_caption("Chess - Black")
     if init["starting_position"] is None:
-        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
+        client_game = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"], init["increment"])
     else:
         client_game = Game(custom_params=init["starting_position"])
     if client_game.reveal_stage_enabled and client_game.decision_stage_enabled:
@@ -112,6 +112,7 @@ async def main():
         "black_grace_time": None,
         "delay": 0,
         "retrieved_delay": 0,
+        "increment": None,
         "starting_position": None,
         "local_debug": local_debug,
         "access_keys": None,
@@ -128,6 +129,8 @@ async def main():
         init["starting_position"] = None
         init["starting_player"] = True 
         init["gametype"] = "Standard"
+        init["subvariant"] = "Normal"
+        init["increment"] = None
         init["initializing"] = True
         init["config_retrieved"] = True # TODO won't get user themes, handle later
         init["loaded"] = True
@@ -230,6 +233,10 @@ async def main():
                         raise Exception("Bad request")
                     if data["message"]["subvariant"]:
                         init["subvariant"] = data["message"]["subvariant"]
+                    else:
+                        raise Exception("Bad request")
+                    if data["message"]["increment"]:
+                        init["increment"] = data["message"]["increment"]
                     else:
                         raise Exception("Bad request")
                 except Exception as e:

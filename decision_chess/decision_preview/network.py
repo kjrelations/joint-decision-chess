@@ -126,7 +126,7 @@ async def reconnect(window, game_id, access_keys, init, drawing_settings):
         else:
             retrieved_state = None
         if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"])
+            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"], init["increment"])
         else:
             retrieved_state = json.loads(retrieved_state)
             init["retrieved"] = Game(custom_params=retrieved_state)
