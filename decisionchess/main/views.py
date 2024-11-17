@@ -195,7 +195,7 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.computer_game = True
                     new_open_game.private = True
                     new_open_game.opponent_name = "minimax" # Later look up name with more bots
-                elif data.get('solo'): # TODO do validation of subvariant and main mode with this and not timed mode
+                elif data.get('solo'): # TODO do validation of subvariant and main mode with this and not timed mode and not ranked for some of these
                     new_open_game.solo_game = True
                     new_open_game.private = True
                 if data.get('rematch'):
@@ -264,6 +264,26 @@ def create_new_game(request, optional_uuid = None):
                         new_open_game.increment = int(increment)
                 else:
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+                ranked = data.get('ranked')
+                if ranked is not None:
+                    new_open_game.match_type = ranked
+                    column_to_fill = 'white_rank_start' if new_open_game.initiator_color == 'white' else 'black_rank_start'
+                    rank_mapping = {
+                        ("Standard", "Normal"): "rank_normal",
+                        ("Standard", "Classical"): "rank_classical",
+                        ("Standard", "Rapid"): "rank_rapid",
+                        ("Standard", "Blitz"): "rank_blitz",
+                        ("Complete", "Simple"): "rank_complete_simple",
+                        ("Complete", "Suggestive"): "rank_complete_suggestive",
+                        ("Relay", "Simple"): "rank_relay_simple",
+                        ("Relay", "Suggestive"): "rank_relay_suggestive",
+                        ("Countdown", "Simple"): "rank_countdown_simple",
+                        ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+                    }
+
+                    rank_attr = rank_mapping.get((new_open_game.gametype, new_open_game.subvariant))
+                    if rank_attr:
+                        setattr(new_open_game, column_to_fill, getattr(request.user, rank_attr))
                 state = None
                 if data.get('FEN'):
                     new_open_game.private = True
@@ -324,9 +344,14 @@ def get_lobby_games(request):
     elif position_filter == 'black':
         position_query = Q(Q(black_id__isnull=True) & Q(initiator_color="white"))
 
+    match_type_query = Q()
+    if not request.user or request.user.id is None:
+        match_type_query = Q(match_type='Casual')
+
     lobby_games = lobby_games.filter(
         Q(initiator_name=username_filter) if username_filter else Q(),
-        position_query
+        position_query,
+        match_type_query
     )
     serialized_data = [
         {
@@ -519,6 +544,31 @@ def play(request, game_uuid):
             column_to_fill = "black_id"
             if game.white_id is None:
                 column_to_fill = "white_id"
+            if game.match_type == "Ranked":
+                if player == "Anonymous":
+                    if game.initiator_color == "white":
+                        sessionVariables.update({'white': game.initiator_name, 'black': game.opponent_name})
+                    elif game.initiator_color == "black":
+                        sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
+                    return render(request, "main/play/decision_spectate.html", sessionVariables)
+                else:
+                    ranked_column_to_fill = 'black_rank_start' if game.initiator_color == 'white' else 'white_rank_start'
+                    rank_mapping = {
+                        ("Standard", "Normal"): "rank_normal",
+                        ("Standard", "Classical"): "rank_classical",
+                        ("Standard", "Rapid"): "rank_rapid",
+                        ("Standard", "Blitz"): "rank_blitz",
+                        ("Complete", "Simple"): "rank_complete_simple",
+                        ("Complete", "Suggestive"): "rank_complete_suggestive",
+                        ("Relay", "Simple"): "rank_relay_simple",
+                        ("Relay", "Suggestive"): "rank_relay_suggestive",
+                        ("Countdown", "Simple"): "rank_countdown_simple",
+                        ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+                    }
+                    
+                    rank_attr = rank_mapping.get((game.gametype, game.subvariant))
+                    if rank_attr:
+                        setattr(game, ranked_column_to_fill, getattr(request.user, rank_attr))
             game.opponent_connected = True
             game.opponent_name = player
             setattr(game, column_to_fill, user_id)
@@ -715,6 +765,9 @@ def get_or_update_state(request, game_uuid):
                 except GameHistoryTable.DoesNotExist:
                     return JsonResponse({"message": "DNE"}, status=200)
 
+def expected_probability(Ra, Rb):
+    return 1/ (1 + 10 ** ((Rb - Ra)/400))
+
 def save_game(request):
     if request.method == 'PUT':
         # TODO validate data values, can't have nulls or blanks for example
@@ -738,16 +791,24 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
             lobby_game = ChessLobby.objects.get(lobby_id=completed_game_uuid)
             try:
-                save_chat_and_game(active_game, lobby_game, data)
+                white_rank_new, black_rank_new = save_chat_and_game(active_game, lobby_game, data)
             except Exception:
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()
-            return JsonResponse({"status": "updated"}, status=200)
+            response = {"status": "updated"}
+            if white_rank_new is not None: # Maybe return username
+                response.update({"white_rank": white_rank_new, "black_rank": black_rank_new})
+            return JsonResponse(response, status=200)
         except ActiveGames.DoesNotExist:
             try:
                 saved_game = GameHistoryTable.objects.get(historic_game_id=completed_game_uuid)
-                return JsonResponse({}, status=200)
+                response = {}
+                if saved_game.white_rank_change is not None: # Maybe return username
+                    # white_user = User.objects.get(id=saved_game.white_id)
+                    # black_user = User.objects.get(id=saved_game.black_id)
+                    response.update({"white_rank_new": [saved_game.white_rank_change], "black_rank_new": [saved_game.black_rank_change]})
+                return JsonResponse(response, status=200)
             except:
                 return JsonResponse({"status": "error", "message": "Game DNE"}, status=400)
 
@@ -767,7 +828,6 @@ def save_chat_and_game(active_game, lobby_game, data):
         new_chat_message.save()
         chat_message.delete()
 
-    # Create and save GameHistoryTable object
     completed_game = GameHistoryTable(
         historic_game_id=active_game.active_game_id,
         white_id=active_game.white_id,
@@ -783,9 +843,57 @@ def save_chat_and_game(active_game, lobby_game, data):
         state = active_game.state,
         increment = lobby_game.increment
     )
+    if lobby_game.match_type == 'Ranked':
+        expected_white_probability = expected_probability(lobby_game.white_rank_start, lobby_game.black_rank_start)
+        expected_black_probability = expected_probability(lobby_game.black_rank_start, lobby_game.white_rank_start)
+        white_score, black_score = 0, 0
+        if data.get('outcome') == '1-1':
+            white_score = 1.25
+            black_score = 1.25
+        elif data.get('outcome') == '1-0':
+            white_score = 1
+            black_score = 0
+        elif data.get('outcome') == '0-1':
+            white_score = 0
+            black_score = 1
+        elif data.get('outcome') == '½–½':
+            white_score = 0.5
+            black_score = 0.5
+        completed_game.white_rank_start = lobby_game.white_rank_start
+        completed_game.black_rank_start = lobby_game.black_rank_start
+        white_rank_change = 32 * (white_score - expected_white_probability)
+        black_rank_change = 32 * (black_score - expected_black_probability)
+        completed_game.white_rank_change = white_rank_change
+        completed_game.black_rank_change = black_rank_change
+        completed_game.match_type = 'Ranked'
+        white_user = User.objects.get(id=completed_game.white_id)
+        black_user = User.objects.get(id=completed_game.black_id)
+        rank_mapping = {
+            ("Standard", "Normal"): "rank_normal",
+            ("Standard", "Classical"): "rank_classical",
+            ("Standard", "Rapid"): "rank_rapid",
+            ("Standard", "Blitz"): "rank_blitz",
+            ("Complete", "Simple"): "rank_complete_simple",
+            ("Complete", "Suggestive"): "rank_complete_suggestive",
+            ("Relay", "Simple"): "rank_relay_simple",
+            ("Relay", "Suggestive"): "rank_relay_suggestive",
+            ("Countdown", "Simple"): "rank_countdown_simple",
+            ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+        }
+        rank_attr = rank_mapping.get((completed_game.gametype, completed_game.subvariant))
+        setattr(white_user, rank_attr, getattr(white_user, rank_attr) + white_rank_change)
+        setattr(black_user, rank_attr, getattr(black_user, rank_attr) + black_rank_change)
+        white_rank_new = getattr(white_user, rank_attr)
+        black_rank_new = getattr(black_user, rank_attr)
+        white_user.save()
+        black_user.save()
     if lobby_game.initial_state is not None:
         completed_game.initial_state = lobby_game.initial_state
     completed_game.save()
+    if lobby_game.match_type == 'Ranked':
+        return [white_rank_new, completed_game.white_rank_change], [black_rank_new, completed_game.black_rank_change]
+    else:
+        return None, None
 
 def lessons(request):
     lessons = Lessons.objects.all()

@@ -11,6 +11,7 @@ const standardSubvariantDropdownPrivate = document.getElementById('timed-mode-pr
 const incrementPrivateDropdown = document.getElementById('increment-private');
 const mainModeMultiplayer = document.getElementById('main-mode-multiplayer');
 const mainModePrivate = document.getElementById('main-mode-private');
+const ranked = document.getElementById('ranked');
 document.addEventListener("DOMContentLoaded", function() {
     soloCheckbox.checked = false;
     revealStageCheckboxMultiplayer.checked = false;
@@ -29,6 +30,7 @@ document.addEventListener("DOMContentLoaded", function() {
     incrementPrivateDropdown.value = '0';
     mainModeMultiplayer.value = 'Decision';
     mainModePrivate.value = 'Decision';
+    ranked.value = 'Casual';
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -174,6 +176,8 @@ soloCheckbox.addEventListener('change', function(event) {
         standardSubvariantDropdownMultiplayer.value = '';
         incrementMultiplayerDropdown.disabled = true;
         incrementMultiplayerDropdown.value = '0';
+        ranked.value = 'Casual';
+        ranked.disabled = true;
     } else {
         revealStageCheckbox.disabled = false;
         decisionStageCheckbox.disabled = false;
@@ -181,6 +185,7 @@ soloCheckbox.addEventListener('change', function(event) {
         if (standardSubvariantDropdownMultiplayer.value !== '') {
             incrementMultiplayerDropdown.disabled = false;
         }
+        ranked.disabled = false;
     }
 });
 
@@ -196,7 +201,8 @@ newGameButtons.forEach(button => {
             "private": document.getElementById('solo-play-checkbox').checked ? true : null,
             "computer_game": null,
             "subvariant": "Normal",
-            "increment": document.getElementById('increment-multiplayer').value
+            "increment": document.getElementById('increment-multiplayer').value,
+            "ranked": ranked.value
         }
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-multiplayer-checkbox').checked;

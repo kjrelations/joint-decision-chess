@@ -17,6 +17,16 @@ class User(AbstractUser):
 	bot_account = models.BooleanField(default=False)
 	email_reference = models.EmailField()
 	account_closed = models.BooleanField(default=False)
+	rank_normal = models.IntegerField(null=False, blank=False, default=1500)
+	rank_classical = models.IntegerField(null=False, blank=False, default=1500)
+	rank_rapid = models.IntegerField(null=False, blank=False, default=1500)
+	rank_blitz = models.IntegerField(null=False, blank=False, default=1500)
+	rank_reveal_simple = models.IntegerField(null=False, blank=False, default=1500)
+	rank_reveal_suggestive = models.IntegerField(null=False, blank=False, default=1500)
+	rank_countdown_simple = models.IntegerField(null=False, blank=False, default=1500)
+	rank_countdown_suggestive = models.IntegerField(null=False, blank=False, default=1500)
+	rank_complete_simple = models.IntegerField(null=False, blank=False, default=1500)
+	rank_complete_suggestive = models.IntegerField(null=False, blank=False, default=1500)
 
 	def __str__(self):
 		return self.username
@@ -56,6 +66,9 @@ class ChessLobby(models.Model):
 	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	initial_state = models.TextField(blank=True, null=True)
 	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)]) # Max constraint later
+	match_type = models.CharField(max_length=6, blank=False, null=False, default="Casual")
+	white_rank_start = models.IntegerField(null=True)
+	black_rank_start = models.IntegerField(null=True)
 
 	def save(self, *args, **kwargs):
 		if not self.timestamp:
@@ -102,6 +115,11 @@ class GameHistoryTable(models.Model):
 	state = models.TextField(default="")
 	initial_state = models.TextField(blank=True, null=True)
 	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)])
+	match_type = models.CharField(max_length=6, blank=False, null=False, default="Casual")
+	white_rank_start = models.IntegerField(null=True)
+	black_rank_start = models.IntegerField(null=True)
+	white_rank_change = models.IntegerField(null=True)
+	black_rank_change = models.IntegerField(null=True)
 
 class ActiveChatMessages(models.Model):
 	active_message_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

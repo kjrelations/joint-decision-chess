@@ -235,7 +235,7 @@ async def main():
                         init["subvariant"] = data["message"]["subvariant"]
                     else:
                         raise Exception("Bad request")
-                    if data["message"]["increment"]:
+                    if data["message"]["increment"] is not None:
                         init["increment"] = data["message"]["increment"]
                     else:
                         raise Exception("Bad request")
