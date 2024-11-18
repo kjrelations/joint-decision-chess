@@ -98,8 +98,9 @@ Decision Chess
                             <div class="lobby-header">
                                 <div style="text-align: center; width: 10%; overflow: hidden;"></div>
                                 <div style="text-align: left; width: 30%; overflow: hidden;">User</div>
-                                <div style="text-align: center; width: 10%; overflow: hidden;">Type</div>
-                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Created Time</div>
+                                <div style="text-align: left; width: 30%; overflow: hidden;">Type</div>
+                                <div style="text-align: left; width: 10%; overflow: hidden;">Time</div>
+                                <div style="text-align: right; width: 20%; overflow: hidden; padding-right: 1em;">Rating</div>
                             </div>
                             <div id="lobby-content"></div>
                           </div>
@@ -556,6 +557,12 @@ Decision Chess
       var relaySVG = '{{ relay_svg|safe }}';
       var countdownSVG = '{{ countdown_svg|safe }}';
       var standardSVG = '{{ standard_svg|safe }}';
+      var normalSVG = '{{ envelope_svg|safe }}';
+      var classicalSVG = '{{ hourglass_svg|safe }}';
+      var rapidSVG = '{{ bird_svg|safe }}';
+      var blitzSVG = '{{ lightning_svg|safe }}';
+      var simpleSVG = '{{ eye_svg|safe }}';
+      var suggestiveSVG = '{{ masks_svg|safe }}';
     </script>
     <script src="{% static 'main/js/home.js' %}"></script>
 </div>

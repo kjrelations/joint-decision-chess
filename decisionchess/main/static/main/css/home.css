@@ -373,6 +373,14 @@ html {
     height: auto;
 }
 
+[name="type"] .svg-scaled-circle {
+    width: 89%;
+}
+
+[name="type"] .svg-scaled-complete {
+    width: 100%;
+}
+
 body {
     background: linear-gradient(-45deg, var(--home-body-1), var(--home-body-2), var(--home-body-3), var(--home-body-4));
     background-size: 400% 400% !important;

@@ -21,8 +21,8 @@ class User(AbstractUser):
 	rank_classical = models.IntegerField(null=False, blank=False, default=1500)
 	rank_rapid = models.IntegerField(null=False, blank=False, default=1500)
 	rank_blitz = models.IntegerField(null=False, blank=False, default=1500)
-	rank_reveal_simple = models.IntegerField(null=False, blank=False, default=1500)
-	rank_reveal_suggestive = models.IntegerField(null=False, blank=False, default=1500)
+	rank_relay_simple = models.IntegerField(null=False, blank=False, default=1500)
+	rank_relay_suggestive = models.IntegerField(null=False, blank=False, default=1500)
 	rank_countdown_simple = models.IntegerField(null=False, blank=False, default=1500)
 	rank_countdown_suggestive = models.IntegerField(null=False, blank=False, default=1500)
 	rank_complete_simple = models.IntegerField(null=False, blank=False, default=1500)
@@ -65,7 +65,7 @@ class ChessLobby(models.Model):
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	initial_state = models.TextField(blank=True, null=True)
-	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)]) # Max constraint later
+	increment = models.IntegerField(default=0, validators=[MinValueValidator(0)]) # Max constraint later
 	match_type = models.CharField(max_length=6, blank=False, null=False, default="Casual")
 	white_rank_start = models.IntegerField(null=True)
 	black_rank_start = models.IntegerField(null=True)
@@ -114,7 +114,7 @@ class GameHistoryTable(models.Model):
 	termination_reason = models.CharField(max_length=85, blank=True, null=False, default="")
 	state = models.TextField(default="")
 	initial_state = models.TextField(blank=True, null=True)
-	increment = models.IntegerField(null=True, validators=[MinValueValidator(0)])
+	increment = models.IntegerField(default=0, validators=[MinValueValidator(0)])
 	match_type = models.CharField(max_length=6, blank=False, null=False, default="Casual")
 	white_rank_start = models.IntegerField(null=True)
 	black_rank_start = models.IntegerField(null=True)

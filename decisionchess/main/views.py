@@ -267,23 +267,23 @@ def create_new_game(request, optional_uuid = None):
                 ranked = data.get('ranked')
                 if ranked is not None:
                     new_open_game.match_type = ranked
-                    column_to_fill = 'white_rank_start' if new_open_game.initiator_color == 'white' else 'black_rank_start'
-                    rank_mapping = {
-                        ("Standard", "Normal"): "rank_normal",
-                        ("Standard", "Classical"): "rank_classical",
-                        ("Standard", "Rapid"): "rank_rapid",
-                        ("Standard", "Blitz"): "rank_blitz",
-                        ("Complete", "Simple"): "rank_complete_simple",
-                        ("Complete", "Suggestive"): "rank_complete_suggestive",
-                        ("Relay", "Simple"): "rank_relay_simple",
-                        ("Relay", "Suggestive"): "rank_relay_suggestive",
-                        ("Countdown", "Simple"): "rank_countdown_simple",
-                        ("Countdown", "Suggestive"): "rank_countdown_suggestive",
-                    }
+                column_to_fill = 'white_rank_start' if new_open_game.initiator_color == 'white' else 'black_rank_start'
+                rank_mapping = {
+                    ("Standard", "Normal"): "rank_normal",
+                    ("Standard", "Classical"): "rank_classical",
+                    ("Standard", "Rapid"): "rank_rapid",
+                    ("Standard", "Blitz"): "rank_blitz",
+                    ("Complete", "Simple"): "rank_complete_simple",
+                    ("Complete", "Suggestive"): "rank_complete_suggestive",
+                    ("Relay", "Simple"): "rank_relay_simple",
+                    ("Relay", "Suggestive"): "rank_relay_suggestive",
+                    ("Countdown", "Simple"): "rank_countdown_simple",
+                    ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+                }
 
-                    rank_attr = rank_mapping.get((new_open_game.gametype, new_open_game.subvariant))
-                    if rank_attr:
-                        setattr(new_open_game, column_to_fill, getattr(request.user, rank_attr))
+                rank_attr = rank_mapping.get((new_open_game.gametype, new_open_game.subvariant))
+                if rank_attr and request.user and request.user.id is not None:
+                    setattr(new_open_game, column_to_fill, getattr(request.user, rank_attr))
                 state = None
                 if data.get('FEN'):
                     new_open_game.private = True
@@ -359,7 +359,11 @@ def get_lobby_games(request):
             "game_uuid": game.lobby_id,
             "timestamp": game.timestamp.strftime("%H:%M:%S"),
             "side": "white" if game.white_id is None else "black",
-            "game_type": game.gametype
+            "game_type": game.gametype,
+            "subvariant": game.subvariant,
+            "ranked": game.match_type,
+            "initiator_elo": game.white_rank_start if game.initiator_color == 'white' else game.black_rank_start,
+            "increment": game.increment
         }
         for game in lobby_games
     ]
@@ -551,24 +555,23 @@ def play(request, game_uuid):
                     elif game.initiator_color == "black":
                         sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
                     return render(request, "main/play/decision_spectate.html", sessionVariables)
-                else:
-                    ranked_column_to_fill = 'black_rank_start' if game.initiator_color == 'white' else 'white_rank_start'
-                    rank_mapping = {
-                        ("Standard", "Normal"): "rank_normal",
-                        ("Standard", "Classical"): "rank_classical",
-                        ("Standard", "Rapid"): "rank_rapid",
-                        ("Standard", "Blitz"): "rank_blitz",
-                        ("Complete", "Simple"): "rank_complete_simple",
-                        ("Complete", "Suggestive"): "rank_complete_suggestive",
-                        ("Relay", "Simple"): "rank_relay_simple",
-                        ("Relay", "Suggestive"): "rank_relay_suggestive",
-                        ("Countdown", "Simple"): "rank_countdown_simple",
-                        ("Countdown", "Suggestive"): "rank_countdown_suggestive",
-                    }
-                    
-                    rank_attr = rank_mapping.get((game.gametype, game.subvariant))
-                    if rank_attr:
-                        setattr(game, ranked_column_to_fill, getattr(request.user, rank_attr))
+            ranked_column_to_fill = 'black_rank_start' if game.initiator_color == 'white' else 'white_rank_start'
+            rank_mapping = {
+                ("Standard", "Normal"): "rank_normal",
+                ("Standard", "Classical"): "rank_classical",
+                ("Standard", "Rapid"): "rank_rapid",
+                ("Standard", "Blitz"): "rank_blitz",
+                ("Complete", "Simple"): "rank_complete_simple",
+                ("Complete", "Suggestive"): "rank_complete_suggestive",
+                ("Relay", "Simple"): "rank_relay_simple",
+                ("Relay", "Suggestive"): "rank_relay_suggestive",
+                ("Countdown", "Simple"): "rank_countdown_simple",
+                ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+            }
+            
+            rank_attr = rank_mapping.get((game.gametype, game.subvariant))
+            if rank_attr and request.user and request.user.id is not None:
+                setattr(game, ranked_column_to_fill, getattr(request.user, rank_attr))
             game.opponent_connected = True
             game.opponent_name = player
             setattr(game, column_to_fill, user_id)

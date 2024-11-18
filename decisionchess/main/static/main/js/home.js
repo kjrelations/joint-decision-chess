@@ -333,6 +333,8 @@ function updateLobby() {
             data.forEach((game, index) => {
                 var lobbyRow = document.createElement('button');
                 lobbyRow.className = "lobby-row";
+                lobbyRow.style.paddingTop = '2px';
+                lobbyRow.style.paddingBottom = '2px';
                 
                 var first = document.createElement('div');
                 if (game.side === 'white') {
@@ -349,28 +351,67 @@ function updateLobby() {
                 username.style.minWidth = '30%';
                 username.style.textAlign = 'left';
                 var type = document.createElement('div');
-                if (game.game_type === 'Complete') {
-                    type.innerHTML = completeSVG;
+                var gameType = document.createElement('div');
+                if (game.game_type === 'Complete') { // Use a map for all this
+                    gameType.innerHTML = completeSVG;
                 } else if (game.game_type === 'Relay') {
-                    type.innerHTML = relaySVG;
+                    gameType.innerHTML = relaySVG;
                 } else if (game.game_type === 'Countdown') {
-                    type.innerHTML = countdownSVG;
+                    gameType.innerHTML = countdownSVG;
                 } else if (game.game_type === 'Standard') {
-                    type.innerHTML = standardSVG;
+                    gameType.innerHTML = standardSVG;
                 }
-                type.style.minWidth = '10%';
-                type.style.width = '10%';
+                var subvariant = document.createElement('div');
+                if (game.subvariant === 'Normal') {
+                    subvariant.innerHTML = normalSVG;
+                } else if (game.subvariant === 'Classical') {
+                    subvariant.innerHTML = classicalSVG;
+                } else if (game.subvariant === 'Rapid') {
+                    subvariant.innerHTML = rapidSVG;
+                } else if (game.subvariant === 'Blitz') {
+                    subvariant.innerHTML = blitzSVG;
+                } else if (game.subvariant === 'Simple') {
+                    subvariant.innerHTML = simpleSVG;
+                } else if (game.subvariant === 'Suggestive') {
+                    subvariant.innerHTML = suggestiveSVG;
+                }
+                var matchType = document.createElement('div');
+                matchType.textContent = game.ranked;
+                gameType.style.minWidth = '15%';
+                gameType.style.width = '15%';
+                subvariant.style.minWidth = '15%';
+                subvariant.style.width = '15%';
+                type.style.minWidth = '30%';
+                type.style.width = '30%';
                 type.style.paddingBottom = '2px';
-                var rightHalf = document.createElement('div');
-                rightHalf.textContent = game.timestamp;
-                rightHalf.style.minWidth = '50%';
-                rightHalf.style.textAlign = 'right';
-                rightHalf.style.paddingRight = '1em';
-                
+                type.classList.add('d-flex');
+                type.setAttribute('name', 'type');
+                type.appendChild(gameType);
+                type.appendChild(subvariant);
+                type.appendChild(matchType);
+                var time = document.createElement('div');
+                if (['Normal', 'Simple', 'Suggestive'].includes(game.subvariant)) {
+                    time.textContent = '-';
+                } else if (game.subvariant === 'Classical') {
+                    time.textContent = '30+'+ String(game.increment);
+                } else if (game.subvariant === 'Rapid') {
+                    time.textContent = '10+'+ String(game.increment);
+                } else if (game.subvariant === 'Blitz') {
+                    time.textContent = '5+'+ String(game.increment);
+                }
+                time.style.minWidth = '10%';
+                time.style.textAlign = 'left';
+                var rating = document.createElement('div');
+                rating.textContent = game.initiator_elo !== null ? game.initiator_elo : '?';
+                rating.style.textAlign = 'right';
+                rating.style.minWidth = '20%';
+                rating.style.width = '20%';
+                rating.style.paddingRight = '1em';
                 lobbyRow.appendChild(first);
                 lobbyRow.appendChild(username);
                 lobbyRow.appendChild(type);
-                lobbyRow.appendChild(rightHalf);
+                lobbyRow.appendChild(time);
+                lobbyRow.appendChild(rating);
 
                 var gameLink = document.createElement('a');
                 gameLink.className = "lobby-a";
