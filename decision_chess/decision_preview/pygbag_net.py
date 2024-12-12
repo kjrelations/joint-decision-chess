@@ -154,7 +154,7 @@ class Node:
 
     host = load_keys("secrets.txt")["host"]
     lobby = load_keys("secrets.txt")["lobby"]
-    lobby_channel = f"{lobby}-0"
+    lobby_channel = f"{lobby}-0" # TODO Param with game id
     lobby_topic = "Welcome to Pygbag lobby [hosted by pmp-p]"
 
     events = []
@@ -379,7 +379,6 @@ class Node:
             yield self.TOPIC
             return self.discard()
 
-        # TODO clear userlist on JOIN
         if cmd.find(" 353 ") > 0:
             self.proto = "users"
             self.data = line.split(" ")
@@ -410,6 +409,7 @@ class Node:
             self.proto = "join"
             self.joined = cmd.split(" JOIN ")[-1]
             self.data = self.joined
+            self.users = {}
 
             yield self.JOINED
             return self.discard()
