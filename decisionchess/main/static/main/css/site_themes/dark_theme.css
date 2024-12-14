@@ -114,6 +114,15 @@
     --headerFocused: #756026;
     /* Board Editor */
     --enpassant-disabled: #323232;
+    /* Leaderboard */
+    --standard-boards: 228, 160, 58;
+    --relay-boards: 59, 106, 90;
+    --countdown-boards: 248, 78, 78; 
+    --complete-boards: 67, 108, 115;
+    --standard-subvariant-icons: rgb(211, 183, 140);
+    --relay-subvariant-icons: rgb(100, 154, 136);
+    --countdown-subvariant-icons: rgb(220, 113, 113);
+    --complete-subvariant-icons: rgb(147, 195, 203);
     /* Profile */
     --bio-border: rgb(76, 76, 76);
     --bio-background: #090e0f;

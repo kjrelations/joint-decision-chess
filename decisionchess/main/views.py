@@ -30,6 +30,7 @@ import uuid
 import json
 import random
 import jwt
+import re
 
 def index(request):
     return render(request, "main/home.html", {})
@@ -1168,6 +1169,74 @@ def game_search(request):
         form = GameSearch()
     
     return render(request, "main/game_search.html", context)
+
+def leaderboards(request):
+    ranks = [
+        ("rank_normal", "standard_normal_users"),
+        ("rank_classical", "standard_classical_users"),
+        ("rank_rapid", "standard_rapid_users"),
+        ("rank_blitz", "standard_blitz_users"),
+        ("rank_relay_simple", "relay_simple_users"),
+        ("rank_relay_suggestive", "relay_suggestive_users"),
+        ("rank_countdown_simple", "countdown_simple_users"),
+        ("rank_countdown_suggestive", "countdown_suggestive_users"),
+        ("rank_complete_simple", "complete_simple_users"),
+        ("rank_complete_suggestive", "complete_suggestive_users"),
+    ]
+
+    rank_lists = []
+
+    for rank_field, _ in ranks:
+        rank_users = User.objects.filter(bot_account=False) \
+            .values_list("username", rank_field) \
+            .order_by(f'-{rank_field}')[:10]
+        
+        rank_lists.append(list(rank_users))
+
+    context = {"rank_lists": rank_lists}
+    svg_files = {
+        'standard_svg': ".\\static\\images\\decision-icon-colored.svg",
+        'envelope_svg': ".\\static\\images\\envelope.svg",
+        'hourglass_svg': ".\\static\\images\\hourglass.svg",
+        'bird_svg': ".\\static\\images\\bird.svg",
+        'lightning_svg': ".\\static\\images\\lightning.svg",
+        'relay_svg': ".\\static\\images\\reveal-stage-icon.svg",
+        'relay_eye_svg': ".\\static\\images\\eye.svg",
+        'relay_masks_svg': ".\\static\\images\\masks.svg",
+        'countdown_svg': ".\\static\\images\\decision-stage-icon.svg",
+        'complete_svg': ".\\static\\images\\complete-variant-icon.svg",
+    }
+
+    for key, path in svg_files.items():
+        with open(path, 'r') as f:
+            context[key] = f.read()
+
+    context['countdown_eye_svg'] = context['relay_eye_svg']
+    context['countdown_masks_svg'] = context['relay_masks_svg']
+    context['complete_eye_svg'] = context['relay_eye_svg']
+    context['complete_masks_svg'] = context['relay_masks_svg']
+
+    mapping = {
+        'standard_svg': 'rgb(var(--standard-boards))', 
+        'envelope_svg': 'var(--standard-subvariant-icons)', 
+        'hourglass_svg': 'var(--standard-subvariant-icons)',
+        'bird_svg': 'var(--standard-subvariant-icons)',
+        'lightning_svg': 'var(--standard-subvariant-icons)',
+        'relay_svg': 'rgb(var(--relay-boards))',
+        'relay_eye_svg': 'var(--relay-subvariant-icons)',
+        'relay_masks_svg': 'var(--relay-subvariant-icons)',
+        'countdown_svg': 'rgb(var(--countdown-boards))',
+        'countdown_eye_svg': 'var(--countdown-subvariant-icons)',
+        'countdown_masks_svg': 'var(--countdown-subvariant-icons)',
+        'complete_svg': 'rgb(var(--complete-boards))',
+        'complete_eye_svg': 'var(--complete-subvariant-icons)',
+        'complete_masks_svg': 'var(--complete-subvariant-icons)',
+    }
+
+    for svg, fill in mapping.items():
+        context[svg] = re.sub(r"fill='.*?'", f"fill='{fill}'", context[svg])
+        context[svg] = re.sub(r'fill=".*?"', f'fill="{fill}"', context[svg])
+    return render(request, "main/leaderboards.html", context)
 
 def profile(request, username):
     try:

@@ -1,0 +1,275 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+{% load custom_filters %}
+
+{% block style %}
+<link rel="stylesheet" type="text/css" href="{% static 'main/css/leaderboards.css' %}">
+{% endblock %}
+
+{% block title %}
+Leaderboards
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <div class="col-11 ml-auto">
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{standard_svg|safe}}
+                </div>
+                <h3 class="title-header" style="width: 90%; background-color: rgba(var(--standard-boards), 1); text-align: center;">Standard</h3>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ envelope_svg|safe }}
+                </div>
+                <div class="d-flex flex-row standard-normal-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.0|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.0|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ hourglass_svg|safe }}
+                </div>
+                <div class="d-flex flex-row standard-classical-box" style="width: 90%;  height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.1|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.1|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ bird_svg|safe }}
+                </div>
+                <div class="d-flex flex-row standard-rapid-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.2|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.2|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ lightning_svg|safe }}
+                </div>
+                <div class="d-flex flex-row standard-blitz-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.3|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.3|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ relay_svg|safe }}
+                </div>
+                <h3 style="width: 90%; background-color: rgba(var(--relay-boards), 1);  text-align: center;">Relay</h3>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ relay_eye_svg|safe }}
+                </div>
+                <div class="d-flex flex-row relay-simple-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.4|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.4|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ relay_masks_svg|safe }}
+                </div>
+                <div class="d-flex flex-row relay-suggestive-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.5|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.5|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ countdown_svg|safe }}
+                </div>
+                <h3 style="width: 90%; background-color: rgba(var(--countdown-boards), 1);  text-align: center;">Countdown</h3>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ countdown_eye_svg|safe }}
+                </div>
+                <div class="d-flex flex-row decision-simple-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.6|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile-red d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.6|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile-red d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ countdown_masks_svg|safe }}
+                </div>
+                <div class="d-flex flex-row decision-suggestive-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.7|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile-red d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.7|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile-red d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ complete_svg|safe }}
+                </div>
+                <h3 style="width: 90%; background-color: rgb(var(--complete-boards));  text-align: center;">Complete</h3>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ complete_eye_svg|safe }}
+                </div>
+                <div class="d-flex flex-row complete-simple-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.8|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.8|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex w-100">
+                <div style="width: 10%; text-align: center;">
+                    {{ complete_masks_svg|safe }}
+                </div>
+                <div class="d-flex flex-row complete-suggestive-box" style="width: 90%; height: 150px;">
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.9|slice_list:"0:5" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div style="padding-left: 20px;">{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                    <div style="width: 50%;">
+                        {% for user in rank_lists.9|slice_list:"5:10" %}
+                            <a href="/profile/{{ user.0 }}" class="profile d-flex justify-content-between" style="color: white; width: 100%;">
+                                <div>{{ user.0 }}</div>
+                                <div style="padding-right: 20px;">{{ user.1 }}</div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

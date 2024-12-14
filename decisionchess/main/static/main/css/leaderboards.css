@@ -1,0 +1,74 @@
+.svg-scaled-circle {
+    width: 30px;
+}
+
+.svg-scaled-complete {
+    width: 40px;
+}
+
+.title-header { 
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+h3 {
+    margin-bottom: 0;
+    color: white;
+}
+
+.profile:hover {
+    text-decoration: none;
+    background-color: var(--homebutton-decision);
+}
+
+.profile-red:hover {
+    text-decoration: none;
+    background-color: #ab3c3c;
+}
+
+/* Standard */
+.standard-normal-box {
+    background: linear-gradient(to bottom, rgba(var(--standard-boards), 1) 0%, rgba(var(--standard-boards), 0.80) 90%)
+}
+
+.standard-classical-box {
+    background: linear-gradient(to bottom, rgba(var(--standard-boards), 0.80) 0%, rgba(var(--standard-boards), 0.75) 90%)
+}
+
+.standard-rapid-box {
+    background: linear-gradient(to bottom, rgba(var(--standard-boards), 0.75) 0%, rgba(var(--standard-boards), 0.70) 90%)
+}
+
+.standard-blitz-box {
+    background: linear-gradient(to bottom, rgba(var(--standard-boards), 0.70) 0%, rgba(var(--standard-boards), 0.65) 80%, rgba(var(--relay-boards), 1) 100%)
+}
+
+/* Relay */
+.relay-simple-box {
+    background: linear-gradient(to bottom, rgba(var(--relay-boards), 1) 0%, rgba(var(--relay-boards), 0.80) 90%)
+}
+
+.relay-suggestive-box {
+    background: linear-gradient(to bottom, rgba(var(--relay-boards), 0.80) 0%, rgba(var(--relay-boards), 0.75) 80%, rgba(var(--countdown-boards), 1) 100%)
+}
+
+/* Decision */
+.decision-simple-box {
+    background: linear-gradient(to bottom, rgba(var(--countdown-boards), 1) 0%, rgba(var(--countdown-boards), 0.80) 90%)
+}
+
+.decision-suggestive-box {
+    background: linear-gradient(to bottom, rgba(var(--countdown-boards), 0.80) 0%, rgba(var(--countdown-boards), 0.75) 80%, rgba(var(--complete-boards), 1) 100%)
+}
+
+/* Complete */
+.complete-simple-box {
+    background: linear-gradient(to bottom, rgba(var(--complete-boards), 1) 0%, rgba(var(--complete-boards), 0.80) 90%)
+}
+
+.complete-suggestive-box {
+    border-bottom-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    background: linear-gradient(to bottom, rgba(var(--complete-boards), 0.80) 0%, rgba(var(--complete-boards), 0.75) 80%, rgba(var(--countdown-boards), 0) 100%)
+}
+
