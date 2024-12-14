@@ -422,10 +422,10 @@ class Game:
             else:
                 potential_black_capture = self._promotion_white
 
-        def update_specials(board, new_row, new_col, enpassant, castle, captured, new_row_other, new_col_other):
+        def update_specials(board, new_row, new_col, enpassant, castle, captured, new_row_other, new_col_other, annihilation):
             if enpassant:
                 capture_row = 3 if new_row == 2 else 4
-                if not captured:
+                if not captured or annihilation is not None:
                     board[capture_row][new_col] = ' '
             elif castle:
                 if (new_row, new_col) == (7, 2) and (new_row_other, new_col_other) != (7, 0):
@@ -459,7 +459,8 @@ class Game:
             enpassant_black: bool,
             castle_white: bool,
             castle_black: bool,
-            update_positions: bool
+            update_positions: bool,
+            str annihilation or None
             ) -> list[list[str]]:
             if not update_positions:
                 return board
@@ -470,8 +471,8 @@ class Game:
             if not black_captured:
                 board[new_row_black][new_col_black] = black_piece if self._promotion_black is None else self._promotion_black
 
-            board = update_specials(board, new_row_white, new_col_white, enpassant_white, castle_white, white_captured, new_row_black, new_col_black)
-            board = update_specials(board, new_row_black, new_col_black, enpassant_black, castle_black, black_captured, new_row_white, new_col_white)
+            board = update_specials(board, new_row_white, new_col_white, enpassant_white, castle_white, white_captured, new_row_black, new_col_black, annihilation)
+            board = update_specials(board, new_row_black, new_col_black, enpassant_black, castle_black, black_captured, new_row_white, new_col_white, annihilation)
             return board
         
         # Update a temp_board first for correct algebraic moves
@@ -493,7 +494,8 @@ class Game:
             enpassant_black,
             castle_white,
             castle_black,
-            update_positions
+            update_positions,
+            annihilation_superposition
         )
         
         # Need to calculate alg_moves before we update board to settle disambiguities
@@ -517,7 +519,8 @@ class Game:
             enpassant_black,
             castle_white,
             castle_black,
-            update_positions
+            update_positions,
+            annihilation_superposition
         )
 
         if self.suggestive_stage_enabled and self.playing_stage:

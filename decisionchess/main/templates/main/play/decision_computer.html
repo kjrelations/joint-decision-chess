@@ -35,7 +35,7 @@ Play
         <!-- Embedded Game -->
         <div class="col-10 col-md-5" style="padding-right: 0px;">
             <div id="iframe-container">
-                <iframe id="embedded-iframe" src="{% if computer_game %}{% static 'main/html/ai.html' %}{% else %}{% static 'main/html/solo_decision.html' %}{% endif %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
+                <iframe id="embedded-iframe" src="{% if computer_game %}{% static 'main/html/ai.html' %}{% else %}{% static 'main/html/solo_decision.html' %}?-i{% endif %}" frameborder=0 scrolling="no" sandbox="allow-same-origin allow-scripts"></iframe>
             </div>
         </div>
         <!-- 4 columns for command center-->
