@@ -228,7 +228,8 @@ newComputerGameButtons.forEach(button => {
             "decision_stage": false,
             "private": null,
             "computer_game": true,
-            "subvariant": "Normal"
+            "subvariant": "Normal",
+            "increment": "0"
         }
         generateGame(body);
     });

@@ -1873,6 +1873,17 @@ async def main():
                 try:
                     if not init["local_debug"]:
                         await asyncio.wait_for(get_or_update_game(window, game_id, access_keys, client_game, post = True), timeout = 5)
+                        await asyncio.wait_for(
+                            save_game(
+                                window, 
+                                game_id, 
+                                json.dumps(client_game.alg_moves), 
+                                json.dumps(client_game.moves), 
+                                client_game.alg_moves[-1], 
+                                client_game.translate_into_FEN(), 
+                                client_game.forced_end
+                            ), 
+                        timeout = 5)
                     node.tx(txdata)
                 except Exception as err:
                     if isinstance(err, asyncio.TimeoutError):

@@ -115,6 +115,29 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             window.eval(js_code)
             raise Exception(str(e))
 
+async def save_game(window, game_id, alg_moves_str, comp_moves_str, score, FEN_final, forced_end):
+    try:
+        domain = 'https://decisionchess.com' if production else local
+        url = f'{domain}/save_game/'
+        handler = fetch.RequestHandler()
+        csrf = window.sessionStorage.getItem("csrftoken")
+        response = await handler.put(url, data = {
+            "game_uuid": game_id,
+            "alg_moves": alg_moves_str,
+            "outcome": score,
+            "comp_moves": comp_moves_str,
+            "FEN": FEN_final,
+            "termination_reason": forced_end
+            }, headers = {'X-CSRFToken': csrf})
+        data = json.loads(response)
+        if data.get("status") and data["status"] == "error":
+            raise Exception(f'Request failed {data}')
+    except Exception as e:
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')"
+        window.eval(js_code)
+        raise Exception(str(e))
+
 # Helper to retrieve game from DB
 async def reconnect(window, game_id, access_keys, init):
     init["reconnecting"] = True

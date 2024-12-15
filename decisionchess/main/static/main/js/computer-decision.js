@@ -412,12 +412,6 @@ function updateCommandCenter() {
 
     if (endmessage !== '') {
         endMessagebox.innerHTML = endmessage;
-        if (!gameSaved) { // Only execute this once
-            gameSaved = true
-            comp_moves = webGameMetadata.comp_moves;
-            var FEN_final = webGameMetadata.FEN_final_pos;
-            saveHistoricGame(JSON.stringify(moves), JSON.stringify(comp_moves), endState, FEN_final, forcedEnd);
-        }
         
         var playerColor = webGameMetadata["player_color"]
         var computer_game = JSON.parse(computerGame);
@@ -450,33 +444,6 @@ function updateCommandCenter() {
         document.getElementById(moveId).disabled = true;
         selectedMoveId = moveId;
     }
-}
-
-function saveHistoricGame(alg_moves_str, comp_moves_str, score, FEN_final, forcedEnd) {
-    fetch('/save_game/', {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken,
-        },
-        body: JSON.stringify({ 
-            game_uuid: game_uuid,
-            alg_moves: alg_moves_str,
-            outcome: score,
-            comp_moves: comp_moves_str,
-            FEN: FEN_final,
-            termination_reason: forcedEnd
-        }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === "error") {
-            return;
-        }
-    })
-    .catch(error => {
-        console.error('Error uploading game:', error);
-    });
 }
 
 function resetCommandCenter() {

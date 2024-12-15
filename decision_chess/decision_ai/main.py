@@ -1097,6 +1097,19 @@ async def main():
 
             net_pieces = net_board(client_game.board)
 
+            if not init["local_debug"]:
+                await asyncio.wait_for(
+                        save_game(
+                            window, 
+                            game_id, 
+                            json.dumps(client_game.alg_moves), 
+                            json.dumps(client_game.moves), 
+                            client_game.alg_moves[-1], 
+                            client_game.translate_into_FEN(), 
+                            client_game.forced_end
+                        ), 
+                    timeout = 5)
+
             if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
                 web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
                 web_game_metadata_dict['forced_end'] = client_game.forced_end
