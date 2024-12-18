@@ -10,7 +10,7 @@
 	<script src="{% static 'main/js/jquery-3.7.1.min.js' %}"></script>
 	
 	<link rel="stylesheet" type="text/css" href="{% static 'main/css/base.css' %}">
-	<link rel="stylesheet" type="text/css" href="{% static 'main/css/site_themes/light_theme.css' %}" id="theme-link">
+	<link rel="stylesheet" type="text/css" href="{% static 'main/css/themes.css' %}" id="theme-link">
 	<link rel="icon" type="image/svg+xml" href="{% static 'images/decision-favicon-depth.svg' %}" id="favicon">
 	<link rel="shortcut icon" type="image/svg+xml" href="{% static 'images/decision-favicon-depth.svg' %}" id="favicon-short">
 	<script>
@@ -42,16 +42,16 @@
 		}
 		
 		if (themePreference === 'dark') {
-			if (!themeLink.href.endsWith('dark_theme.css')) {
-				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
+			if (document.body.dataset.theme !== 'dark') {
+				document.body.dataset.theme = 'dark';
 				document.addEventListener("DOMContentLoaded", function() {
 					const themeButton = document.getElementById('theme-toggle-button');
 					updateToggleButton(themeButton, true);
 				});
 			}
 		} else {
-			if (!themeLink.href.endsWith('light_theme.css')) { 
-				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
+			if (document.body.dataset.theme !== 'light') { 
+				document.body.dataset.theme = 'light';
 				document.addEventListener("DOMContentLoaded", function() {
 					const themeButton = document.getElementById('theme-toggle-button');
 					updateToggleButton(themeButton, false);
@@ -158,13 +158,11 @@
 			document.body.classList.add('disable-all-transitions');
 			const themeButton = document.getElementById('theme-toggle-button')
 
-			if (themeLink.getAttribute('href') === '{% static "main/css/site_themes/light_theme.css" %}') {
-				themeLink.setAttribute('href', '{% static "main/css/site_themes/dark_theme.css" %}');
-				localStorage.setItem('themePreference', 'dark');
+			document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+			localStorage.setItem('themePreference', document.body.dataset.theme);
+			if (document.body.dataset.theme === 'dark') {
 				updateToggleButton(themeButton, true);
 			} else {
-				themeLink.setAttribute('href', '{% static "main/css/site_themes/light_theme.css" %}');
-				localStorage.setItem('themePreference', 'light');
 				updateToggleButton(themeButton, false);
 			}
 
