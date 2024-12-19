@@ -1419,7 +1419,9 @@ function handleButton(buttonId, sessionStorageObjectName, Options = null, resetD
             // This does not apply to executing or queued actions
             actionbuttons.forEach(function(element) {
                 if (element.id !== buttonId) {
-                    element.classList.remove("hidden");
+                    if ((element.id !== 'readyButton' && element.id !== 'redoButton')) {
+                        element.classList.remove("hidden");
+                    }
                     var actionEvents = actionEventList.find(event => event.mainButtonName === element.id);
                     var notQueued = offerQueue.every(item => item.mainId !== element.id);
                     var notExecuting = !eventIsExecuting(webGameMetadata, actionEvents.eventNames);
