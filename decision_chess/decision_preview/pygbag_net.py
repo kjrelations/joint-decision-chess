@@ -210,6 +210,8 @@ class Node:
 
         self.closed = False
 
+        self.nick_inc = 0
+
     async def connect(self, host):
         while True:
             try:
@@ -500,6 +502,9 @@ class Node:
                 except Exception as e:
                     sys.print_exception(e)
             print("PRIV ?:", cmd, line)
+            if line == "Nickname is already in use":
+                self.offline = True
+                self.nick_inc += 1
             return self.discard()
 
         room = f" {self.lobby}-{self.gid} "
@@ -628,6 +633,9 @@ class Node:
                 stime = str(time.time())[-5:].replace(".", "")
                 if self.pid:
                     self.oid = self.pid 
+                if self.nick_inc:
+                    stime = stime + ''.join(str(time.time())[-1] for _ in range(self.nick_inc))
+                    self.pid = 0 
                 self.pid = int(stime)
                 self.nick = "u_spec" + str(self.pid)
                 self.pscheck(self.pid, self.nick)
