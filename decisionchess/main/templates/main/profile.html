@@ -94,17 +94,20 @@
                     {% for game in games_details %}
                         <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
                             <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                                <div class="d-flex flex-column justify-content-start">
-                                    <h3 style="{% if game.won %}color: green;{% elif game.loss %}color: red;{% elif game.outcome == '1-1' %}color: var(--title-text);{% endif %}">{{ game.side }} ~ {{ game.outcome }}</h3>
-                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
-                                    <div style="text-align: center; padding: 10px 0;">
-                                        <h3>{{ game.game_type }}</h3>
-                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                <div class="d-flex align-items-center w-100" style="max-height: 180px;">
+                                    <img style="width: 30%; padding-right: 3px; max-width: 180px; max-height: 180px;" src="{{ game.FEN_image_name }}" alt="">
+                                    <div class="d-flex flex-column justify-content-start" style="width: 70%;">
+                                        <h3 style="{% if game.won %}color: green;{% elif game.loss %}color: red;{% elif game.outcome == '1-1' %}color: var(--title-text);{% endif %}">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                        <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                        <div style="text-align: center; padding: 10px 0;">
+                                            <h3>{{ game.game_type }}</h3>
+                                            <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                        </div>
+                                        <i>{{ game.formatted_moves_string }}</i>
                                     </div>
-                                    <i>{{ game.formatted_moves_string }}</i>
                                 </div>
                             </a>
-                            <hr style="border-color: white; margin-bottom: 0px;">
+                            <hr style="border-color: white; margin: 0px;">
                         </div>
                     {% endfor %}
                 </div>
@@ -112,17 +115,20 @@
                     {% for game in wins %}
                         <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
                             <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                                <div class="d-flex flex-column justify-content-start">
-                                    <h3 style="color: green;">{{ game.side }} ~ {{ game.outcome }}</h3>
-                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
-                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
-                                        <h3>{{ game.game_type }}</h3>
-                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                <div class="d-flex align-items-center w-100" style="max-height: 180px;">
+                                    <img style="width: 30%; padding-right: 3px; max-width: 180px; max-height: 180px;" src="{{ game.FEN_image_name }}" alt="">
+                                    <div class="d-flex flex-column justify-content-start" style="width: 70%;">
+                                        <h3 style="color: green;">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                        <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                        <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                            <h3>{{ game.game_type }}</h3>
+                                            <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                        </div>
+                                        <i>{{ game.formatted_moves_string }}</i>
                                     </div>
-                                    <i>{{ game.formatted_moves_string }}</i>
                                 </div>
                             </a>
-                            <hr style="border-color: white; margin-bottom: 0px;">
+                            <hr style="border-color: white; margin: 0px;">
                         </div>
                     {% endfor %}
                 </div>
@@ -130,17 +136,20 @@
                     {% for game in losses %}
                         <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
                             <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                                <div class="d-flex flex-column justify-content-start">
-                                    <h3 style="color: red;">{{ game.side }} ~ {{ game.outcome }}</h3>
-                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
-                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
-                                        <h3>{{ game.game_type }}</h3>
-                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                <div class="d-flex align-items-center w-100" style="max-height: 180px;">
+                                    <img style="width: 30%; padding-right: 3px; max-width: 180px; max-height: 180px;" src="{{ game.FEN_image_name }}" alt="">
+                                    <div class="d-flex flex-column justify-content-start" style="width: 70%;">
+                                        <h3 style="color: red;">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                        <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                        <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                            <h3>{{ game.game_type }}</h3>
+                                            <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                        </div>
+                                        <i>{{ game.formatted_moves_string }}</i>
                                     </div>
-                                    <i>{{ game.formatted_moves_string }}</i>
                                 </div>
                             </a>
-                            <hr style="border-color: white; margin-bottom: 0px;">
+                            <hr style="border-color: white; margin: 0px;">
                         </div>
                     {% endfor %}
                 </div>
@@ -148,17 +157,20 @@
                     {% for game in draws %}
                         <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
                             <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                                <div class="d-flex flex-column justify-content-start">
-                                    <h3>{{ game.side }} ~ {{ game.outcome }}</h3>
-                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
-                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
-                                        <h3>{{ game.game_type }}</h3>
-                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                <div class="d-flex align-items-center w-100" style="max-height: 180px;">
+                                    <img style="width: 30%; padding-right: 3px; max-width: 180px; max-height: 180px;" src="{{ game.FEN_image_name }}" alt="">
+                                    <div class="d-flex flex-column justify-content-start" style="width: 70%;">
+                                        <h3>{{ game.side }} ~ {{ game.outcome }}</h3>
+                                        <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                        <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                            <h3>{{ game.game_type }}</h3>
+                                            <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                        </div>
+                                        <i>{{ game.formatted_moves_string }}</i>
                                     </div>
-                                    <i>{{ game.formatted_moves_string }}</i>
                                 </div>
                             </a>
-                            <hr style="border-color: white; margin-bottom: 0px;">
+                            <hr style="border-color: white; margin: 0px;">
                         </div>
                     {% endfor %}
                 </div>
@@ -166,17 +178,20 @@
                     {% for game in win_wins %}
                         <div class="historic-game" style="width: 100%; background-image: linear-gradient(to right, transparent, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, {% cycle 'var(--history-background-1)' 'var(--history-background-2)' %}, transparent);">
                             <a href="/play/{{ game.game_id }}" style="text-decoration: none; color: inherit;">
-                                <div class="d-flex flex-column justify-content-start">
-                                    <h3 style="color: var(--title-text);">{{ game.side }} ~ {{ game.outcome }}</h3>
-                                    <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
-                                    <div class="align-items-center" style="text-align: center; padding: 10px 0;">
-                                        <h3>{{ game.game_type }}</h3>
-                                        <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                <div class="d-flex align-items-center w-100" style="max-height: 180px;">
+                                    <img style="width: 30%; padding-right: 3px; max-width: 180px; max-height: 180px;" src="{{ game.FEN_image_name }}" alt="">
+                                    <div class="d-flex flex-column justify-content-start" style="width: 70%;">
+                                        <h3 style="color: var(--title-text);">{{ game.side }} ~ {{ game.outcome }}</h3>
+                                        <p class="fw-bold fs-4 mb-0">{{ game.relative_game_time }} ago...</p>
+                                        <div class="align-items-center" style="text-align: center; padding: 10px 0;">
+                                            <h3>{{ game.game_type }}</h3>
+                                            <div>{{ profile_user.username|safe }} Vs. {{ game.opponent|safe }}</div>
+                                        </div>
+                                        <i>{{ game.formatted_moves_string }}</i>
                                     </div>
-                                    <i>{{ game.formatted_moves_string }}</i>
                                 </div>
                             </a>
-                            <hr style="border-color: white; margin-bottom: 0px;">
+                            <hr style="border-color: white; margin: 0px;">
                         </div>
                     {% endfor %}
                 </div>

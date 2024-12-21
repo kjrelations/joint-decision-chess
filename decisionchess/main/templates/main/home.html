@@ -305,22 +305,23 @@ Decision Chess
                           </div>
                           {% if has_games_in_play %}
                             <div class="tab-pane fade" id="inPlayContent">
-                              <div class="lobby-header">
-                                <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">Side</div>
-                                <div style="text-align: left; width: 30%; overflow: hidden;">Opponent</div>
-                                <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">Start Time</div>
+                              <div class="d-flex" style="width: 100%; flex-wrap: wrap;">
+                                {% for game in games_in_play %}
+                                  <div style="width: 50%;">
+                                    <a class="lobby-a" href="/play/{{ game.lobby_id }}" onclick="checkGameAvailability('{{ game.active_game_id }}', this.parentNode.querySelector('.lobby-row'))">
+                                      <div class="d-flex align-items-center flex-column" style="border: solid white 1px;">
+                                        <img style="width: 95%; text-align: center;" src="{{ game.FEN_image_name }}" alt="">
+                                        <div class="d-flex justify-content-around w-100">
+                                          <div>{{ game.opponent_name }}</div>
+                                          <div>
+                                            {{ game.gametype }}-{{ game.subvariant }}-{{ game.match_type }}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </a>
+                                  </div>
+                                {% endfor %}
                               </div>
-                              {% for game in games_in_play %}
-                                <div class="d-flex">
-                                  <a class="lobby-a" href="/play/{{ game.active_game_id }}" style="width: 100%;" onclick="checkGameAvailability('{{ game.active_game_id }}', this.parentNode.querySelector('.lobby-row'))">
-                                    <button id="{{ game.active_game_id }}" class="lobby-row">
-                                      <div style="text-align: left; width: 30%; overflow: hidden; padding-left: 1em;">{{ sides|index:forloop.counter0 }}</div>
-                                      <div style="text-align: left; width: 30%; overflow: hidden;">{{ opponents|index:forloop.counter0 }}</div>
-                                      <div style="text-align: right; width: 50%; overflow: hidden; padding-right: 1em;">{{ game.start_time|time:"H:i:s" }}</div>
-                                    </button>
-                                  </a>
-                                </div>
-                              {% endfor %}
                             </div>
                           {% endif %}
                         </div>

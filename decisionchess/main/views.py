@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.signing import dumps, loads, SignatureExpired, BadSignature
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash, logout
@@ -26,11 +27,14 @@ from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, 
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm, GameSearch
 from .user_settings import default_themes
 from .game_helpers import *
+from .screenshot import *
+from .screenshot.save_image import save_screenshot
 import uuid
 import json
 import random
 import jwt
 import re
+import os
 
 def index(request):
     return render(request, "main/home.html", {})
@@ -78,41 +82,36 @@ def home(request):
     context["preview_game_available"] = preview_game_available
 
     # Active games with the same id, where there is a disconnect via the lobby column, and it matches the lobby game id
-    user_games = ActiveGames.objects.filter(
-        Q(white_id=user_id) | Q(black_id=user_id)
-    )
-
-    lobby_ids = ChessLobby.objects.filter(
-        Q(opponent_connected=False) | Q(initiator_connected=False),
-        lobby_id__in=user_games.values('active_game_id')
-    ).values_list('lobby_id', flat=True)
-
-    games_in_play = user_games.filter(
-        active_game_id__in=lobby_ids
+    games_in_play = ChessLobby.objects.filter(
+        lobby_id__in=ActiveGames.objects.filter(
+            Q(white_id=user_id) | Q(black_id=user_id),
+        ).values('active_game_id')
+    ).filter(
+        Q(opponent_connected=False) | Q(initiator_connected=False)
+    ).annotate(
+        fen=Subquery(ActiveGames.objects.filter(
+            active_game_id=OuterRef('lobby_id')
+        ).values('FEN')[:1]),
+        start_time=Subquery(ActiveGames.objects.filter(
+            active_game_id=OuterRef('lobby_id')
+        ).values('start_time')[:1])
     ).order_by('-start_time')
 
     context["has_games_in_play"] = bool(games_in_play)
-    context["games_in_play"] = games_in_play
-    sides, opponents = [], []
     for game in games_in_play:
         if game.white_id == user_id:
-            sides.append('white')
-            try:
-                opponent_username = User.objects.get(id=game.black_id)
-                opponent_username = opponent_username.username
-            except User.DoesNotExist:
-                opponent_username = "Anonymous"
-            opponents.append(opponent_username)
+            opponent_id = game.black_id
         else:
-            sides.append('black')
-            try:
-                opponent_username = User.objects.get(id=game.white_id)
-                opponent_username = opponent_username.username
-            except User.DoesNotExist:
-                opponent_username = "Anonymous"
-            opponents.append(opponent_username)
-    context['sides'] = sides
-    context['opponents'] = opponents
+            opponent_id = game.white_id
+        try:
+            opponent_username = User.objects.get(id=opponent_id)
+            opponent_username = opponent_username.username
+        except User.DoesNotExist:
+            opponent_username = "Anonymous"
+        game.opponent_name = opponent_username
+        game.FEN_image_name = "/media/" + game.fen.replace("/", "-") + ".png" if game.fen is not None else ""
+
+    context["games_in_play"] = games_in_play
     context['form'] = CreateNewGameForm()
     context['white_side_svg'] = open(".\\static\\images\\side-white.svg").read()
     context['black_side_svg'] = open(".\\static\\images\\side-black.svg").read()
@@ -694,8 +693,14 @@ def update_connected(request):
                     field_to_update = "opponent_connected" if web_connect else "initiator_connected"
                     setattr(game, field_to_update, web_connect)
                 game.save()
-                active_game_exists = ActiveGames.objects.filter(active_game_id=connect_game_uuid).exists()
-                if not active_game_exists:
+                try:
+                    active_game = ActiveGames.objects.get(active_game_id=connect_game_uuid)
+                    if not web_connect:
+                        filename = active_game.FEN.replace('/', '-')
+                        filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
+                        if not os.path.exists(filename):
+                            save_screenshot(active_game.FEN, filename)
+                except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
                         white_id = game.white_id,
@@ -729,6 +734,7 @@ def get_or_update_state(request, game_uuid):
                 try:
                     active_game = ActiveGames.objects.get(active_game_id=game_uuid)
                     active_game.state = decoded['game']
+                    active_game.FEN = decoded['FEN']
                     if str(user_id) not in [str(active_game.white_id), str(active_game.black_id)]:
                         return JsonResponse({"status": "error"}, status=401)
                     active_game.last_submission_time = submit_time
@@ -800,6 +806,10 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()
+            filename = active_game.FEN.replace('/', '-')
+            filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
+            if not os.path.exists(filename):
+                save_screenshot(active_game.FEN, filename)
             response = {"status": "updated"}
             if white_rank_new is not None: # Maybe return username
                 response.update({"white_rank": white_rank_new, "black_rank": black_rank_new})
@@ -1161,7 +1171,8 @@ def game_search(request):
                 'black_name': black_username,
                 'game_type': game.gametype.capitalize(),
                 'relative_game_time': relative_game_time,
-                'formatted_moves_string': formatted_moves_string
+                'formatted_moves_string': formatted_moves_string,
+                'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
             })
         context["games_details"] = games_details
             
@@ -1302,7 +1313,8 @@ def profile(request, username):
             'won': won,
             'loss': loss,
             'relative_game_time': relative_game_time,
-            'formatted_moves_string': formatted_moves_string
+            'formatted_moves_string': formatted_moves_string,
+            'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
         })
         
     wins = [game for game in games_details if game['won']]

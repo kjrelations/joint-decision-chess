@@ -98,6 +98,7 @@ class ActiveGames(models.Model):
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	state = models.TextField(default="")
 	last_submission_time = models.DateTimeField(null=True)
+	FEN = models.CharField(max_length=85, null=True)
 
 class GameHistoryTable(models.Model):
 	historic_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
