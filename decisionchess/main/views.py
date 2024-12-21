@@ -358,7 +358,7 @@ def get_lobby_games(request):
         {
             "initiator_name": game.initiator_name,
             "game_uuid": game.lobby_id,
-            "timestamp": game.timestamp.strftime("%H:%M:%S"),
+            "timestamp": game.timestamp.strftime("%H:%M:%S"), # TODO Remove?
             "side": "white" if game.white_id is None else "black",
             "game_type": game.gametype,
             "subvariant": game.subvariant,

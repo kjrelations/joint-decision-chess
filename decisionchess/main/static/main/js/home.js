@@ -301,6 +301,118 @@ quickPairButtonIds.forEach(id => {
     button.addEventListener('click', quickPair);
 });
 
+function createEmptyGamesRow() {
+    var noGamesMessage = document.createElement('button');
+    noGamesMessage.id = "noGamesMessage";
+    noGamesMessage.className = "lobby-row empty";
+    noGamesMessage.textContent = 'No games available...';
+    noGamesMessage.style.borderBottom = "none";
+    noGamesMessage.style.justifyContent = 'center';
+    noGamesMessage.style.overflow = 'hidden';
+    noGamesMessage.style.cursor = 'auto';
+    noGamesMessage.style.borderBottom = "None";
+    return noGamesMessage;
+}
+
+function createGameLink(game, end_index) {
+    var lobbyRow = document.createElement('button');
+    lobbyRow.className = "lobby-row";
+    lobbyRow.style.paddingTop = '2px';
+    lobbyRow.style.paddingBottom = '2px';
+    
+    var first = document.createElement('div');
+    if (game.side === 'white') {
+        first.innerHTML = whiteSideSVG;
+    } else if (game.side === 'black') {
+        first.innerHTML = blackSideSVG;
+    } else {
+        first.innerHTML = randomSideSVG;
+    }
+    first.style.minWidth = '10%';
+    first.style.width = '10%';
+    var username = document.createElement('div');
+    username.textContent = game.initiator_name;
+    username.style.minWidth = '30%';
+    username.style.textAlign = 'left';
+    var type = document.createElement('div');
+    var gameType = document.createElement('div');
+    if (game.game_type === 'Complete') { // Use a map for all this
+        gameType.innerHTML = completeSVG;
+    } else if (game.game_type === 'Relay') {
+        gameType.innerHTML = relaySVG;
+    } else if (game.game_type === 'Countdown') {
+        gameType.innerHTML = countdownSVG;
+    } else if (game.game_type === 'Standard') {
+        gameType.innerHTML = standardSVG;
+    }
+    var subvariant = document.createElement('div');
+    if (game.subvariant === 'Normal') {
+        subvariant.innerHTML = normalSVG;
+    } else if (game.subvariant === 'Classical') {
+        subvariant.innerHTML = classicalSVG;
+    } else if (game.subvariant === 'Rapid') {
+        subvariant.innerHTML = rapidSVG;
+    } else if (game.subvariant === 'Blitz') {
+        subvariant.innerHTML = blitzSVG;
+    } else if (game.subvariant === 'Simple') {
+        subvariant.innerHTML = simpleSVG;
+    } else if (game.subvariant === 'Suggestive') {
+        subvariant.innerHTML = suggestiveSVG;
+    }
+    var matchType = document.createElement('div');
+    matchType.textContent = game.ranked;
+    gameType.style.minWidth = '15%';
+    gameType.style.width = '15%';
+    subvariant.style.minWidth = '15%';
+    subvariant.style.width = '15%';
+    type.style.minWidth = '30%';
+    type.style.width = '30%';
+    type.style.paddingBottom = '2px';
+    type.classList.add('d-flex');
+    type.setAttribute('name', 'type');
+    type.appendChild(gameType);
+    type.appendChild(subvariant);
+    type.appendChild(matchType);
+    var time = document.createElement('div');
+    if (['Normal', 'Simple', 'Suggestive'].includes(game.subvariant)) {
+        time.textContent = '-';
+    } else if (game.subvariant === 'Classical') {
+        time.textContent = '30+'+ String(game.increment);
+    } else if (game.subvariant === 'Rapid') {
+        time.textContent = '10+'+ String(game.increment);
+    } else if (game.subvariant === 'Blitz') {
+        time.textContent = '5+'+ String(game.increment);
+    }
+    time.style.minWidth = '10%';
+    time.style.textAlign = 'left';
+    var rating = document.createElement('div');
+    rating.textContent = game.initiator_elo !== null ? game.initiator_elo : '?';
+    rating.style.textAlign = 'right';
+    rating.style.minWidth = '20%';
+    rating.style.width = '20%';
+    rating.style.paddingRight = '1em';
+    lobbyRow.appendChild(first);
+    lobbyRow.appendChild(username);
+    lobbyRow.appendChild(type);
+    lobbyRow.appendChild(time);
+    lobbyRow.appendChild(rating);
+
+    var gameLink = document.createElement('a');
+    gameLink.id = game.game_uuid;
+    gameLink.className = "lobby-a";
+    gameLink.href = '/play/' + game.game_uuid;
+    gameLink.onclick = function (event) {
+        event.preventDefault();
+        checkGameAvailability(game.game_uuid, lobbyRow);
+    };
+    gameLink.appendChild(lobbyRow);
+
+    if (end_index) {
+        lobbyRow.style.borderBottom = "none";
+    }
+    return gameLink;
+}
+
 function updateLobby() {
     var lobbyListContainer = document.getElementById('lobby-content');
 
@@ -321,111 +433,12 @@ function updateLobby() {
         .then(data => {
             lobbyListContainer.innerHTML = ''
             if (data.length === 0) {
-                var noGamesMessage = document.createElement('button');
-                noGamesMessage.className = "lobby-row empty";
-                noGamesMessage.textContent = 'No games available...';
-                noGamesMessage.style.borderBottom = "none";
-                noGamesMessage.style.justifyContent = 'center';
-                noGamesMessage.style.overflow = 'hidden'
-                noGamesMessage.style.cursor = 'auto'
+                var noGamesMessage = createEmptyGamesRow();
                 lobbyListContainer.appendChild(noGamesMessage);
             }
             // Later limit it to a set number
             data.forEach((game, index) => {
-                var lobbyRow = document.createElement('button');
-                lobbyRow.className = "lobby-row";
-                lobbyRow.style.paddingTop = '2px';
-                lobbyRow.style.paddingBottom = '2px';
-                
-                var first = document.createElement('div');
-                if (game.side === 'white') {
-                    first.innerHTML = whiteSideSVG;
-                } else if (game.side === 'black') {
-                    first.innerHTML = blackSideSVG;
-                } else {
-                    first.innerHTML = randomSideSVG;
-                }
-                first.style.minWidth = '10%';
-                first.style.width = '10%';
-                var username = document.createElement('div');
-                username.textContent = game.initiator_name;
-                username.style.minWidth = '30%';
-                username.style.textAlign = 'left';
-                var type = document.createElement('div');
-                var gameType = document.createElement('div');
-                if (game.game_type === 'Complete') { // Use a map for all this
-                    gameType.innerHTML = completeSVG;
-                } else if (game.game_type === 'Relay') {
-                    gameType.innerHTML = relaySVG;
-                } else if (game.game_type === 'Countdown') {
-                    gameType.innerHTML = countdownSVG;
-                } else if (game.game_type === 'Standard') {
-                    gameType.innerHTML = standardSVG;
-                }
-                var subvariant = document.createElement('div');
-                if (game.subvariant === 'Normal') {
-                    subvariant.innerHTML = normalSVG;
-                } else if (game.subvariant === 'Classical') {
-                    subvariant.innerHTML = classicalSVG;
-                } else if (game.subvariant === 'Rapid') {
-                    subvariant.innerHTML = rapidSVG;
-                } else if (game.subvariant === 'Blitz') {
-                    subvariant.innerHTML = blitzSVG;
-                } else if (game.subvariant === 'Simple') {
-                    subvariant.innerHTML = simpleSVG;
-                } else if (game.subvariant === 'Suggestive') {
-                    subvariant.innerHTML = suggestiveSVG;
-                }
-                var matchType = document.createElement('div');
-                matchType.textContent = game.ranked;
-                gameType.style.minWidth = '15%';
-                gameType.style.width = '15%';
-                subvariant.style.minWidth = '15%';
-                subvariant.style.width = '15%';
-                type.style.minWidth = '30%';
-                type.style.width = '30%';
-                type.style.paddingBottom = '2px';
-                type.classList.add('d-flex');
-                type.setAttribute('name', 'type');
-                type.appendChild(gameType);
-                type.appendChild(subvariant);
-                type.appendChild(matchType);
-                var time = document.createElement('div');
-                if (['Normal', 'Simple', 'Suggestive'].includes(game.subvariant)) {
-                    time.textContent = '-';
-                } else if (game.subvariant === 'Classical') {
-                    time.textContent = '30+'+ String(game.increment);
-                } else if (game.subvariant === 'Rapid') {
-                    time.textContent = '10+'+ String(game.increment);
-                } else if (game.subvariant === 'Blitz') {
-                    time.textContent = '5+'+ String(game.increment);
-                }
-                time.style.minWidth = '10%';
-                time.style.textAlign = 'left';
-                var rating = document.createElement('div');
-                rating.textContent = game.initiator_elo !== null ? game.initiator_elo : '?';
-                rating.style.textAlign = 'right';
-                rating.style.minWidth = '20%';
-                rating.style.width = '20%';
-                rating.style.paddingRight = '1em';
-                lobbyRow.appendChild(first);
-                lobbyRow.appendChild(username);
-                lobbyRow.appendChild(type);
-                lobbyRow.appendChild(time);
-                lobbyRow.appendChild(rating);
-
-                var gameLink = document.createElement('a');
-                gameLink.className = "lobby-a";
-                gameLink.href = '/play/' + game.game_uuid;
-                gameLink.onclick = function (event) {
-                    event.preventDefault();
-                    checkGameAvailability(game.game_uuid, lobbyRow);
-                };
-                gameLink.appendChild(lobbyRow);
-
-                if (index === data.length - 1) {
-                    lobbyRow.style.borderBottom = "none";
-                }
+                var gameLink = createGameLink(game, index === data.length - 1);
                 lobbyListContainer.appendChild(gameLink);
             });
         })
@@ -461,8 +474,86 @@ function checkGameAvailability(gameId, lobbyRow) {
         });
 }
 
+function isChildWithIdExistsOptionalRemove(parentElement, childId, remove) {
+    for (let i = 0; i < parentElement.children.length; i++) {
+        if (parentElement.children[i].id === childId) {
+            if (remove) {
+                parentElement.removeChild(parentElement.children[i]);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+function matchesFilter(game, filter, filterValue) {
+    if (filter === 'position') {
+        return game.side === filterValue;
+    } else if (filter === 'username') {
+        return game.initiator_name === filterValue;
+    }
+}
+
+function initSocket() {
+    if (window.location.protocol == 'https:') {
+        wsProtocol = 'wss://';
+    } else {
+        wsProtocol = 'ws://';
+    }
+    
+    const socket = new WebSocket(wsProtocol + window.location.host + "/ws/games/");
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        var gameId = data.id;
+        var lobbyListContainer = document.getElementById('lobby-content');
+        if (data.action === 'save') {
+            if (!data.open_game) {
+                // Remove if found
+                isChildWithIdExistsOptionalRemove(lobbyListContainer, gameId, true);
+                if (lobbyListContainer.children.length === 0) {
+                    var noGamesMessage = createEmptyGamesRow();
+                    lobbyListContainer.appendChild(noGamesMessage);
+                }
+                return;
+            }
+            game = data;
+            const exists = isChildWithIdExistsOptionalRemove(lobbyListContainer, gameId, false);
+            const filters = ['position', 'username'];
+            var match = true;
+            filters.forEach(filter => {
+                const filterValue = document.getElementById(`${filter}Filter`).value;
+                if (filterValue) {
+                    var matchSingleFilter = matchesFilter(game, filter, filterValue);
+                    if (!matchSingleFilter) {
+                        match = false;
+                    }
+                }
+            });
+            if (!match) {
+                return;
+            }
+            if (!exists) {
+                var gameLink = createGameLink(game, true);
+                lobbyListContainer.lastElementChild.style.borderBottom = "solid 0.05em var(--lobby-row-border)";
+                lobbyListContainer.appendChild(gameLink);
+                var noGamesMessage = document.getElementById("noGamesMessage");
+                if (noGamesMessage) {
+                    noGamesMessage.remove();
+                }
+            }
+        } else if (data.action === 'delete') {
+            isChildWithIdExistsOptionalRemove(lobbyListContainer, gameId, true);
+            if (lobbyListContainer.children.length === 0) {
+                var noGamesMessage = createEmptyGamesRow();
+                lobbyListContainer.appendChild(noGamesMessage);
+            }
+            return;
+        }
+    };
+}
+
 window.addEventListener('load', updateLobby);
-setInterval(updateLobby, 20000);
+window.addEventListener('load', initSocket);
 
 function scrollToSection(sectionId) {
     var section = document.getElementById(sectionId);

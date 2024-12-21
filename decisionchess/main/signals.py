@@ -18,7 +18,6 @@ def notify_game_update_on_save(sender, instance, **kwargs):
     
     start_time = str(active_game.start_time) if active_game else None
     is_ready = start_time is None and instance.initiator_connected and instance.opponent_connected
-
     multiplayer = not instance.computer_game and not instance.solo_game and not instance.private
 
     async_to_sync(channel_layer.group_send)(
@@ -32,7 +31,15 @@ def notify_game_update_on_save(sender, instance, **kwargs):
                 'black_username': black_username,
                 'gametype': instance.gametype,
                 'start_time': start_time,
-                'new_multiplayer': is_ready and multiplayer
+                'new_multiplayer': is_ready and multiplayer,
+                "initiator_name": instance.initiator_name,
+                "game_uuid": str(instance.lobby_id),
+                "side": "white" if instance.white_id is None else "black",
+                "game_type": instance.gametype,
+                "subvariant": instance.subvariant,
+                "ranked": instance.match_type,
+                "initiator_elo": instance.white_rank_start if instance.initiator_color == 'white' else instance.black_rank_start,
+                'open_game': multiplayer and instance.is_open,
             }
         }
     )

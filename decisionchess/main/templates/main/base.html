@@ -41,24 +41,26 @@
 			buttonEl.innerHTML = newCta;
 		}
 		
-		if (themePreference === 'dark') {
-			if (document.body.dataset.theme !== 'dark') {
-				document.body.dataset.theme = 'dark';
-				document.addEventListener("DOMContentLoaded", function() {
-					const themeButton = document.getElementById('theme-toggle-button');
-					updateToggleButton(themeButton, true);
-				});
+		document.addEventListener("DOMContentLoaded", function() {
+			if (themePreference === 'dark') {
+				if (document.body.dataset.theme !== 'dark') {
+					document.body.dataset.theme = 'dark';
+					document.addEventListener("DOMContentLoaded", function() {
+						const themeButton = document.getElementById('theme-toggle-button');
+						updateToggleButton(themeButton, true);
+					});
+				}
+			} else {
+				if (document.body.dataset.theme !== 'light') { 
+					document.body.dataset.theme = 'light';
+					document.addEventListener("DOMContentLoaded", function() {
+						const themeButton = document.getElementById('theme-toggle-button');
+						updateToggleButton(themeButton, false);
+					});
+				}
+				localStorage.setItem('themePreference', 'light');
 			}
-		} else {
-			if (document.body.dataset.theme !== 'light') { 
-				document.body.dataset.theme = 'light';
-				document.addEventListener("DOMContentLoaded", function() {
-					const themeButton = document.getElementById('theme-toggle-button');
-					updateToggleButton(themeButton, false);
-				});
-			}
-			localStorage.setItem('themePreference', 'light');
-		}
+		});
 	</script>
 	
 	<title id="title">{% block title %}Decision Chess{% endblock %}</title>
