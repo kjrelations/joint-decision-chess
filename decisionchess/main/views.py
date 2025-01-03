@@ -1473,7 +1473,16 @@ def upsert_challenge(request):
             new_challenge.subvariant = data.get('subvariant') if data.get('subvariant') != "Normal" else "Simple"
         else:
             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        print(request.get_host())
+        challenge_message = Message(
+            sender = request.user,
+            recipient = User.objects.get(username=opponent_name),
+            subject = "Challenged by " + initiator_name + " to a " + new_challenge.gametype + " " + new_challenge.subvariant + " game.",
+            body = f"Click the following link to enter the challenge lobby room. <br><br><a class='challenge-link' href='{'/challenge/'+str(new_challenge.challenge_id)}'>Challenge</a>"
+        )
+        challenge_message.save()
         new_challenge.save()
+
         return JsonResponse({'redirect': True, 'url': reverse('challenge', args=[str(new_challenge.challenge_id)]), "message": "Challenge sent"}, status=200)
     elif request.method == "PUT":
         data = json.loads(request.body)

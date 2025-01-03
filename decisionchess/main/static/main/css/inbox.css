@@ -176,3 +176,12 @@
 .position-placeholder:focus {
     outline: none;
 }
+
+.challenge-link {
+    color: var(--homebutton-decision);
+}
+
+.challenge-link:hover {
+    color: #f88383;
+    text-decoration: none;
+}

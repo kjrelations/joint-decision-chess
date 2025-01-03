@@ -242,7 +242,7 @@
                     document.getElementById('subject').innerText = data.subject;
                     document.getElementById('sender').innerText = data.sender;
                     document.getElementById('sent').innerText = `${localDate} ${localTime}`;
-                    document.getElementById('body').innerText = data.body;
+                    document.getElementById('body').innerHTML = data.body;
 
                     const button = document.getElementById(`header_${messageId}`);
                     if (button) {
