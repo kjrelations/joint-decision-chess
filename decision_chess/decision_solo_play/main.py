@@ -221,6 +221,7 @@ async def promotion_state(
             client_state_actions["undo"] = False
             client_state_actions["undo_executed"] = True
             promotion_required = False
+            drawing_settings["draw"] = True
             continue
 
         if client_state_actions["resign"]:
@@ -242,6 +243,7 @@ async def promotion_state(
             client_state_actions["resign"] = False
             client_state_actions["resign_executed"] = True
             promotion_required = False
+            drawing_settings["draw"] = True
             continue
 
         if client_state_actions["cycle_theme"]:
@@ -254,6 +256,7 @@ async def promotion_state(
             draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
             client_state_actions["cycle_theme"] = False
             client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -264,6 +267,7 @@ async def promotion_state(
             promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -276,6 +280,7 @@ async def promotion_state(
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     draw_board_params["chessboard"] = drawing_settings["chessboard"]
                     draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+                    drawing_settings["draw"] = True
 
                 elif event.key == pygame.K_f:
                     current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -285,6 +290,7 @@ async def promotion_state(
                     draw_board_params["chessboard"] = drawing_settings["chessboard"]
                     draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
                     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
+                    drawing_settings["draw"] = True
 
             collided = False
             for button in promotion_buttons:
@@ -293,6 +299,7 @@ async def promotion_state(
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    drawing_settings["draw"] = True
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
                         update = client_game.promote_to_piece(row, col, button.piece)
@@ -305,27 +312,32 @@ async def promotion_state(
             if event.type == pygame.MOUSEBUTTONDOWN and not collided:
                 client_game.undo_move()
                 promotion_required = False
+                drawing_settings["draw"] = True
 
-        game_window.fill((0, 0, 0))
-        
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
-        # the reverse_coordinates helper also suggestive hover should always be off
-        draw_board_params_copy = draw_board_params.copy()
-        draw_board_params_copy["suggestive_stage"] = False
-        draw_board(draw_board_params_copy)
-        
-        overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
+            if event.type == pygame.MOUSEMOTION:
+                drawing_settings["draw"] = True
 
-        game_window.blit(overlay, (0, 0))
+        if drawing_settings["draw"]:
+            game_window.fill((0, 0, 0))
+            
+            # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
+            # the reverse_coordinates helper also suggestive hover should always be off
+            draw_board_params_copy = draw_board_params.copy()
+            draw_board_params_copy["suggestive_stage"] = False
+            draw_board(draw_board_params_copy)
+            
+            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
 
-        for button in promotion_buttons:
-            img = pieces[button.piece]
-            img_x, img_y = button.rect.x, button.rect.y
-            if button.is_hovered:
-                img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
-                img_x, img_y = button.scaled_x, button.scaled_y
-            game_window.blit(img, (img_x, img_y))
+            game_window.blit(overlay, (0, 0))
+
+            for button in promotion_buttons:
+                img = pieces[button.piece]
+                img_x, img_y = button.rect.x, button.rect.y
+                if button.is_hovered:
+                    img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
+                    img_x, img_y = button.scaled_x, button.scaled_y
+                game_window.blit(img, (img_x, img_y))
 
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
@@ -508,6 +520,7 @@ async def main():
         "check_white": False,
         "checkmate_black": False,
         "check_black": False,
+        "draw": True,
         "state": {'board': [], 'active_moves': []},
         "new_state": {'board': [], 'active_moves': []}
     }
@@ -591,6 +604,7 @@ async def main():
             pygame.display.set_caption("Chess - Setting Up")
             window.sessionStorage.setItem("connected", "true")
             init["initializing"] = True
+            drawing_settings["draw"] = True
             continue
 
         if drawing_settings["clear_selections"]:
@@ -603,6 +617,7 @@ async def main():
                     handle_new_piece_selection(client_game, row, col, is_white, hovered_square)
                 selected_piece_image = None
             drawing_settings["clear_selections"] = False
+            drawing_settings["draw"] = True
 
         # Web browser actions/commands are received in previous loop iterations
         if client_state_actions["step"]:
@@ -621,6 +636,7 @@ async def main():
                     handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
+            drawing_settings["draw"] = True
 
         if not client_game.end_position:
             
@@ -643,6 +659,7 @@ async def main():
                 drawing_settings["oppposing_drawn_arrows"] = []
                 client_state_actions["undo"] = False
                 client_state_actions["undo_executed"] = True
+                drawing_settings["draw"] = True
 
             if client_state_actions["resign"]:
                 if not client_game._latest:
@@ -664,6 +681,7 @@ async def main():
                 client_game.add_end_game_notation(True, white_wins, black_wins)
                 client_state_actions["resign"] = False
                 client_state_actions["resign_executed"] = True
+                drawing_settings["draw"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -674,6 +692,7 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["cycle_theme"] = False
             client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -682,6 +701,7 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
 
         # Have this after the step commands to not allow previous selections
         if drawing_settings["recalc_selections"]:
@@ -700,6 +720,7 @@ async def main():
                 selected_piece_image = None
             drawing_settings["recalc_selections"] = False
             drawing_settings["clear_selections"] = False
+            drawing_settings["draw"] = True
 
         # An ugly indent but we need to send the draw_offer and resign execution status and skip unnecessary events
         # TODO make this skip cleaner or move it into a function
@@ -708,6 +729,7 @@ async def main():
                 if event.type == pygame.QUIT:
                     init["running"] = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    drawing_settings["draw"] = True
                     if event.button == 1:
                         left_mouse_button_down = True
                     if event.button == 3:
@@ -816,10 +838,12 @@ async def main():
 
                     # Draw new hover with a selected piece and LMB
                     if left_mouse_button_down and selected_piece is not None:  
+                        drawing_settings["draw"] = True
                         if (row, col) != hovered_square:
                             hovered_square = (row, col)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
+                    drawing_settings["draw"] = True
                     if event.button == 1:
                         left_mouse_button_down = False
                         hovered_square = None
@@ -895,12 +919,14 @@ async def main():
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                        drawing_settings["draw"] = True
 
                     elif event.key == pygame.K_f:
                         current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                        drawing_settings["draw"] = True
 
         if promotion_required:
             # Lock the game state (disable other input)
@@ -1019,38 +1045,39 @@ async def main():
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
-        if drawing_settings['new_state'] != drawing_settings['state']:
+        if drawing_settings['new_state'] != drawing_settings['state'] and drawing_settings["draw"]:
             set_check_or_checkmate_settings(drawing_settings, client_game)
 
-        game_window.fill((0, 0, 0))
+        if drawing_settings["draw"]:
+            game_window.fill((0, 0, 0))
 
-        white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
-        draw_board_params = {
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'starting_player': client_game._starting_player,
-            'suggestive_stage': False,
-            'latest': client_game._latest,
-            'drawing_settings': drawing_settings.copy(),
-            'selected_piece': selected_piece,
-            'white_current_position': client_game.white_current_position,
-            'white_previous_position': client_game.white_previous_position,
-            'black_current_position': client_game.black_current_position,
-            'black_previous_position': client_game.black_previous_position,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': hovered_square,
-            'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
-            'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
-            'white_selected_piece_image': white_selected_piece_image,
-            'black_selected_piece_image': black_selected_piece_image,
-            'selected_piece_image': selected_piece_image
-        }
+            white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
+            draw_board_params = {
+                'window': game_window,
+                'theme': current_theme,
+                'board': client_game.board,
+                'starting_player': client_game._starting_player,
+                'suggestive_stage': False,
+                'latest': client_game._latest,
+                'drawing_settings': drawing_settings.copy(),
+                'selected_piece': selected_piece,
+                'white_current_position': client_game.white_current_position,
+                'white_previous_position': client_game.white_previous_position,
+                'black_current_position': client_game.black_current_position,
+                'black_previous_position': client_game.black_previous_position,
+                'valid_moves': valid_moves,
+                'valid_captures': valid_captures,
+                'valid_specials': valid_specials,
+                'pieces': pieces,
+                'hovered_square': hovered_square,
+                'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
+                'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
+                'white_selected_piece_image': white_selected_piece_image,
+                'black_selected_piece_image': black_selected_piece_image,
+                'selected_piece_image': selected_piece_image
+            }
 
-        draw_board(draw_board_params)
+            draw_board(draw_board_params)
 
         try:
             if init["updated_board"] and not init["final_updates"]:
@@ -1110,32 +1137,33 @@ async def main():
                 if event.type == pygame.QUIT:
                     init["running"] = False
 
-            game_window.fill((0, 0, 0))
+            if drawing_settings["draw"]:
+                game_window.fill((0, 0, 0))
 
-            draw_board({
-                'window': game_window,
-                'theme': current_theme,
-                'board': client_game.board,
-                'starting_player': client_game._starting_player,
-                'suggestive_stage': False,
-                'latest': client_game._latest,
-                'drawing_settings': drawing_settings.copy(),
-                'selected_piece': selected_piece,
-                'white_current_position': client_game.white_current_position,
-                'white_previous_position': client_game.white_previous_position,
-                'black_current_position': client_game.black_current_position,
-                'black_previous_position': client_game.black_previous_position,
-                'valid_moves': valid_moves,
-                'valid_captures': valid_captures,
-                'valid_specials': valid_specials,
-                'pieces': pieces,
-                'hovered_square': hovered_square,
-                'white_active_position': None,
-                'black_active_position': None,
-                'white_selected_piece_image': None,
-                'black_selected_piece_image': None,
-                'selected_piece_image': selected_piece_image
-            })
+                draw_board({
+                    'window': game_window,
+                    'theme': current_theme,
+                    'board': client_game.board,
+                    'starting_player': client_game._starting_player,
+                    'suggestive_stage': False,
+                    'latest': client_game._latest,
+                    'drawing_settings': drawing_settings.copy(),
+                    'selected_piece': selected_piece,
+                    'white_current_position': client_game.white_current_position,
+                    'white_previous_position': client_game.white_previous_position,
+                    'black_current_position': client_game.black_current_position,
+                    'black_previous_position': client_game.black_previous_position,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': hovered_square,
+                    'white_active_position': None,
+                    'black_active_position': None,
+                    'white_selected_piece_image': None,
+                    'black_selected_piece_image': None,
+                    'selected_piece_image': selected_piece_image
+                })
         drawing_settings['state'] = {
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
@@ -1143,6 +1171,7 @@ async def main():
 
         pygame.display.flip()
         await asyncio.sleep(0)
+        drawing_settings["draw"] = False
 
         # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")

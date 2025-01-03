@@ -243,6 +243,7 @@ async def main():
         "check_white": False,
         "checkmate_black": False,
         "check_black": False,
+        "draw": True,
         "state": {'board': [], 'active_moves': []},
         "new_state": {'board': [], 'active_moves': []},
         "side_selection_states": {
@@ -270,12 +271,14 @@ async def main():
 
         elif not init["initialized"]:
             init["initializing"] = True
+            drawing_settings["draw"] = True
             continue
 
         web_FEN = window.sessionStorage.getItem("FEN")
         if web_FEN is not None and web_FEN != FEN and is_valid_FEN(web_FEN):
             client_game.board = translate_FEN_into_board(web_FEN)
             FEN = web_FEN
+            drawing_settings["draw"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -286,6 +289,7 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["cycle_theme"] = False
             client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -294,11 +298,13 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 init["running"] = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                drawing_settings["draw"] = True
                 if event.button == 1:
                     left_mouse_button_down = True
                 if event.button == 3:
@@ -374,10 +380,12 @@ async def main():
 
                 # Draw new hover with a selected piece and LMB
                 if left_mouse_button_down and selected_piece is not None:  
+                    drawing_settings["draw"] = True
                     if (row, col) != hovered_square:
                         hovered_square = (row, col) if col < 8 else None
 
             elif event.type == pygame.MOUSEBUTTONUP:
+                drawing_settings["draw"] = True
                 if event.button == 1:
                     left_mouse_button_down = False
                     hovered_square = None
@@ -438,63 +446,27 @@ async def main():
                     # Redraw board and coordinates
                     drawing_settings["chessboard"] = generate_chessboard(current_theme)
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    drawing_settings["draw"] = True
 
                 elif event.key == pygame.K_f:
                     current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
                     # Redraw board and coordinates
                     drawing_settings["chessboard"] = generate_chessboard(current_theme)
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                    drawing_settings["draw"] = True
 
         drawing_settings['new_state'] = {
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
             }
-        if drawing_settings['new_state'] != drawing_settings['state']:
+        if drawing_settings['new_state'] != drawing_settings['state'] and drawing_settings["draw"]:
             set_check_or_checkmate_settings(drawing_settings, client_game)
 
-        game_window.fill((0, 0, 0))
-
-        white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
-        draw_board_params = {
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'starting_player': client_game._starting_player,
-            'suggestive_stage': False,
-            'latest': client_game._latest,
-            'drawing_settings': drawing_settings.copy(),
-            'selected_piece': selected_piece,
-            'white_current_position': client_game.white_current_position,
-            'white_previous_position': client_game.white_previous_position,
-            'black_current_position': client_game.black_current_position,
-            'black_previous_position': client_game.black_previous_position,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': hovered_square,
-            'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
-            'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
-            'white_selected_piece_image': white_selected_piece_image,
-            'black_selected_piece_image': black_selected_piece_image,
-            'selected_piece_image': selected_piece_image
-        }
-
-        draw_board(draw_board_params)
-
-        if client_game.end_position and client_game._latest:
-            # Clear any selected highlights
-            drawing_settings["right_clicked_squares"] = []
-            drawing_settings["opposing_right_clicked_squares"] = []
-            drawing_settings["drawn_arrows"] = []
-            drawing_settings["opposing_drawn_arrows"] = []
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    init["running"] = False
-
+        if drawing_settings["draw"]:
             game_window.fill((0, 0, 0))
 
-            draw_board({
+            white_selected_piece_image, black_selected_piece_image = get_transparent_active_piece(client_game, transparent_pieces)
+            draw_board_params = {
                 'window': game_window,
                 'theme': current_theme,
                 'board': client_game.board,
@@ -512,12 +484,52 @@ async def main():
                 'valid_specials': valid_specials,
                 'pieces': pieces,
                 'hovered_square': hovered_square,
-                'white_active_position': None,
-                'black_active_position': None,
-                'white_selected_piece_image': None,
-                'black_selected_piece_image': None,
+                'white_active_position': client_game.white_active_move[1] if client_game.white_active_move is not None else None,
+                'black_active_position': client_game.black_active_move[1] if client_game.black_active_move is not None else None,
+                'white_selected_piece_image': white_selected_piece_image,
+                'black_selected_piece_image': black_selected_piece_image,
                 'selected_piece_image': selected_piece_image
-            })
+            }
+
+            draw_board(draw_board_params)
+
+        if client_game.end_position and client_game._latest:
+            # Clear any selected highlights
+            drawing_settings["right_clicked_squares"] = []
+            drawing_settings["opposing_right_clicked_squares"] = []
+            drawing_settings["drawn_arrows"] = []
+            drawing_settings["opposing_drawn_arrows"] = []
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    init["running"] = False
+
+            if drawing_settings["draw"]:
+                game_window.fill((0, 0, 0))
+
+                draw_board({
+                    'window': game_window,
+                    'theme': current_theme,
+                    'board': client_game.board,
+                    'starting_player': client_game._starting_player,
+                    'suggestive_stage': False,
+                    'latest': client_game._latest,
+                    'drawing_settings': drawing_settings.copy(),
+                    'selected_piece': selected_piece,
+                    'white_current_position': client_game.white_current_position,
+                    'white_previous_position': client_game.white_previous_position,
+                    'black_current_position': client_game.black_current_position,
+                    'black_previous_position': client_game.black_previous_position,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': hovered_square,
+                    'white_active_position': None,
+                    'black_active_position': None,
+                    'white_selected_piece_image': None,
+                    'black_selected_piece_image': None,
+                    'selected_piece_image': selected_piece_image
+                })
         drawing_settings['state'] = {
             'board': deepcopy_list_of_lists(client_game.board),
             'active_moves': [client_game.white_active_move, client_game.black_active_move]
@@ -525,6 +537,7 @@ async def main():
 
         pygame.display.flip()
         await asyncio.sleep(0)
+        drawing_settings["draw"] = False
 
         # Only allow for retrieval of algebraic notation at this point after potential promotion, if necessary in the future
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
