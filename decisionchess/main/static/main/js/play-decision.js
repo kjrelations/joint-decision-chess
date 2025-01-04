@@ -912,6 +912,9 @@ function handleMessage(data) {
     // Prevent XSS script injection attacks by escaping content
     var message = $('<p></p>').text(data["sender"] + ": " + data["text"]);
     $(".chat-messages").append(message);
+    $(".chat-wrapper").each(function() {
+        $(this).scrollTop($(this)[0].scrollHeight);
+      });
 }
 
 function appendChatLog(message) {

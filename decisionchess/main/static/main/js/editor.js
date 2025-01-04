@@ -229,7 +229,8 @@ const newChallengeButtons = document.querySelectorAll('[new-challenge="true"]');
                 "computer_game": computer,
                 "FEN": sessionStorage.getItem('game_FEN'),
                 "castling_rights": getCastleRights(),
-                "subvariant": "Normal"
+                "subvariant": "Normal",
+                "increment": "0"
             }
             if (body["main_mode"] === "Decision") {
                 body["reveal_stage"] = document.getElementById('reveal-stage-private-checkbox').checked;

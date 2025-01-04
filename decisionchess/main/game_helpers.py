@@ -597,6 +597,10 @@ def format_state(FEN, castling_rights, gametype):
     state = json.dumps({
         "white_played": False,
         "black_played": False,
+        "subvariant": "Normal", # TODO parameter
+        "timed_mode": False, # TODO condition
+        "increment": None, # TODO parameter
+        # TODO fill other time fields
         "reveal_stage_enabled": reveal_stage_enabled,
         "decision_stage_enabled": decision_stage_enabled,
         "playing_stage": True,

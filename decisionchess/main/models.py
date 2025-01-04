@@ -65,6 +65,7 @@ class ChessLobby(models.Model):
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	subvariant = models.CharField(max_length=20, blank=False, null=True, default="Normal")
 	initial_state = models.TextField(blank=True, null=True)
+	FEN = models.CharField(max_length=85, null=False, default='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')
 	increment = models.IntegerField(default=0, validators=[MinValueValidator(0)]) # Max constraint later
 	match_type = models.CharField(max_length=6, blank=False, null=False, default="Casual")
 	white_rank_start = models.IntegerField(null=True)
@@ -98,7 +99,7 @@ class ActiveGames(models.Model):
 	gametype = models.CharField(max_length=300, blank=False, null=False, default="")
 	state = models.TextField(default="")
 	last_submission_time = models.DateTimeField(null=True)
-	FEN = models.CharField(max_length=85, null=True)
+	FEN = models.CharField(max_length=85, null=False, default='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')
 
 class GameHistoryTable(models.Model):
 	historic_game_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

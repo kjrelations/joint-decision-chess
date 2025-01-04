@@ -15,8 +15,6 @@
 .chat-wrapper {
     height: 100% - 1em;
     overflow-y: auto;
-    padding-bottom: 1em;
-    margin-bottom: 1em;
 }
 
 .chat-messages p {

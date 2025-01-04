@@ -291,6 +291,7 @@ def create_new_game(request, optional_uuid = None):
                     if state is None or data.get('main_mode') != 'Decision':
                         return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
                     new_open_game.initial_state = state
+                    new_open_game.FEN = data.get('FEN')
                 new_open_game.save()
                 return JsonResponse({'redirect': True, 'url': reverse('join_new_game', args=[str(game_uuid)])}, status=200)
         elif optional_uuid:
@@ -705,7 +706,8 @@ def update_connected(request):
                         active_game_id = connect_game_uuid,
                         white_id = game.white_id,
                         black_id = game.black_id,
-                        gametype = game.gametype
+                        gametype = game.gametype,
+                        FEN = game.FEN
                     )
                     if game.initial_state is not None:
                         active_game.state = game.initial_state
