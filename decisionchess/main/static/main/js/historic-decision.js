@@ -17,11 +17,10 @@ window.addEventListener('load', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
-    document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
     var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
+    document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(95vh - 50px - ${commandCenterHeight}px)`;
     adjustFont();
 });
 
@@ -30,10 +29,10 @@ window.addEventListener('resize', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
-    document.getElementById('chat-box').style.height = width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
     var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
+    document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(95vh - 50px - ${commandCenterHeight}px)`;
     adjustFont();
 });
 
@@ -585,26 +584,12 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
 
         }
     } else if (sessionStorageObjectName == "flip_board") {
-        topUser = document.getElementById('topPlayer');
-        bottomUser = document.getElementById('bottomPlayer');
+        topUser = document.getElementById('topUserMetadata');
+        bottomUser = document.getElementById('bottomUserMetadata');
         topHTML = topUser.innerHTML;
         bottomHTML = bottomUser.innerHTML;
         topUser.innerHTML = bottomHTML;
         bottomUser.innerHTML = topHTML;
-
-        topClock = document.getElementById('topClock');
-        bottomClock = document.getElementById('bottomClock');
-        topClockHTML = topClock.innerHTML;
-        bottomClockHTML = bottomClock.innerHTML;
-        topClock.innerHTML = bottomClockHTML;
-        bottomClock.innerHTML = topClockHTML;
-
-        topPiecesRow = document.getElementById('topPieces');
-        bottomPiecesRow = document.getElementById('bottomPieces');
-        topPiecesHTML = topPiecesRow.innerHTML;
-        bottomPiecesHTML = bottomPiecesRow.innerHTML;
-        topPiecesRow.innerHTML = bottomPiecesHTML;
-        bottomPiecesRow.innerHTML = topPiecesHTML;
 
         flipped = !flipped;
     }

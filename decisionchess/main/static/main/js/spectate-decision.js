@@ -17,11 +17,10 @@ window.addEventListener('load', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
-    document.getElementById('chat-box').style.height = width + 'px';
-    document.getElementById('chat-box-mobile').style.height = (width * 0.3) + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
     var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
+    document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(95vh - 50px - ${commandCenterHeight}px)`;
     adjustFont();
 
     var inputs = document.getElementsByClassName('chat-input');
@@ -35,10 +34,10 @@ window.addEventListener('resize', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
-    document.getElementById('chat-box').style.height = width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
     var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
+    document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(95vh - 50px - ${commandCenterHeight}px)`;
     adjustFont();
 });
 
@@ -246,69 +245,75 @@ function updateCommandCenter() {
         savedDecisionStage = webGameMetadata['decision_stage'];
     }
 
+    var playerDisplayedMove = document.getElementById('displayed-move-bottom');
+    var opponentDisplayedMove = document.getElementById('displayed-move-top');
+    var playerActiveMove = webGameMetadata['white_active_move'];
+    var opponentActiveMove = webGameMetadata['black_active_move'];
     if (!webGameMetadata['playing_stage']) {
-        if (document.getElementById('displayed-move-black').textContent !== webGameMetadata['black_active_move']) {
-            document.getElementById('displayed-move-black').textContent = webGameMetadata['black_active_move'];
-            document.getElementById('displayed-move-white').textContent = webGameMetadata['white_active_move'];
-            document.getElementById('displayed-move-black').classList.remove('hidden');
-            document.getElementById('displayed-move-white').classList.remove('hidden');
+        if (playerDisplayedMove.textContent !== playerActiveMove) {
+            playerDisplayedMove.textContent = playerActiveMove;
+            opponentDisplayedMove.textContent = opponentActiveMove;
+            playerDisplayedMove.classList.remove('hidden');
+            opponentDisplayedMove.classList.remove('hidden');
         }
-    } else if (document.getElementById('displayed-move-black').textContent !== '') {
-        document.getElementById('displayed-move-black').textContent = '';
-        document.getElementById('displayed-move-white').textContent = '';
-        document.getElementById('displayed-move-black').classList.add('hidden');
-        document.getElementById('displayed-move-white').classList.add('hidden');
+    } else if (playerDisplayedMove.textContent !== '') {
+        playerDisplayedMove.textContent = '';
+        opponentDisplayedMove.textContent = '';
+        playerDisplayedMove.classList.add('hidden');
+        opponentDisplayedMove.classList.add('hidden');
     }
 
-    if (webGameMetadata['decision_stage_enabled'] && document.getElementById('white-undo-1').classList.contains('hidden')) {
-        document.getElementById('circle-white').classList.remove('hidden');
-        document.getElementById('circle-black').classList.remove('hidden');
-        document.getElementById('white-undo-1').classList.remove('hidden');
-        document.getElementById('white-undo-2').classList.remove('hidden');
-        document.getElementById('white-undo-3').classList.remove('hidden');
-        document.getElementById('black-undo-1').classList.remove('hidden');
-        document.getElementById('black-undo-2').classList.remove('hidden');
-        document.getElementById('black-undo-3').classList.remove('hidden');
-    } else if (!webGameMetadata['decision_stage_enabled'] && !document.getElementById('white-undo-1').classList.contains('hidden')) {
-        document.getElementById('circle-white').classList.add('hidden');
-        document.getElementById('circle-black').classList.add('hidden');
-        document.getElementById('white-undo-1').classList.add('hidden');
-        document.getElementById('white-undo-2').classList.add('hidden');
-        document.getElementById('white-undo-3').classList.add('hidden');
-        document.getElementById('black-undo-1').classList.add('hidden');
-        document.getElementById('black-undo-2').classList.add('hidden');
-        document.getElementById('black-undo-3').classList.add('hidden');
+    var white1 = document.getElementById('bottom-undo-1');
+    var white2 = document.getElementById('bottom-undo-2');
+    var white3 = document.getElementById('bottom-undo-3');
+    var black1 = document.getElementById('top-undo-1');
+    var black2 = document.getElementById('top-undo-2');
+    var black3 = document.getElementById('top-undo-3');
+    if (webGameMetadata['decision_stage_enabled'] && white1.classList.contains('hidden')) {
+        white1.classList.remove('hidden');
+        white2.classList.remove('hidden');
+        white3.classList.remove('hidden');
+        black1.classList.remove('hidden');
+        black2.classList.remove('hidden');
+        black3.classList.remove('hidden');
+    } else if (!webGameMetadata['decision_stage_enabled'] && !white1.classList.contains('hidden')) {
+        white1.classList.add('hidden');
+        white2.classList.add('hidden');
+        white3.classList.add('hidden');
+        black1.classList.add('hidden');
+        black2.classList.add('hidden');
+        black3.classList.add('hidden');
     }
     if (webGameMetadata['white_undo'] >= 1) {
-        if (window.getComputedStyle(document.getElementById('white-undo-1'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('white-undo-1').style.backgroundColor = 'green';
+        if (window.getComputedStyle(white1, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            white1.style.backgroundColor = 'green';
         }
     } 
     if (webGameMetadata['white_undo'] >= 2) {
-        if (window.getComputedStyle(document.getElementById('white-undo-2'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('white-undo-2').style.backgroundColor = 'green';
+        if (window.getComputedStyle(white2, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            white2.style.backgroundColor = 'green';
         }
     } 
     if (webGameMetadata['white_undo'] >= 3) {
-        if (window.getComputedStyle(document.getElementById('white-undo-3'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('white-undo-3').style.backgroundColor = 'green';
+        if (window.getComputedStyle(white3, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            white3.style.backgroundColor = 'green';
         }
     } 
     if (webGameMetadata['black_undo'] >= 1) {
-        if (window.getComputedStyle(document.getElementById('black-undo-1'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('black-undo-1').style.backgroundColor = 'green';
+        if (window.getComputedStyle(black1, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            black1.style.backgroundColor = 'green';
         }
     } 
     if (webGameMetadata['black_undo'] >= 2) {
-        if (window.getComputedStyle(document.getElementById('black-undo-2'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('black-undo-2').style.backgroundColor = 'green';
+        if (window.getComputedStyle(black2, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            black2.style.backgroundColor = 'green';
         }
     } 
     if (webGameMetadata['black_undo'] >= 3) {
-        if (window.getComputedStyle(document.getElementById('black-undo-3'), null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
-            document.getElementById('black-undo-3').style.backgroundColor = 'green';
+        if (window.getComputedStyle(black3, null).getPropertyValue("background-color") === 'rgb(97, 97, 97)') {
+            black3.style.backgroundColor = 'green';
         }
-    }
+    } 
     // Don't keep unnecessarily updating
     if (equal_arrays) {
         return;
@@ -833,26 +838,12 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
             }
         }
     } else if (sessionStorageObjectName == "flip_board") {
-        topUser = document.getElementById('topPlayer');
-        bottomUser = document.getElementById('bottomPlayer');
+        topUser = document.getElementById('topUserMetadata');
+        bottomUser = document.getElementById('bottomUserMetadata');
         topHTML = topUser.innerHTML;
         bottomHTML = bottomUser.innerHTML;
         topUser.innerHTML = bottomHTML;
         bottomUser.innerHTML = topHTML;
-
-        topClock = document.getElementById('topClock');
-        bottomClock = document.getElementById('bottomClock');
-        topClockHTML = topClock.innerHTML;
-        bottomClockHTML = bottomClock.innerHTML;
-        topClock.innerHTML = bottomClockHTML;
-        bottomClock.innerHTML = topClockHTML;
-
-        topPiecesRow = document.getElementById('topPieces');
-        bottomPiecesRow = document.getElementById('bottomPieces');
-        topPiecesHTML = topPiecesRow.innerHTML;
-        bottomPiecesHTML = bottomPiecesRow.innerHTML;
-        topPiecesRow.innerHTML = bottomPiecesHTML;
-        bottomPiecesRow.innerHTML = topPiecesHTML;
 
         flipped = !flipped;
     }

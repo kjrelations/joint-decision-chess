@@ -490,6 +490,18 @@ def play(request, game_uuid):
         'undo_request': 'false',
         'total_reset': 'false'
     }
+    rank_mapping = {
+        ("Standard", "Normal"): "rank_normal",
+        ("Standard", "Classical"): "rank_classical",
+        ("Standard", "Rapid"): "rank_rapid",
+        ("Standard", "Blitz"): "rank_blitz",
+        ("Complete", "Simple"): "rank_complete_simple",
+        ("Complete", "Suggestive"): "rank_complete_suggestive",
+        ("Relay", "Simple"): "rank_relay_simple",
+        ("Relay", "Suggestive"): "rank_relay_suggestive",
+        ("Countdown", "Simple"): "rank_countdown_simple",
+        ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+    }
 
     # Validate uuid (ensure not expired), direct to play, spectator, or historic html, check authentication on former
     # For now, temporarily disallow multiple people from loading the same game
@@ -506,6 +518,20 @@ def play(request, game_uuid):
         else:
             opponent = game.initiator_name
         sessionVariables.update({'opponent': opponent})
+
+        player_rank = "?"
+        opponent_rank = "?"
+        rank_attr = rank_mapping.get((game.gametype, game.subvariant))
+        if rank_attr and request.user and request.user.id is not None:
+            player_rank = getattr(request.user, rank_attr)
+        try:
+            opponent_user = User.objects.get(username=opponent)
+            if rank_attr:
+                opponent_rank = getattr(opponent_user, rank_attr)
+        except User.DoesNotExist:
+            pass
+        sessionVariables['player_rank'] = player_rank
+        sessionVariables['opponent_rank'] = opponent_rank
 
         if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
             solo_html = "main/play/computer.html" if game.gametype == 'Classical' else "main/play/decision_computer.html"
@@ -557,18 +583,6 @@ def play(request, game_uuid):
                         sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
                     return render(request, "main/play/decision_spectate.html", sessionVariables)
             ranked_column_to_fill = 'black_rank_start' if game.initiator_color == 'white' else 'white_rank_start'
-            rank_mapping = {
-                ("Standard", "Normal"): "rank_normal",
-                ("Standard", "Classical"): "rank_classical",
-                ("Standard", "Rapid"): "rank_rapid",
-                ("Standard", "Blitz"): "rank_blitz",
-                ("Complete", "Simple"): "rank_complete_simple",
-                ("Complete", "Suggestive"): "rank_complete_suggestive",
-                ("Relay", "Simple"): "rank_relay_simple",
-                ("Relay", "Suggestive"): "rank_relay_suggestive",
-                ("Countdown", "Simple"): "rank_countdown_simple",
-                ("Countdown", "Suggestive"): "rank_countdown_suggestive",
-            }
             
             rank_attr = rank_mapping.get((game.gametype, game.subvariant))
             if rank_attr and request.user and request.user.id is not None:
@@ -582,7 +596,6 @@ def play(request, game_uuid):
         try:
             historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
             historic_html = "main/historic.html" if historic.gametype == 'Classical' else "main/play/decision_historic.html"
-            # TODO move historic into script fetch
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -594,16 +607,21 @@ def play(request, game_uuid):
                 'game_type': historic.gametype,
                 'subvariant': historic.subvariant
             }
+            rank_attr = rank_mapping.get((historic.gametype, historic.subvariant))
             try:
                 white_user = User.objects.get(id=historic.white_id)
+                player_rank = getattr(white_user, rank_attr)
                 white_user = white_user.username
             except User.DoesNotExist:
                 white_user = "Anonymous"
+                player_rank = "?"
             try:
                 black_user = User.objects.get(id=historic.black_id)
+                opponent_rank = getattr(black_user, rank_attr)
                 black_user = black_user.username
             except User.DoesNotExist:
                 black_user = "Anonymous"
+                opponent_rank = "?"
             player_side = white_user
             opponent_side = black_user
             flip = False
@@ -611,6 +629,8 @@ def play(request, game_uuid):
                 player_side = black_user
                 opponent_side = white_user
                 flip = True
+            sessionVariables['player_rank'] = player_rank
+            sessionVariables['opponent_rank'] = opponent_rank
             sessionVariables.update({'player': player_side, 'opponent': opponent_side, 'init_flip': flip})
             game_chat_messages = ChatMessages.objects.filter(game_id=game_uuid).order_by('timestamp')
             sessionVariables["chat_messages"] = game_chat_messages
