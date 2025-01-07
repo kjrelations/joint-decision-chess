@@ -16,6 +16,12 @@ class RegisterForm(UserCreationForm):
         model = User
         fields = ["username", "email", "password1", "password2", "agree_to_terms"]
 
+    def clean_username(self):
+        username = self.cleaned_data['username']
+        if self.username.startswith("Anon-") or self.username.lower() == "anonymous":
+            raise forms.ValidationError("Usernames starting with 'Anon' are not allowed.")
+        return username
+
 class ResendActivationEmailForm(forms.Form):
     email = forms.EmailField(label='Email Address')
 
