@@ -19,6 +19,7 @@ urlpatterns = [
     path('save_game/', views.save_game, name='save_game'),
     path("lessons/", views.lessons, name="lessons"),
     path("lessons/<str:lesson>/", views.lesson, name="lesson"),
+    path("variants/", views.variants, name="variants"),
     path("news/", views.news, name="news"),
     path("live/", views.live, name='live'),
     path("board_editor/", views.board_editor, name='board_editor'),

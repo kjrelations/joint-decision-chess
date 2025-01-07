@@ -1,0 +1,86 @@
+{% extends "main/base.html" %}
+
+{% load static %}
+
+{% block title %}
+Variants
+{% endblock %}
+
+{% block style %}
+<style>
+    .envelope,
+    .hourglass,
+    .bird,
+    .lightning,
+    .eye,
+    .masks {
+        width: 20px;
+        height: auto;
+    }
+    .standard,
+    .relay,
+    .countdown,
+    .complete {
+        width: 50px;
+        height: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content" name="content" class="content">
+    <div class="row justify-content-center" style="max-width: 100%; margin: auto;">
+        <div class="col-8">
+            <h1>Stages</h1>
+            <p>Decision Chess has up to three stages in a play of the game with the first being mandatory.</p>
+            
+            <h5><b>The Playing Stage</b></h5>
+            <ul>
+                <li>This is when both players pick and play a move as per the normal rules of Decision Chess.</li>
+                <li>Games with just this mode enabled may be timed and have increments applied to timers after a move.
+                    <ul>
+                        <li>Timers are paused for that side only when a move is played and both start again once both are played together.</li>
+                    </ul>
+                </li>
+            </ul>
+            <p>For the next two stages, there is a UI card element that will display the currently played move from the first stage as coordinates, these are called {{ eye_svg|safe }} <b>Simple</b> subvariants.</p>
+            <ul>
+                <li>In the <b>Suggestive</b> subvariants, players must click on a square to "suggest" after playing a move. These are instead displayed in the next stages during the Playing Stage.</li>
+            </ul>
+
+            <h5><b>The Reveal Stage</b></h5>
+            <ul>
+                <li>This is where the players have the option of communicating with the opponent as any arrows drawn will be shared.</li>
+            </ul>
+
+            <h5><b>The Decision Stage</b></h5>
+            <ul>
+                <li>This is where a five-second countdown is started. Each player has a chance to reset the game to the Playing Stage without the played moves being made.</li>
+                <li>Should this stage be enabled, this can be done twice during any game with the third time resulting in a loss 
+                    (to be changed to a maximum of three times with no loss penalty).</li>
+            </ul>
+
+            <h2>Variants</h2>
+            <p>There are four main modes given the above combinations.</p>
+
+            <h3>{{ standard_svg|safe }} Standard</h3>
+            <p>This is a normal game of Decision Chess where there is only the Playing Stage enabled. The subvariants are:</p>
+            <ul>
+                <li><b>{{ envelope_svg|safe }} Normal</b>: A game with no time limit can be played.</li>
+                <li><b>{{ hourglass_svg|safe }} Classical</b>: A game where each player starts with 30 minutes.</li>
+                <li><b>{{ bird_svg|safe }} Rapid</b>: A game where each player starts with 10 minutes.</li>
+                <li><b>{{ lightning_svg|safe }} Blitz</b>: A game where each player starts with 5 minutes.</li>
+            </ul>
+
+            <h3>{{ relay_svg|safe }} Relay</h3>
+            <p>This is a game where both the Playing Stage and Reveal Stage are enabled. The subvariants are <b>{{ eye_svg|safe}} Simple</b> and <b>{{ masks_svg|safe}} Suggestive</b>.</p>
+
+            <h3>{{ countdown_svg|safe }} Countdown</h3>
+            <p>This is a game where both the Playing Stage and Decision Stage are enabled. The subvariants are <b>{{ eye_svg|safe}} Simple</b> and <b>{{ masks_svg|safe}} Suggestive</b>.</p>
+
+            <h3>{{ complete_svg|safe }} Complete</h3>
+            <p>This is a game where the Playing Stage, Reveal Stage, and Decision Stage are enabled. The subvariants are <b>{{ eye_svg|safe}} Simple</b> and <b>{{ masks_svg|safe}} Suggestive</b>.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -955,7 +955,36 @@ def lesson(request, lesson):
     embedded_game_ids = []
     for page in pages:
         embedded_game_ids.append(page.embedded_game.embedded_game_id)
-    return render(request, "main/lesson.html", {"pages": pages, "embedded_game_ids": embedded_game_ids})
+    return render(request, "main/lesson.html", {"pages": pages, "embedded_game_ids": embedded_game_ids, "title": lesson.title})
+
+def variants(request):
+    svg_files = {
+        'standard_svg': ".\\static\\images\\decision-icon-colored.svg",
+        'envelope_svg': ".\\static\\images\\envelope.svg",
+        'hourglass_svg': ".\\static\\images\\hourglass.svg",
+        'bird_svg': ".\\static\\images\\bird.svg",
+        'lightning_svg': ".\\static\\images\\lightning.svg",
+        'relay_svg': ".\\static\\images\\reveal-stage-icon.svg",
+        'eye_svg': ".\\static\\images\\eye.svg",
+        'masks_svg': ".\\static\\images\\masks.svg",
+        'countdown_svg': ".\\static\\images\\decision-stage-icon.svg",
+        'complete_svg': ".\\static\\images\\complete-variant-icon.svg",
+    }
+    context = {}
+    for key, path in svg_files.items():
+        with open(path, 'r') as f:
+            context[key] = f.read()
+    context['standard_svg'] = context['standard_svg'].replace("svg-scaled-circle", "standard")
+    context['envelope_svg'] = context['envelope_svg'].replace("svg-scaled-circle", "envelope")
+    context['hourglass_svg'] = context['hourglass_svg'].replace("svg-scaled-circle", "hourglass")
+    context['bird_svg'] = context['bird_svg'].replace("svg-scaled-circle", "bird")
+    context['lightning_svg'] = context['lightning_svg'].replace("svg-scaled-circle", "lightning")
+    context['relay_svg'] = context['relay_svg'].replace("svg-scaled-circle", "relay")
+    context['eye_svg'] = context['eye_svg'].replace("svg-scaled-circle", "eye")
+    context['masks_svg'] = context['masks_svg'].replace("svg-scaled-circle", "masks")
+    context['countdown_svg'] = context['countdown_svg'].replace("svg-scaled-circle", "countdown")
+    context['complete_svg'] = context['complete_svg'].replace("svg-scaled-complete", "complete")
+    return render(request, "main/variants.html", context)
 
 def news(request):
     blogs = BlogPosts.objects.all().order_by('-timestamp')
