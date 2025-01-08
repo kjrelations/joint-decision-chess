@@ -154,7 +154,6 @@ class Node:
 
     host = load_keys("secrets.txt")["host"]
     lobby = load_keys("secrets.txt")["lobby"]
-    lobby_channel = f"{lobby}-0" # TODO Param with game id
     lobby_topic = "Welcome to Pygbag lobby [hosted by pmp-p]"
 
     events = []
@@ -185,6 +184,7 @@ class Node:
         self.in_game = False
 
         # topics bookeeping
+        self.lobby_channel = f"{self.lobby}-{gid}-lobby"
         self.channel = self.lobby_channel
         self.topics = {}
 
