@@ -18,7 +18,7 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.3) : (width * 0.6);
+    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(95vh - 50px - ${commandCenterHeight}px)`;
     adjustFont();
@@ -574,12 +574,12 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
             var movesListContainer = document.getElementById('moves-list');
             var selectedMove = document.getElementById(selectedMoveId);
 
-            var containerHeight = movesListContainer.clientHeight;
-            var moveHeight = selectedMove.clientHeight;
+            var containerRect = movesListContainer.getBoundingClientRect();
+            var moveRect = selectedMove.getBoundingClientRect();
 
             // Don't need to scroll, if the element is already visible
-            if (!(selectedMove.offsetTop - moveHeight >= 0 && selectedMove.offsetTop + moveHeight <= containerHeight)) {
-                movesListContainer.scrollTop = selectedMove.offsetTop - (containerHeight - moveHeight) / 2 - containerHeight;
+            if (moveRect.top < containerRect.top || moveRect.bottom > containerRect.bottom) {
+                movesListContainer.scrollTop = selectedMove.offsetTop - (movesListContainer.clientHeight - selectedMove.clientHeight);
             }
 
         }

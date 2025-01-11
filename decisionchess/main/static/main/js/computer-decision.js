@@ -754,12 +754,12 @@ function buttonHandling(buttonId, webGameMetadata, sessionStorageObjectName) {
             var movesListContainer = document.getElementById('moves-list');
             var selectedMove = document.getElementById(selectedMoveId);
 
-            var containerHeight = movesListContainer.clientHeight;
-            var moveHeight = selectedMove.clientHeight;
+            var containerRect = movesListContainer.getBoundingClientRect();
+            var moveRect = selectedMove.getBoundingClientRect();
 
             // Don't need to scroll, if the element is already visible
-            if (!(selectedMove.offsetTop - moveHeight >= 0 && selectedMove.offsetTop + moveHeight <= containerHeight)) {
-                movesListContainer.scrollTop = selectedMove.offsetTop - (containerHeight - moveHeight) / 2 - containerHeight;
+            if (moveRect.top < containerRect.top || moveRect.bottom > containerRect.bottom) {
+                movesListContainer.scrollTop = selectedMove.offsetTop - (movesListContainer.clientHeight - selectedMove.clientHeight);
             }
 
         }

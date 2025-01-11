@@ -21,6 +21,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
             raise Exception('Wrong POST input')
+        # POSTed form is synced yet move can be undone and locally can be unsynced
         client_game_str = client_game.to_json(include_states=True).replace('"_sync": false', '"_sync": true')
         FEN = client_game.translate_into_FEN()
         try:
@@ -210,6 +211,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         drawing_settings["clear_selections"] = True
                     else:
                         init["sent"] = 0
+                    drawing_settings["draw"] = True
                     init["initializing"] = True
                     init["reloaded"] = True
                 elif cmd == f"{init['opponent']} ready":
@@ -228,7 +230,9 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                             client_game.black_clock_running = True if not client_game.black_played else False
                         init["reference_time"] = time.monotonic()
                     init["waiting"] = False
+                    drawing_settings["draw"] = True
                 elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
+                    drawing_settings["draw"] = True
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
@@ -321,18 +325,21 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
+                    drawing_settings["draw"] = True
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
                         client_state_actions["draw_offer_received"] = True
                 elif cmd == "draw_accept":
                     client_state_actions["draw_response_received"] = True
+                    drawing_settings["draw"] = True
                 elif cmd == "undo_offer":
                     if not client_state_actions["undo_sent"]:
                         window.sessionStorage.setItem("undo_request", "true")
                         client_state_actions["undo_received"] = True
                 elif cmd == "undo_accept":
                     client_state_actions["undo_response_received"] = True
+                    drawing_settings["draw"] = True
                 elif cmd == "reset":
                     apply_resets(window, offers, client_state_actions)
                 elif "reset" in cmd:
@@ -369,36 +376,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
                         node.publish(spectator)
-                elif cmd == "_retrieve":
-                    confirmed_state = None
-                    if not init["local_debug"]:
-                        try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                        except:
-                            err = 'Confirmed state retrieval failed. Quitting...'
-                            js_code = f"console.log('{err}')"
-                            window.eval(js_code)
-                            print(err)
-                    if confirmed_state is not None:
-                        confirmed_state = json.loads(confirmed_state)
-                        confirmed_state["_starting_player"] = init["starting_player"]
-                        client_game = Game(custom_params=confirmed_state)
-                        if client_game._starting_player:
-                            played_condition = client_game._starting_player == client_game.white_played
-                        else:
-                            played_condition = not client_game._starting_player == client_game.black_played
-                        init["sent"] = int(played_condition)
-                        drawing_settings["recalc_selections"] = True
-                        drawing_settings["clear_selections"] = True
-                        node.tx({node.CMD: "retrieve_sync"})
-                    else:
-                        node.tx({node.CMD: "_fail"})
-                        await asyncio.sleep(1)
-                        node.quit()
-                        raise Exception("Desynced")
-                elif cmd == "_fail":
-                    node.quit()
-                    raise Exception("Desynced")
 
             elif ev == node.GAME:
                 print("GAME:", node.proto, node.data[node.CMD])
@@ -421,7 +398,9 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         init["reference_time"] = time.monotonic()
                     node.tx({node.CMD: f"{init['player']} ready"})
                     init["waiting"] = False
+                    drawing_settings["draw"] = True
                 elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
+                    drawing_settings["draw"] = True
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
@@ -514,18 +493,21 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
+                    drawing_settings["draw"] = True
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
                         client_state_actions["draw_offer_received"] = True
                 elif cmd == "draw_accept":
                     client_state_actions["draw_response_received"] = True
+                    drawing_settings["draw"] = True
                 elif cmd == "undo_offer":
                     if not client_state_actions["undo_sent"]:
                         window.sessionStorage.setItem("undo_request", "true")
                         client_state_actions["undo_received"] = True
                 elif cmd == "undo_accept":
                     client_state_actions["undo_response_received"] = True
+                    drawing_settings["draw"] = True
                 elif cmd == "reset":
                     apply_resets(window, offers, client_state_actions)
                 elif "reset" in cmd:
@@ -601,36 +583,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
                         node.publish(spectator)
-                elif cmd == "_retrieve":
-                    confirmed_state = None
-                    if not init["local_debug"]:
-                        try:
-                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
-                        except:
-                            err = 'Confirmed state retrieval failed. Quitting...'
-                            js_code = f"console.log('{err}')"
-                            window.eval(js_code)
-                            print(err)
-                    if confirmed_state is not None:
-                        confirmed_state = json.loads(confirmed_state)
-                        confirmed_state["_starting_player"] = init["starting_player"]
-                        client_game = Game(custom_params=confirmed_state)
-                        if client_game._starting_player:
-                            played_condition = client_game._starting_player == client_game.white_played
-                        else:
-                            played_condition = not client_game._starting_player == client_game.black_played
-                        init["sent"] = int(played_condition)
-                        drawing_settings["recalc_selections"] = True
-                        drawing_settings["clear_selections"] = True
-                        node.tx({node.CMD: "retrieve_sync"})
-                    else:
-                        node.tx({node.CMD: "_fail"})
-                        await asyncio.sleep(1)
-                        node.quit()
-                        raise Exception("Desynced")
-                elif cmd == "_fail":
-                    node.quit()
-                    raise Exception("Desynced")
                 else:
                     print("87 ?", node.data)
 
@@ -755,7 +707,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                 print(node.proto, node.users)
                 count = sum(1 for key in node.users.keys() if key.startswith("u_") and "spec" not in key)
                 if count == 1:
-                    # Only advace if the retrieved position isn't the custom starting position
+                    # Only advance if the retrieved position isn't the custom starting position
                     if init["starting_position"] is not None and init["starting_position"].get('custom_start') != True:
                         if client_game.timed_mode and init["waiting"]:
                             init["reference_time"] = time.monotonic()

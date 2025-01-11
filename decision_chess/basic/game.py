@@ -1018,6 +1018,7 @@ class Game:
                 flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
                 _current_board_state = _current_board_state + (tuple(flat_castle_values),)
                 
+                self._state_update = {} # On consecutive undos this wouldn't be reset and on syncronization a key error can occur
                 if self.board_states.get(_current_board_state) or not self._max_states_reached:
                     if self.board_states[_current_board_state] == 1:
                         del self.board_states[_current_board_state]

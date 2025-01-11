@@ -202,7 +202,7 @@ newGameButtons.forEach(button => {
             "computer_game": null,
             "subvariant": "Normal",
             "increment": document.getElementById('increment-multiplayer').value,
-            "ranked": ranked.value
+            "ranked": "Casual"
         }
         if (body["main_mode"] === "Decision") {
             body["reveal_stage"] = document.getElementById('reveal-stage-multiplayer-checkbox').checked;
@@ -212,6 +212,7 @@ newGameButtons.forEach(button => {
             } else if (standardSubvariantDropdownMultiplayer.value !== '') {
                 body["subvariant"] = standardSubvariantDropdownMultiplayer.value;
             }
+            body["ranked"] = ranked.value;
         }
         generateGame(body);
     });
@@ -344,6 +345,8 @@ function createGameLink(game, end_index) {
         gameType.innerHTML = countdownSVG;
     } else if (game.game_type === 'Standard') {
         gameType.innerHTML = standardSVG;
+    } else if (game.game_type === 'Classical') {
+        gameType.innerHTML = classicSVG;
     }
     var subvariant = document.createElement('div');
     if (game.subvariant === 'Normal') {

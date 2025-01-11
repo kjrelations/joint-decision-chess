@@ -11,7 +11,7 @@ from helpers import *
 from ai import *
 from network import *
 
-production = True
+production = False
 local = "http://127.0.0.1:8000"
 local_debug = False
 
@@ -146,7 +146,7 @@ def handle_piece_special_move(game, selected_piece, row, col):
 
     return piece, is_white
 
-def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name, game_tab_id):
+def handle_command(status_names, client_state_actions, web_metadata_dict, games_metadata_name):
     command_name, client_action_name, client_executed_name, *remaining = status_names
     if len(status_names) == 3:
         client_reset_name = None 
@@ -155,14 +155,12 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
     client_executed_status, client_reset_status = \
         client_state_actions[client_executed_name], client_state_actions.get(client_reset_name)
     
-    status_metadata_dict = web_metadata_dict[game_tab_id]
-    if status_metadata_dict.get(command_name) is not None:
-        if status_metadata_dict[command_name]['execute'] and not status_metadata_dict[command_name]['update_executed'] and not client_reset_status:
+    if web_metadata_dict.get(command_name) is not None:
+        if web_metadata_dict[command_name]['execute'] and not web_metadata_dict[command_name]['update_executed'] and not client_reset_status:
             if client_state_actions[client_action_name] != True:
                 client_state_actions[client_action_name] = True
             if client_executed_status:
-                status_metadata_dict[command_name]['update_executed'] = True
-                web_metadata_dict[game_tab_id] = status_metadata_dict
+                web_metadata_dict[command_name]['update_executed'] = True
                 json_metadata = json.dumps(web_metadata_dict)
                 
                 window.sessionStorage.setItem(games_metadata_name, json_metadata)
@@ -170,13 +168,12 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
 
         # Handling race conditions assuming speed differences and sychronizing states with this.
         # That is, only once we stop receiving the command, after an execution, do we allow it to be executed again
-        if client_executed_status and not status_metadata_dict[command_name]['execute']:
+        if client_executed_status and not web_metadata_dict[command_name]['execute']:
             client_state_actions[client_executed_name] = False    
 
-        if client_reset_status is not None and client_reset_status == True and not status_metadata_dict[command_name]['reset']:
-            status_metadata_dict[command_name]['reset'] = True
-            status_metadata_dict[command_name]['execute'] = False
-            web_metadata_dict[game_tab_id] = status_metadata_dict
+        if client_reset_status is not None and client_reset_status == True and not web_metadata_dict[command_name]['reset']:
+            web_metadata_dict[command_name]['reset'] = True
+            web_metadata_dict[command_name]['execute'] = False
             json_metadata = json.dumps(web_metadata_dict)
             
             window.sessionStorage.setItem(games_metadata_name, json_metadata)
@@ -184,7 +181,16 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
             client_state_actions[client_action_name] = False
 
 # Game State loop for promotion
-async def promotion_state(promotion_square, client_game, row, col, draw_board_params, client_state_actions, command_status_names, drawing_settings, game_tab_id, init):
+async def promotion_state(
+        promotion_square, 
+        client_game, 
+        row, col, 
+        draw_board_params, 
+        client_state_actions, 
+        command_status_names, 
+        drawing_settings, 
+        init
+        ):
     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
     promoted, promotion_required = False, True
     
@@ -201,6 +207,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["undo"] = False
             client_state_actions["undo_executed"] = True
             promotion_required = False
+            drawing_settings["draw"] = True
             continue
 
         if client_state_actions["resign"]:
@@ -214,6 +221,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             client_state_actions["resign"] = False
             client_state_actions["resign_executed"] = True
             promotion_required = False
+            drawing_settings["draw"] = True
             continue
 
         if client_state_actions["cycle_theme"]:
@@ -226,6 +234,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
             client_state_actions["cycle_theme"] = False
             client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -236,6 +245,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -248,6 +258,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                     drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
                     draw_board_params["chessboard"] = drawing_settings["chessboard"]
                     draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
+                    drawing_settings["draw"] = True
 
                 elif event.key == pygame.K_f:
                     current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -257,6 +268,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                     draw_board_params["chessboard"] = drawing_settings["chessboard"]
                     draw_board_params["coordinate_surface"] = drawing_settings["coordinate_surface"]
                     promotion_buttons = display_promotion_options(current_theme, promotion_square[0], promotion_square[1])
+                    drawing_settings["draw"] = True
 
             collided = False
             for button in promotion_buttons:
@@ -265,6 +277,7 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    drawing_settings["draw"] = True
                     x, y = pygame.mouse.get_pos()
                     if button.rect.collidepoint(x, y):
                         client_game.promote_to_piece(row, col, button.piece)
@@ -276,25 +289,30 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
             if event.type == pygame.MOUSEBUTTONDOWN and not collided:
                 client_game.undo_move()
                 promotion_required = False
+                drawing_settings["draw"] = True
 
-        game_window.fill((0, 0, 0))
-        
-        # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
-        # the reverse_coordinates helper
-        draw_board(draw_board_params.copy())
-        
-        overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))
+            if event.type == pygame.MOUSEMOTION:
+                drawing_settings["draw"] = True
 
-        game_window.blit(overlay, (0, 0))
+        if drawing_settings["draw"]:
+            game_window.fill((0, 0, 0))
+            
+            # Draw the board, we need to copy the params else we keep mutating them with each call for inverse board draws in 
+            # the reverse_coordinates helper
+            draw_board(draw_board_params.copy())
+            
+            overlay = pygame.Surface((current_theme.WIDTH, current_theme.HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 128))
 
-        for button in promotion_buttons:
-            img = pieces[button.piece]
-            img_x, img_y = button.rect.x, button.rect.y
-            if button.is_hovered:
-                img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
-                img_x, img_y = button.scaled_x, button.scaled_y
-            game_window.blit(img, (img_x, img_y))
+            game_window.blit(overlay, (0, 0))
+
+            for button in promotion_buttons:
+                img = pieces[button.piece]
+                img_x, img_y = button.rect.x, button.rect.y
+                if button.is_hovered:
+                    img = pygame.transform.smoothscale(img, (current_theme.GRID_SIZE * 1.5, current_theme.GRID_SIZE * 1.5))
+                    img_x, img_y = button.scaled_x, button.scaled_y
+                game_window.blit(img, (img_x, img_y))
 
         web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
 
@@ -302,10 +320,11 @@ async def promotion_state(promotion_square, client_game, row, col, draw_board_pa
 
         # Undo move, resign, cycle theme, flip command handle
         for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)     
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")     
 
         pygame.display.flip()
         await asyncio.sleep(0)
+        drawing_settings["draw"] = False
 
     window.sessionStorage.setItem("promoting", "false")
     await asyncio.sleep(0)
@@ -335,7 +354,7 @@ def initialize_game(init, game_id, drawing_settings):
     game_tab_id =  init["player"] + "-" + game_id
     window.sessionStorage.setItem("current_game_id", game_tab_id)
     if isinstance(web_game_metadata_dict, dict) or web_game_metadata is None:
-        web_game_metadata_dict[game_tab_id] = {
+        web_game_metadata_dict = {
             "end_state": '',
             "forced_end": '',
             "player_color": init["player"],
@@ -374,11 +393,10 @@ def initialize_game(init, game_id, drawing_settings):
     web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
     if web_game_metadata is not None:
         web_game_metadata_dict = json.loads(web_game_metadata)
-        if web_game_metadata_dict.get(game_tab_id) is not None:
-            web_ready = True
-            init["initializing"], init["initialized"] = False, True
-            window.sessionStorage.setItem("initialized", "true")
-            window.sessionStorage.setItem("connected", "true")
+        web_ready = True
+        init["initializing"], init["initialized"] = False, True
+        window.sessionStorage.setItem("initialized", "true")
+        window.sessionStorage.setItem("connected", "true")
     if not web_ready:
         raise Exception("Failed to set web value")
     return client_game, game_tab_id
@@ -461,7 +479,8 @@ async def main():
         "checkmate_white": False,
         "check_white": False,
         "checkmate_black": False,
-        "check_black": False
+        "check_black": False,
+        "draw": True
     }
 
     # Main game loop
@@ -543,6 +562,7 @@ async def main():
                 init["reloaded"] = True
                 drawing_settings["recalc_selections"] = True
                 drawing_settings["clear_selections"] = True
+                drawing_settings["draw"] = True
 
         if client_game._latest and not init["final_updates"] and init["reloaded"]:
             ai_move(client_game, init, drawing_settings)
@@ -553,7 +573,7 @@ async def main():
             drawing_settings["clear_selections"] = True
             web_game_metadata = window.sessionStorage.getItem("web_game_metadata")
             web_game_metadata_dict = json.loads(web_game_metadata)
-            move_index = web_game_metadata_dict[game_tab_id]["step"]["index"]
+            move_index = web_game_metadata_dict["step"]["index"]
             client_game.step_to_move(move_index)
             if client_game._move_index == -1:
                 pass
@@ -563,6 +583,7 @@ async def main():
                 handle_play(window, move_sound)
             client_state_actions["step"] = False
             client_state_actions["step_executed"] = True
+            drawing_settings["draw"] = True
 
         if not client_game.end_position:
             if not init["reloaded"] and client_state_actions["undo"]:
@@ -591,6 +612,7 @@ async def main():
                 drawn_arrows = []
                 client_state_actions["undo"] = False
                 client_state_actions["undo_executed"] = True
+                drawing_settings["draw"] = True
 
             if client_state_actions["resign"]:
                 if not client_game._latest:
@@ -601,6 +623,7 @@ async def main():
                 client_game.add_end_game_notation(True)
                 client_state_actions["resign"] = False
                 client_state_actions["resign_executed"] = True
+                drawing_settings["draw"] = True
 
         if client_state_actions["cycle_theme"]:
             drawing_settings["theme_index"] += 1
@@ -611,6 +634,7 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["cycle_theme"] = False
             client_state_actions["cycle_theme_executed"] = True
+            drawing_settings["draw"] = True
 
         if client_state_actions["flip"]:
             current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
@@ -619,6 +643,7 @@ async def main():
             drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
             client_state_actions["flip"] = False
             client_state_actions["flip_executed"] = True
+            drawing_settings["draw"] = True
 
         # Have this after the step commands to not allow previous selections
         if drawing_settings["recalc_selections"]:
@@ -637,6 +662,7 @@ async def main():
                 selected_piece_image = None
             drawing_settings["recalc_selections"] = False
             drawing_settings["clear_selections"] = False
+            drawing_settings["draw"] = True
 
         # An ugly indent but we need to send the draw_offer and resign execution status and skip unnecessary events
         # TODO make this skip cleaner or move it into a function
@@ -645,6 +671,7 @@ async def main():
                 if event.type == pygame.QUIT:
                     init["running"] = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    drawing_settings["draw"] = True
                     if event.button == 1:
                         left_mouse_button_down = True
                     if event.button == 3:
@@ -752,10 +779,12 @@ async def main():
 
                     # Draw new hover with a selected piece and LMB
                     if left_mouse_button_down and selected_piece is not None:  
+                        drawing_settings["draw"] = True
                         if (row, col) != hovered_square:
                             hovered_square = (row, col)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
+                    drawing_settings["draw"] = True
                     if event.button == 1:
                         left_mouse_button_down = False
                         hovered_square = None
@@ -828,36 +857,14 @@ async def main():
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
+                        drawing_settings["draw"] = True
 
                     elif event.key == pygame.K_f:
                         current_theme.INVERSE_PLAYER_VIEW = not current_theme.INVERSE_PLAYER_VIEW
                         # Redraw board and coordinates
                         drawing_settings["chessboard"] = generate_chessboard(current_theme)
                         drawing_settings["coordinate_surface"] = generate_coordinate_surface(current_theme)
-
-        set_check_or_checkmate_settings(drawing_settings, client_game)
-
-        game_window.fill((0, 0, 0))
-
-        draw_board_params = {
-            'window': game_window,
-            'theme': current_theme,
-            'board': client_game.board,
-            'drawing_settings': drawing_settings,
-            'selected_piece': selected_piece,
-            'current_position': client_game.current_position,
-            'previous_position': client_game.previous_position,
-            'right_clicked_squares': right_clicked_squares,
-            'drawn_arrows': drawn_arrows,
-            'valid_moves': valid_moves,
-            'valid_captures': valid_captures,
-            'valid_specials': valid_specials,
-            'pieces': pieces,
-            'hovered_square': hovered_square,
-            'selected_piece_image': selected_piece_image
-        }
-
-        draw_board(draw_board_params)
+                        drawing_settings["draw"] = True
 
         if promotion_required:
             # Lock the game state (disable other input)
@@ -890,8 +897,7 @@ async def main():
                 draw_board_params, # These are mutated on first draw then flipped again
                 client_state_actions, 
                 command_status_names, 
-                drawing_settings, 
-                game_tab_id,
+                drawing_settings,
                 init
             )
             promotion_required, promotion_square = False, None
@@ -949,14 +955,12 @@ async def main():
                 client_game.end_position = True
                 client_game.add_end_game_notation(checkmate)
         
-        if client_game.end_position and client_game._latest:
-            # Clear any selected highlights
-            right_clicked_squares = []
-            drawn_arrows = []
-            
+        if drawing_settings["draw"]:
+            set_check_or_checkmate_settings(drawing_settings, client_game)
+
             game_window.fill((0, 0, 0))
 
-            draw_board({
+            draw_board_params = {
                 'window': game_window,
                 'theme': current_theme,
                 'board': client_game.board,
@@ -972,10 +976,39 @@ async def main():
                 'pieces': pieces,
                 'hovered_square': hovered_square,
                 'selected_piece_image': selected_piece_image
-            })
+            }
+
+            draw_board(draw_board_params)
+
+        if client_game.end_position and client_game._latest:
+            # Clear any selected highlights
+            right_clicked_squares = []
+            drawn_arrows = []
+            
+            if drawing_settings["draw"]:
+                game_window.fill((0, 0, 0))
+
+                draw_board({
+                    'window': game_window,
+                    'theme': current_theme,
+                    'board': client_game.board,
+                    'drawing_settings': drawing_settings,
+                    'selected_piece': selected_piece,
+                    'current_position': client_game.current_position,
+                    'previous_position': client_game.previous_position,
+                    'right_clicked_squares': right_clicked_squares,
+                    'drawn_arrows': drawn_arrows,
+                    'valid_moves': valid_moves,
+                    'valid_captures': valid_captures,
+                    'valid_specials': valid_specials,
+                    'pieces': pieces,
+                    'hovered_square': hovered_square,
+                    'selected_piece_image': selected_piece_image
+                })
 
         pygame.display.flip()
         await asyncio.sleep(0)
+        drawing_settings["draw"] = False
 
         try:
             if not init["sent"] and not init["final_updates"]:
@@ -996,13 +1029,38 @@ async def main():
 
             web_game_metadata_dict = json.loads(web_game_metadata)
 
-            if web_game_metadata_dict[game_tab_id]['end_state'] != client_game.alg_moves[-1]:
-                web_game_metadata_dict[game_tab_id]['end_state'] = client_game.alg_moves[-1]
-                web_game_metadata_dict[game_tab_id]['forced_end'] = client_game.forced_end
-                web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-                web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
-                web_game_metadata_dict[game_tab_id]['FEN_final_pos'] = client_game.translate_into_FEN()
-                web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
+            try:
+                if not init["local_debug"]:
+                    await asyncio.wait_for(
+                        save_game(
+                            window, 
+                            game_id, 
+                            json.dumps(client_game.alg_moves), 
+                            json.dumps(client_game.moves), 
+                            client_game.alg_moves[-1], 
+                            client_game.translate_into_FEN(), 
+                            client_game.forced_end
+                        ), 
+                    timeout = 5)
+            except Exception as err:
+                if isinstance(err, asyncio.TimeoutError):
+                    print("Timeout occurred")
+                js_code = f"console.log('{err}')"
+                window.eval(js_code)
+                print(err)
+                err = 'Could not send game... Reconnecting...'
+                js_code = f"console.log('{err}')"
+                window.eval(js_code)
+                print(err)
+                continue
+
+            if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
+                web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]
+                web_game_metadata_dict['forced_end'] = client_game.forced_end
+                web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+                web_game_metadata_dict['comp_moves'] = client_game.moves
+                web_game_metadata_dict['FEN_final_pos'] = client_game.translate_into_FEN()
+                web_game_metadata_dict['net_pieces'] = net_pieces
 
                 web_game_metadata = json.dumps(web_game_metadata_dict)
                 window.sessionStorage.setItem("web_game_metadata", web_game_metadata)
@@ -1016,32 +1074,27 @@ async def main():
         
         # Undo move, resign, draw offer, cycle theme, flip command handle
         for status_names in command_status_names:
-            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata", game_tab_id)        
+            handle_command(status_names, client_state_actions, web_game_metadata_dict, "web_game_metadata")        
 
         net_pieces = net_board(client_game.board)
 
         metadata_update = False
-        if web_game_metadata_dict[game_tab_id]['whites_turn'] != client_game.whites_turn:
-            web_game_metadata_dict[game_tab_id]['whites_turn'] = client_game.whites_turn
-
+        if web_game_metadata_dict['whites_turn'] != client_game.whites_turn:
+            web_game_metadata_dict['whites_turn'] = client_game.whites_turn
             metadata_update = True
 
-        if web_game_metadata_dict[game_tab_id]['net_pieces'] != net_pieces:
-            web_game_metadata_dict[game_tab_id]['net_pieces'] = net_pieces
-
+        if web_game_metadata_dict['net_pieces'] != net_pieces:
+            web_game_metadata_dict['net_pieces'] = net_pieces
             metadata_update = True
 
-        if web_game_metadata_dict[game_tab_id]['alg_moves'] != client_game.alg_moves and not client_game.end_position:
-            web_game_metadata_dict[game_tab_id]['alg_moves'] = client_game.alg_moves
-            # Maybe a simple range list of the index or move number
-            web_game_metadata_dict[game_tab_id]['comp_moves'] = [','.join(move) for move in client_game.moves]
-
+        if web_game_metadata_dict['alg_moves'] != client_game.alg_moves and not client_game.end_position:
+            web_game_metadata_dict['alg_moves'] = client_game.alg_moves
+            web_game_metadata_dict['comp_moves'] = client_game.moves
             metadata_update = True
         
         starting_player_color = 'white' if client_game._starting_player else 'black'
-        if web_game_metadata_dict[game_tab_id]['player_color'] != starting_player_color:
-            web_game_metadata_dict[game_tab_id]['player_color'] = starting_player_color
-
+        if web_game_metadata_dict['player_color'] != starting_player_color:
+            web_game_metadata_dict['player_color'] = starting_player_color
             metadata_update = True
 
         if metadata_update:

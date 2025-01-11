@@ -7,7 +7,7 @@ from constants import *
 from helpers import *
 
 debug_prints = True
-production = True
+production = False
 local = "http://127.0.0.1:8000"
 
 ## Network helper logic
@@ -17,16 +17,16 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
             raise Exception('Wrong POST input')
-        client_game._sync = True
-        client_game._move_undone = False
-        client_game_str = client_game.to_json(include_states=True)
+        # POSTed form is synced yet move can be undone and locally can be unsynced
+        client_game_str = client_game.to_json(include_states=True).replace('"_sync": false', '"_sync": true')
+        FEN = client_game.translate_into_FEN()
         try:
             domain = 'https://decisionchess.com' if production else local
             url = f'{domain}/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()
             js_code = """
-                function generateToken(game_json, secret) {
-                    const oPayload = {game: game_json};
+                function generateToken(game_json, secret, FEN_text) {
+                    const oPayload = {game: game_json, FEN: FEN_text};
                     const oHeader = {alg: 'HS256', typ: 'JWT'};
                     return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
                 };
@@ -35,13 +35,13 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
                     const script = document.createElement('script');
                     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
                     script.onload = function() {
-                        window.encryptedToken = generateToken('game_string', 'secret_key');
+                        window.encryptedToken = generateToken('game_string', 'secret_key', 'FEN_str');
                     };
                     document.head.appendChild(script);
                 } else {
-                    window.encryptedToken = generateToken('game_string', 'secret_key');
+                    window.encryptedToken = generateToken('game_string', 'secret_key', 'FEN_str');
                 };
-            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
+            """.replace("game_string", client_game_str).replace("secret_key", secret_key).replace("FEN_str", FEN)
             window.eval(js_code)
             await asyncio.sleep(0)
             while window.encryptedToken is None:
@@ -107,6 +107,29 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             js_code = f"console.log('{exc_str}')".replace(secret_key, "####")
             window.eval(js_code)
             raise Exception(str(e))
+
+async def save_game(window, game_id, alg_moves_str, comp_moves_str, score, FEN_final, forced_end):
+    try:
+        domain = 'https://decisionchess.com' if production else local
+        url = f'{domain}/save_game/'
+        handler = fetch.RequestHandler()
+        csrf = window.sessionStorage.getItem("csrftoken")
+        response = await handler.put(url, data = {
+            "game_uuid": game_id,
+            "alg_moves": alg_moves_str,
+            "outcome": score,
+            "comp_moves": comp_moves_str,
+            "FEN": FEN_final,
+            "termination_reason": forced_end
+            }, headers = {'X-CSRFToken': csrf})
+        data = json.loads(response)
+        if data.get("status") and data["status"] == "error":
+            raise Exception(f'Request failed {data}')
+    except Exception as e:
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')"
+        window.eval(js_code)
+        raise Exception(str(e))
 
 # Helper to retrieve game from DB
 async def reconnect(window, game_id, access_keys, init):

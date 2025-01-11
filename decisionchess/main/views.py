@@ -56,7 +56,7 @@ def home(request):
             private=False,
             computer_game=False,
             solo_game=False
-        )
+        ).exclude(gametype='Classical')
         preview_game = ActiveGames.objects.filter(
             active_game_id__in=Subquery(lobby_subquery.values('lobby_id')),
             start_time__gte=time_threshold
@@ -129,6 +129,7 @@ def home(request):
     context['masks_svg'] = open(".\\static\\images\\masks.svg").read()
     context['a1_svg'] = open(".\\static\\images\\a1.svg").read()
     context['b1_svg'] = open(".\\static\\images\\b1.svg").read()
+    context['classic_svg'] = open(".\\static\\images\\classic-icon.svg").read()
     return render(request, "main/home.html", context)
 
 class CustomLoginView(LoginView):
@@ -262,7 +263,7 @@ def create_new_game(request, optional_uuid = None):
                         if increment is None or not (increment.isdigit() and int(increment) >= 0):
                             return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                         new_open_game.increment = int(increment)
-                else:
+                elif data.get('main_mode') != 'Classical':
                     return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
                 ranked = data.get('ranked')
                 if ranked is not None:
@@ -289,6 +290,7 @@ def create_new_game(request, optional_uuid = None):
                     new_open_game.private = True
                     state = custom_state(data.get('FEN'), data.get('castling_rights'), new_open_game.gametype)
                     if state is None or data.get('main_mode') != 'Decision':
+                        print("HERE1")
                         return JsonResponse({"status": "error", "message": "Bad Request"}, status=400)
                     new_open_game.initial_state = state
                     new_open_game.FEN = data.get('FEN')
@@ -501,6 +503,7 @@ def play(request, game_uuid):
         ("Relay", "Suggestive"): "rank_relay_suggestive",
         ("Countdown", "Simple"): "rank_countdown_simple",
         ("Countdown", "Suggestive"): "rank_countdown_suggestive",
+        ("Classical", "Normal"): None
     }
 
     # Validate uuid (ensure not expired), direct to play, spectator, or historic html, check authentication on former
@@ -519,8 +522,8 @@ def play(request, game_uuid):
             opponent = game.initiator_name
         sessionVariables.update({'opponent': opponent})
 
-        player_rank = "?"
-        opponent_rank = "?"
+        player_rank = "1500?"
+        opponent_rank = "1500?"
         rank_attr = rank_mapping.get((game.gametype, game.subvariant))
         if rank_attr and request.user and request.user.id is not None:
             player_rank = getattr(request.user, rank_attr)
@@ -546,7 +549,10 @@ def play(request, game_uuid):
                     sessionVariables.update({'white': game.initiator_name, 'black': game.opponent_name})
                 elif game.initiator_color == "black":
                     sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
-                return render(request, "main/play/decision_spectate.html", sessionVariables)
+                if game.gametype != 'Classical':
+                    return render(request, "main/play/decision_spectate.html", sessionVariables)
+                else:
+                    return redirect("home")
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
             # For now we won't allow multiple joins even from the same person after they've connected twice
             # This logic not for ranked modes later
@@ -581,7 +587,10 @@ def play(request, game_uuid):
                         sessionVariables.update({'white': game.initiator_name, 'black': game.opponent_name})
                     elif game.initiator_color == "black":
                         sessionVariables.update({'white': game.opponent_name, 'black': game.initiator_name})
-                    return render(request, "main/play/decision_spectate.html", sessionVariables)
+                    if game.gametype != 'Classical':
+                        return render(request, "main/play/decision_spectate.html", sessionVariables)
+                    else:
+                        return redirect('home')
             ranked_column_to_fill = 'black_rank_start' if game.initiator_color == 'white' else 'white_rank_start'
             
             rank_attr = rank_mapping.get((game.gametype, game.subvariant))
@@ -595,7 +604,7 @@ def play(request, game_uuid):
     except ChessLobby.DoesNotExist:
         try:
             historic = GameHistoryTable.objects.get(historic_game_id=game_uuid)
-            historic_html = "main/historic.html" if historic.gametype == 'Classical' else "main/play/decision_historic.html"
+            historic_html = "main/play/historic.html" if historic.gametype == 'Classical' else "main/play/decision_historic.html"
             sessionVariables = {
                 'current_game_id': str(game_uuid),
                 'initialized': 'null',
@@ -610,18 +619,18 @@ def play(request, game_uuid):
             rank_attr = rank_mapping.get((historic.gametype, historic.subvariant))
             try:
                 white_user = User.objects.get(id=historic.white_id)
-                player_rank = getattr(white_user, rank_attr)
+                player_rank = getattr(white_user, rank_attr) if rank_attr is not None else "1500?"
                 white_user = white_user.username
             except User.DoesNotExist:
                 white_user = "Anonymous"
-                player_rank = "?"
+                player_rank = "1500?"
             try:
                 black_user = User.objects.get(id=historic.black_id)
-                opponent_rank = getattr(black_user, rank_attr)
+                opponent_rank = getattr(black_user, rank_attr) if rank_attr is not None else "1500?"
                 black_user = black_user.username
             except User.DoesNotExist:
                 black_user = "Anonymous"
-                opponent_rank = "?"
+                opponent_rank = "1500?"
             player_side = white_user
             opponent_side = black_user
             flip = False
@@ -638,7 +647,7 @@ def play(request, game_uuid):
         except GameHistoryTable.DoesNotExist:
             return redirect('home')
         except:
-            JsonResponse({"status": "error"}, status=401)
+            return JsonResponse({"status": "error"}, status=401)
 
 def update_connected(request):
     # Have this handle live disconnects later
@@ -1002,7 +1011,7 @@ def live(request):
             private=False,
             computer_game=False,
             solo_game=False
-        )
+        ).exclude(gametype='Classical')
 
         game_filter = Q(gametype__in=types) if types else Q(gametype="Standard")
         if user_param:

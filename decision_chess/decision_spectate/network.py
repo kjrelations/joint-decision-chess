@@ -164,6 +164,7 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                     init["reloaded"] = True
                     drawing_settings["draw"] = True
                 elif "_update" in cmd or "_sync" in cmd:
+                    drawing_settings["draw"] = True
                     if "_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
@@ -296,6 +297,7 @@ async def handle_node_events(node, window, init, client_game, drawing_settings):
                     init["reloaded"] = True
                     drawing_settings["draw"] = True
                 elif "_update" in cmd or "_sync" in cmd:
+                    drawing_settings["draw"] = True
                     if "_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:

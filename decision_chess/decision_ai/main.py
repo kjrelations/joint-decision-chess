@@ -1128,8 +1128,9 @@ async def main():
 
             net_pieces = net_board(client_game.board)
 
-            if not init["local_debug"]:
-                await asyncio.wait_for(
+            try:
+                if not init["local_debug"]:
+                    await asyncio.wait_for(
                         save_game(
                             window, 
                             game_id, 
@@ -1140,6 +1141,17 @@ async def main():
                             client_game.forced_end
                         ), 
                     timeout = 5)
+            except Exception as err:
+                if isinstance(err, asyncio.TimeoutError):
+                    print("Timeout occurred")
+                js_code = f"console.log('{err}')"
+                window.eval(js_code)
+                print(err)
+                err = 'Could not send game... Reconnecting...'
+                js_code = f"console.log('{err}')"
+                window.eval(js_code)
+                print(err)
+                continue
 
             if web_game_metadata_dict['end_state'] != client_game.alg_moves[-1]:
                 web_game_metadata_dict['end_state'] = client_game.alg_moves[-1]

@@ -250,6 +250,9 @@ def pawn_moves(board, row, col, is_white):
 
     forwards = -1 if is_white else 1
 
+    if row in [0, 7]:
+        return moves, captures
+
     # Pawn moves one square forward
     if board[row + forwards][col] == ' ':
         moves.append((row + forwards, col))
@@ -1031,12 +1034,18 @@ def draw_arrow(theme, arrow):
     return transparent_surface
 
 # Helper function to highlight selected squares on left or right click
-def draw_highlight(window, theme, row, col, left):
-    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED = \
-    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_RED, theme.HIGHLIGHT_BLACK_RED
+def draw_highlight(window, theme, row, col, left, is_white, player_side=True):
+    GRID_SIZE, HIGHLIGHT_WHITE, HIGHLIGHT_BLACK, HIGHLIGHT_WHITE_BLACK, HIGHLIGHT_BLACK_BLACK, \
+    HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK, HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT = \
+    theme.GRID_SIZE, theme.HIGHLIGHT_WHITE, theme.HIGHLIGHT_BLACK, theme.HIGHLIGHT_WHITE_BLACK, theme.HIGHLIGHT_BLACK_BLACK, \
+    theme.HIGHLIGHT_WHITE_RCLICK, theme.HIGHLIGHT_BLACK_RCLICK, theme.HIGHLIGHT_WHITE_RCLICK_OPPONENT, theme.HIGHLIGHT_BLACK_RCLICK_OPPONENT
 
     square_highlight = pygame.Surface((GRID_SIZE, GRID_SIZE), pygame.SRCALPHA)
-    colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if left else [HIGHLIGHT_WHITE_RED, HIGHLIGHT_BLACK_RED]
+    secondary = [HIGHLIGHT_WHITE_RCLICK, HIGHLIGHT_BLACK_RCLICK] if player_side else [HIGHLIGHT_WHITE_RCLICK_OPPONENT, HIGHLIGHT_BLACK_RCLICK_OPPONENT]
+    if not left:
+        colors = secondary
+    else:
+        colors = [HIGHLIGHT_WHITE, HIGHLIGHT_BLACK] if is_white else [HIGHLIGHT_WHITE_BLACK, HIGHLIGHT_BLACK_BLACK]
     HIGHLIGHT_COLOR = colors[0] if (row + col) % 2 == 0 else colors[1]
     pygame.draw.rect(square_highlight, HIGHLIGHT_COLOR, (0, 0, GRID_SIZE, GRID_SIZE))
     window.blit(square_highlight, (col * GRID_SIZE, row * GRID_SIZE))
@@ -1111,16 +1120,16 @@ def draw_board(params):
     # Highlight left clicked selected squares
     left = True
     if selected_piece is not None:
-        draw_highlight(window, theme, selected_piece[0], selected_piece[1], left)
+        draw_highlight(window, theme, selected_piece[0], selected_piece[1], left, True)
     if current_position is not None:
-        draw_highlight(window, theme, current_position[0], current_position[1], left)
+        draw_highlight(window, theme, current_position[0], current_position[1], left, True)
     if previous_position is not None:
-        draw_highlight(window, theme, previous_position[0], previous_position[1], left)
+        draw_highlight(window, theme, previous_position[0], previous_position[1], left, True)
 
     # Highlight right clicked selected squares
     left = False
     for square in right_clicked_squares:
-        draw_highlight(window, theme, square[0], square[1], left)
+        draw_highlight(window, theme, square[0], square[1], left, True)
 
     # Draw reference coordinates AFTER highlights
     window.blit(coordinate_surface, (0, 0))

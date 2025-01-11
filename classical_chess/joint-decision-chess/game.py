@@ -33,13 +33,13 @@ class Game:
             self.max_states = 500 
             self.end_position = False
             self.forced_end = ""
-            self._debug = False # Dev private attribute for removing turns, need to remove network with this option initialised somewhere else in the main loop
             self._starting_player = starting_player
             self._move_undone = False
             self._sync = True
             self._move_index = -1
             self._latest = True
             self._state_update = {}
+            self._max_states_reached = False
         else:
             self.whites_turn = custom_params["whites_turn"]
             self.board = custom_params["board"]
@@ -65,12 +65,12 @@ class Game:
             self.max_states = custom_params["max_states"]
             self.end_position = custom_params["end_position"]
             self.forced_end = custom_params["forced_end"]
-            self._debug = custom_params["_debug"]
             self._starting_player = custom_params["_starting_player"]
             self._move_undone = custom_params["_move_undone"]
             self._sync = custom_params["_sync"]
             self._move_index = len(self.moves) - 1 # This could be custom eventually
             self._latest = True # I think this will always default to true for now, could be a custom move in the future
+            self._max_states_reached = custom_params["_max_states_reached"]
 
     def synchronize(self, new_game):
         self.whites_turn = new_game.whites_turn
@@ -83,7 +83,11 @@ class Game:
         if new_game._state_update:
             for state, update in new_game._state_update.items():
                 if update is None:
-                    del self.board_states[state]
+                    try:
+                        del self.board_states[state]
+                    except Exception as e:
+                        print(self.board_states)
+                        raise e
                 else:
                     self.board_states.update({state: update})
         self.end_position = new_game.end_position
@@ -93,6 +97,7 @@ class Game:
         self._move_index = new_game._move_index
         self._latest = True
         self._state_update = {}
+        self._max_states_reached = new_game._max_states_reached
 
     def validate_moves(self, row, col):
         piece = self.board[row][col]
@@ -200,38 +205,38 @@ class Game:
         elif piece == 'r' and selected_piece == (0, 7) and not self.castle_attributes['right_black_rook_moved'][0]:
             self.castle_attributes['right_black_rook_moved'] = [True, self._move_index]
 
-        if not self._debug:
-            # Change turns once a standard move is played, not during a pawn promotion
-            if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
-                self.whites_turn = not self.whites_turn
-                self._move_undone = False
-                self._sync = True
-                
-                # Update dictionary of board states
-                current_special_moves = []
-                for row in range(8):
-                    for col in range(8):
-                        other_piece = self.board[row][col]
-                        if other_piece.islower() != piece.islower() and other_piece != ' ':
-                            _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
-                            current_special_moves.extend(specials)
-                _current_board_state = tuple(tuple(r) for r in self.board)
-                special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
-                _current_board_state = _current_board_state + special_tuple
-                flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
-                _current_board_state = _current_board_state + (tuple(flat_castle_values),)
-                
-                if _current_board_state in self.board_states:
-                    self.board_states[_current_board_state] += 1
-                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
-                else:
-                    self.board_states[_current_board_state] = 1
-                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
-                    if len(self.board_states) > self.max_states:
-                        # Find and remove the least accessed board state, this also happens to be the oldest 
-                        # least accessed state based on Python 3.7+ storing dictionary items by insertion order
-                        least_accessed = min(self.board_states, key=self.board_states.get)
-                        del self.board_states[least_accessed]
+        # Change turns once a standard move is played, not during a pawn promotion
+        if piece.lower() != 'p' or (piece.lower() == 'p' and (new_row != 7 and new_row != 0)):
+            self.whites_turn = not self.whites_turn
+            self._move_undone = False
+            self._sync = True
+            
+            # Update dictionary of board states
+            current_special_moves = []
+            for row in range(8):
+                for col in range(8):
+                    other_piece = self.board[row][col]
+                    if other_piece.islower() != piece.islower() and other_piece != ' ':
+                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                        current_special_moves.extend(specials)
+            _current_board_state = tuple(tuple(r) for r in self.board)
+            special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+            _current_board_state = _current_board_state + special_tuple
+            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
+            
+            if _current_board_state in self.board_states:
+                self.board_states[_current_board_state] += 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
+            else:
+                self.board_states[_current_board_state] = 1
+                self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                if len(self.board_states) > self.max_states:
+                    # Find and remove the least accessed board state, this also happens to be the oldest 
+                    # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                    least_accessed = min(self.board_states, key=self.board_states.get)
+                    del self.board_states[least_accessed]
+            self._max_states_reached = len(self.board_states.keys()) == self.max_states
 
     def translate_into_notation(self, new_row, new_col, piece, selected_piece, potential_capture, castle, enpassant):
         file_conversion = {0: 'a', 1: 'b', 2: 'c', 3: 'd', 4: 'e', 5: 'f', 6: 'g', 7: 'h'}
@@ -320,14 +325,13 @@ class Game:
         return FEN[:-1]
 
     def add_end_game_notation(self, checkmate):
-        if not self._debug:
-            if checkmate:
-                symbol = '0-1' if self.whites_turn else '1-0'
-                self.alg_moves.append(symbol)
-                print('ALG_MOVES: ', self.alg_moves)
-            else:
-                self.alg_moves.append('½–½')
-                print('ALG_MOVES: ', self.alg_moves)
+        if checkmate:
+            symbol = '0-1' if self.whites_turn else '1-0'
+            self.alg_moves.append(symbol)
+            print('ALG_MOVES: ', self.alg_moves)
+        else:
+            self.alg_moves.append('½–½')
+            print('ALG_MOVES: ', self.alg_moves)
 
     def promote_to_piece(self, current_row, current_col, piece):
         self.board[current_row][current_col] = piece
@@ -340,6 +344,7 @@ class Game:
         self.moves[-1][1] = ''.join(string_list)
  
         self.alg_moves[-1] += piece.upper()
+        self.alg_moves[-1].replace('#', '').replace('+', '')
         
         if is_checkmate_or_stalemate(self.board, not is_white, self.moves)[0]:
             self.alg_moves[-1] += '#'
@@ -347,35 +352,35 @@ class Game:
             self.alg_moves[-1] += '+'
         
         # Change turns after pawn promotion
-        if not self._debug:
-            self.whites_turn = not self.whites_turn
-            self._move_undone = False
-            self._sync = True
-            # Update dictionary of board states
-            current_special_moves = []
-            for row in range(8):
-                for col in range(8):
-                    other_piece = self.board[row][col]
-                    if other_piece.islower() != piece.islower() and other_piece != ' ':
-                        _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
-                        current_special_moves.extend(specials)
-            _current_board_state = tuple(tuple(r) for r in self.board)
-            special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
-            _current_board_state = _current_board_state + special_tuple
-            flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
-            _current_board_state = _current_board_state + (tuple(flat_castle_values),)
-            
-            if _current_board_state in self.board_states:
-                self.board_states[_current_board_state] += 1
-                self._state_update[_current_board_state] = self.board_states[_current_board_state]
-            else:
-                self.board_states[_current_board_state] = 1
-                self._state_update[_current_board_state] = self.board_states[_current_board_state]
-                if len(self.board_states) > self.max_states:
-                    # Find and remove the least accessed board state, this also happens to be the oldest 
-                    # least accessed state based on Python 3.7+ storing dictionary items by insertion order
-                    least_accessed = min(self.board_states, key=self.board_states.get)
-                    del self.board_states[least_accessed]
+        self.whites_turn = not self.whites_turn
+        self._move_undone = False
+        self._sync = True
+        # Update dictionary of board states
+        current_special_moves = []
+        for row in range(8):
+            for col in range(8):
+                other_piece = self.board[row][col]
+                if other_piece.islower() != piece.islower() and other_piece != ' ':
+                    _, _, specials = calculate_moves(self.board, row, col, self.moves, self.castle_attributes, True) 
+                    current_special_moves.extend(specials)
+        _current_board_state = tuple(tuple(r) for r in self.board)
+        special_tuple = ((),) if current_special_moves == [] else tuple(tuple(s) for s in current_special_moves)
+        _current_board_state = _current_board_state + special_tuple
+        flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
+        _current_board_state = _current_board_state + (tuple(flat_castle_values),)
+        
+        if _current_board_state in self.board_states:
+            self.board_states[_current_board_state] += 1
+            self._state_update[_current_board_state] = self.board_states[_current_board_state]
+        else:
+            self.board_states[_current_board_state] = 1
+            self._state_update[_current_board_state] = self.board_states[_current_board_state]
+            if len(self.board_states) > self.max_states:
+                # Find and remove the least accessed board state, this also happens to be the oldest 
+                # least accessed state based on Python 3.7+ storing dictionary items by insertion order
+                least_accessed = min(self.board_states, key=self.board_states.get)
+                del self.board_states[least_accessed]
+        self._max_states_reached = len(self.board_states.keys()) == self.max_states
 
     def threefold_check(self):
         for count in self.board_states.values():
@@ -402,12 +407,14 @@ class Game:
                 flat_castle_values = [value for sublist in self.castle_attributes.values() for value in sublist]
                 _current_board_state = _current_board_state + (tuple(flat_castle_values),)
                 
-                if self.board_states[_current_board_state] == 1:
-                    del self.board_states[_current_board_state]
-                    self._state_update[_current_board_state] = None
-                else:
-                    self.board_states[_current_board_state] -= 1
-                    self._state_update[_current_board_state] = self.board_states[_current_board_state]
+                self._state_update = {} # On consecutive undos this wouldn't be reset and on syncronization a key error can occur
+                if self.board_states.get(_current_board_state) or not self._max_states_reached:
+                    if self.board_states[_current_board_state] == 1:
+                        del self.board_states[_current_board_state]
+                        self._state_update[_current_board_state] = None
+                    else:
+                        self.board_states[_current_board_state] -= 1
+                        self._state_update[_current_board_state] = self.board_states[_current_board_state]
             
             move = self.moves[-1]
 
@@ -459,13 +466,12 @@ class Game:
             self._move_undone = True
             self._sync = False
 
-            if not self._debug:
-                # Change turns once a standard move is played, not during a pawn promotion
-                if piece.lower() != 'p' or (piece.lower() == 'p' and (curr_row != 7 and curr_row != 0)):
-                    self.whites_turn = not self.whites_turn
-                # Change turn right after a pawn promotion by checking that the piece type changed
-                elif piece.lower() == 'p' and (curr_row == 7 or curr_row == 0) and curr_pos[0].lower() != piece.lower():
-                    self.whites_turn = not self.whites_turn
+            # Change turns once a standard move is played, not during a pawn promotion
+            if piece.lower() != 'p' or (piece.lower() == 'p' and (curr_row != 7 and curr_row != 0)):
+                self.whites_turn = not self.whites_turn
+            # Change turn right after a pawn promotion by checking that the piece type changed
+            elif piece.lower() == 'p' and (curr_row == 7 or curr_row == 0) and curr_pos[0].lower() != piece.lower():
+                self.whites_turn = not self.whites_turn
 
             if len(self.moves) != 0:
                 new_recent_positions = self.moves[-1]
@@ -601,11 +607,11 @@ class GameEncoder(json.JSONEncoder):
                 "max_states": obj.max_states,
                 "end_position": obj.end_position,
                 "forced_end": obj.forced_end,
-                "_debug": obj._debug,
                 "_starting_player": obj._starting_player,
                 "_move_undone": obj._move_undone,
                 "_sync": obj._sync,
-                "_state_update": [{"key": k, "value": v} for k, v in obj._state_update.items()]
+                "_state_update": [{"key": k, "value": v} for k, v in obj._state_update.items()],
+                "_max_states_reached": obj._max_states_reached
             }
             if self.include_states:
                 data["board_states"] = [{"key": k, "value": v} for k, v in obj.board_states.items()]

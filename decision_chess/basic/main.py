@@ -225,7 +225,6 @@ def handle_command(status_names, client_state_actions, web_metadata_dict, games_
                 client_state_actions[client_action_name] = True
             if client_executed_status:
                 web_metadata_dict[command_name]['update_executed'] = True
-                web_metadata_dict = web_metadata_dict
                 json_metadata = json.dumps(web_metadata_dict)
                 
                 window.sessionStorage.setItem(games_metadata_name, json_metadata)

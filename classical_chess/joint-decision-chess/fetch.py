@@ -244,6 +244,32 @@ window.Fetch.GET = function * GET (url)
 
     yield content;
 }
+window.Fetch.PUT = function * PUT (url, data, headers = {})
+{
+    const defaultHeaders = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+    };
+    headers = (headers !== {} ? JSON.parse(headers) : {});
+    const mergedHeaders = { ...defaultHeaders, ...headers };
+    // post info about the request
+    var request = new Request(url, {
+        headers: mergedHeaders,
+        method: 'PUT', 
+        body: data});
+    var content = 'undefined';
+    fetch(request)
+   .then(resp => resp.text())
+   .then((resp) => {
+        content = resp;
+   })
+   .catch(err => {
+    });
+    while(content == 'undefined'){
+        yield;
+    }
+    yield content;
+}
             """
             try:
                 platform.window.eval(self._js_code)
@@ -304,3 +330,16 @@ window.Fetch.GET = function * GET (url)
 
     # def post(self, url, data=None):
     #     return await self._post(url, data)
+
+    async def put(self, url, data=None, headers={}):
+        if data is None:
+            data = {}
+        if self.is_emscripten:
+            await asyncio.sleep(0)
+            content = await platform.jsiter(platform.window.Fetch.PUT(url, json.dumps(data), json.dumps(headers)))
+            if self.debug:
+                self.print(content)
+            self.result = content
+        else:
+            self.result = self.requests.put(url, data, headers={'Accept': 'application/json','Content-Type': 'application/json'}).text
+        return self.result

@@ -7,7 +7,7 @@ from .models import User
 
 class CreateNewGameForm(forms.Form):
     main_mode_multiplayer = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
-        choices=[('Decision', 'Decision'), ('Classical', 'Classical')], 
+        choices=[('Decision', 'Decision Chess'), ('Classical', 'Classical Chess')], 
         attrs={'id': 'main-mode-multiplayer'}
         ))
     main_mode_computer = forms.CharField(max_length=9, label="Main Game Type", required=False, widget=forms.Select(
