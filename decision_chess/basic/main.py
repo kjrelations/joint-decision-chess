@@ -119,8 +119,8 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
         if update and not (piece.lower() == 'p' and (row == 0 or row == 7) and allow_promote):
             init["sent"] = 0
             init["updated_board"] = True
-            checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-            checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
+            checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+            checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
             checkmate = checkmate_white or checkmate_black
             no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
             if checkmate:
@@ -128,10 +128,12 @@ def handle_piece_move(game, selected_piece, row, col, init, update_positions=Fal
                 game.end_position = True
                 game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
                 return None, promotion_required
-            elif no_remaining_moves:
+            elif no_remaining_moves or insufficient:
                 print("STALEMATE")
                 game.end_position = True
                 game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+                if insufficient:
+                    game.forced_end = "Insufficient Material"
                 return None, promotion_required
             elif game.threefold_check():
                 print("STALEMATE BY THREEFOLD REPETITION")
@@ -185,8 +187,8 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
     if update:
         init["sent"] = 0
         init["updated_board"] = True
-        checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-        checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
+        checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+        checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
         checkmate = checkmate_white or checkmate_black
         no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
         if checkmate:
@@ -194,10 +196,12 @@ def handle_piece_special_move(game, selected_piece, row, col, init, update_posit
             game.end_position = True
             game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
             return piece, is_white
-        elif no_remaining_moves:
+        elif no_remaining_moves or insufficient:
             print("STALEMATE")
             game.end_position = True
             game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+            if insufficient:
+                game.forced_end = "Insufficient Material"
             return piece, is_white
         elif game.threefold_check():
             print("STALEMATE BY THREEFOLD REPETITION")
@@ -1690,18 +1694,20 @@ async def main():
             is_white = piece.isupper() # needed?
 
             if client_game.white_active_move is None and client_game.black_active_move is None:
-                checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
-                checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
                 checkmate = checkmate_white or checkmate_black
                 no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
                 if checkmate:
                     print("CHECKMATE")
                     client_game.end_position = True
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
-                elif no_remaining_moves:
+                elif no_remaining_moves or insufficient:
                     print("STALEMATE")
                     client_game.end_position = True
                     client_game.add_end_game_notation(checkmate, checkmate_black, checkmate_white)
+                    if insufficient:
+                        client_game.forced_end = "Insufficient Material"
                 # This seems redundant as promotions should lead to unique boards but we leave it in anyway
                 elif client_game.threefold_check():
                     print("STALEMATE BY THREEFOLD REPETITION")

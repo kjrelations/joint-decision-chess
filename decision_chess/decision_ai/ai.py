@@ -97,14 +97,16 @@ def ai_move(game, init, drawing_settings):
             elif update:
                 move_sound.play()
         if game.end_position:
-            checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-            checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
+            checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+            checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
             checkmate = checkmate_white or checkmate_black
             no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
             if checkmate:
                 print("CHECKMATE")
-            elif no_remaining_moves:
+            elif no_remaining_moves or insufficient:
                 print("STALEMATE")
+                if insufficient:
+                    game.forced_end = "Insufficient Material"
             elif game.threefold_check():
                 print("DRAW BY THREEFOLD REPETITION")
             elif game.forced_end != "":
@@ -216,15 +218,15 @@ def generate_all_moves(game, white_side):
     return all_valid_moves, special_index_start
 
 def game_is_over(game):
-    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
-    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
+    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0 or insufficient
     return checkmate_white or checkmate_black or no_remaining_moves
 
 def game_over_outcome(game):
-    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
-    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
+    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0 or insufficient
     if checkmate_white and checkmate_black:
         return 1250 if not game._starting_player else -1250
     elif checkmate_white:

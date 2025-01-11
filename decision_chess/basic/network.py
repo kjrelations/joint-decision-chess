@@ -257,14 +257,16 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     else:
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
-                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
-                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
                                     checkmate = checkmate_white or checkmate_black
                                     no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
                                     if checkmate:
                                         print("CHECKMATE")
-                                    elif no_remaining_moves:
+                                    elif no_remaining_moves or insufficient:
                                         print("STALEMATE")
+                                        if insufficient:
+                                            client_game.forced_end = "Insufficient Material"
                                     elif client_game.threefold_check():
                                         print("DRAW BY THREEFOLD REPETITION")
                                     elif client_game.forced_end != "":
@@ -425,14 +427,16 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     else:
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
-                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
-                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
                                     checkmate = checkmate_white or checkmate_black
                                     no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
                                     if checkmate:
                                         print("CHECKMATE")
-                                    elif no_remaining_moves:
+                                    elif no_remaining_moves or insufficient:
                                         print("STALEMATE")
+                                        if insufficient:
+                                            client_game.forced_end = "Insufficient Material"
                                     elif client_game.threefold_check():
                                         print("DRAW BY THREEFOLD REPETITION")
                                     elif client_game.forced_end != "":

@@ -111,10 +111,10 @@ def handle_piece_move(game, selected_piece, row, col):
     if invalid:
         return True
     
-    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(game.board, True, game.moves)
-    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(game.board, False, game.moves)
+    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(game.board, True, game.moves)
+    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(game.board, False, game.moves)
     checkmate = checkmate_white or checkmate_black
-    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
+    no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0 or insufficient
     if checkmate:
         return True
     elif no_remaining_moves:

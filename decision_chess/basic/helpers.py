@@ -764,6 +764,42 @@ def is_check(board, is_white):
                     return True
     return False
 
+def has_insufficient_material(board):
+    pieces = {'K': 0, 'B': 0, 'N': 0}
+    bishops_squares = {'white': False, 'black': False}
+    
+    for row in board:
+        for cell in row:
+            if cell != ' ':
+                piece = cell.upper()
+                if piece in pieces:
+                    pieces[piece] += 1
+                    if piece == 'B':
+                        if (row.index(cell) + board.index(row)) % 2 == 0:
+                            bishops_squares["white"] = True
+                        else:
+                            bishops_squares["black"] = True
+    
+    # King vs King
+    if pieces['K'] == 2 and sum(pieces.values()) == 2:
+        return True
+    
+    # King and Bishop vs King
+    if pieces['K'] == 2 and pieces['B'] == 1 and sum(pieces.values()) == 3:
+        return True
+    
+    # King and Knight vs King
+    if pieces['K'] == 2 and pieces['N'] == 1 and sum(pieces.values()) == 3:
+        return True
+    
+    # King and Bishop vs King and Bishop on the same color square
+    if pieces['K'] == 2 and pieces['B'] == 2 and sum(pieces.values()) == 4:
+        if bishops_squares['white'] and bishops_squares['black']:
+            return False
+        return True
+    
+    return False
+
 # Helper function to search for end-game state
 def is_checkmate_or_stalemate(board, is_color, moves):
     possible_moves = 0
@@ -812,8 +848,9 @@ def is_checkmate_or_stalemate(board, is_color, moves):
                         temp_board[row][col] = temp_board[move[0]][move[1]]
                         temp_board[move[0]][move[1]] = ' '
                         temp_board[capture_row][move[1]] = old_pawn
-
-    return checkmate, possible_moves
+    
+    insufficient = has_insufficient_material(board)
+    return checkmate, possible_moves, insufficient
 
 # Set check or checkmate draw flags
 def set_check_or_checkmate_settings(drawing_settings, client_game):
