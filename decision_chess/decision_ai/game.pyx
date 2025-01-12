@@ -715,6 +715,7 @@ class Game:
             second_init_row, second_init_col = white_initial_pos[0], white_initial_pos[1]
             second_new_row, second_new_col = new_row_white, new_col_white
 
+        second_captured = False
         # Entanglement or collapse
         if (first_new_row, first_new_col) == (second_init_row, second_init_col):
             potential_capture = None if (second_new_row, second_new_col) != (first_init_row, first_init_col) else first_piece
@@ -726,6 +727,7 @@ class Game:
                 potential_white_capture = potential_capture
                 white_captured = True
                 black_captured = False if (second_new_row, second_new_col) != (first_init_row, first_init_col) else True
+            second_captured = True
         # Blocking
         elif second_piece.lower() in ['r', 'q'] and \
             second_init_row == second_new_row and first_new_row == second_new_row and \
@@ -786,6 +788,8 @@ class Game:
                     potential_black_capture = potential_capture
                     black_captured = True
                     white_captured = False if (first_new_row, first_new_col) != (second_init_row, second_init_col) else True
+            elif second_captured:
+                pass
             # Blocking
             elif first_piece.lower() in ['r', 'q'] and \
                 first_init_row == first_new_row and second_new_row == first_new_row and \
