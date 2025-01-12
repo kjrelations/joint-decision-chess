@@ -148,6 +148,27 @@
     color: var(--action-button-icon-disabled);
 }
 
+.share-arrows {
+    background-color: var(--share-button);
+    border: solid 1px rgb(169, 169, 169);
+    transition: background-color 0.3s ease-in;
+    width: 30px;
+    border-radius: 5px;
+    padding-bottom: 5px;
+}
+
+.share-arrows.active {
+    background-color: var(--share-button-active);
+}
+
+.share-arrows:hover {
+    background-color: var(--share-button-hover);
+}
+
+.svg-scaled-circle {
+    width: 90%;
+}
+
 .hidden {
     display: none;
 }

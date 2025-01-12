@@ -211,12 +211,18 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                                 init["reference_time"] = time.monotonic()
                 elif cmd == "drawings" and (spectator_pid is None or spectator_pid == node.data.get("spectator_pid")):
                     drawings = json.loads(node.data.pop("drawings"))
-                    opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
-                    drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
-                    drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
-                    if node.data.get("redraw"):
+                    right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows = load_drawings(drawings)
+                    if drawings["side"]:
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
+                    else:
+                        drawing_settings["opposing_right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["opposing_drawn_arrows"] = drawn_arrows
+                    if node.data.get("redraw"):
+                        drawing_settings["right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["drawn_arrows"] = drawn_arrow
+                        drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
+                        drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
                     drawing_settings["draw"] = True
                 elif "resume_clock" in cmd:
                     opponent_color = cmd.split(" ")[0]
@@ -339,12 +345,18 @@ async def handle_node_events(node, init, client_game, drawing_settings):
                                 init["reference_time"] = time.monotonic()
                 elif cmd == "drawings" and (spectator_pid is None or spectator_pid == node.data.get("spectator_pid")):
                     drawings = json.loads(node.data.pop("drawings"))
-                    opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
-                    drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
-                    drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
-                    if node.data.get("redraw"):
+                    right_clicked_squares, drawn_arrows, opposing_right_clicked_squares, opposing_drawn_arrows = load_drawings(drawings)
+                    if drawings["side"]:
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
+                    else:
+                        drawing_settings["opposing_right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["opposing_drawn_arrows"] = drawn_arrows
+                    if node.data.get("redraw"):
+                        drawing_settings["right_clicked_squares"] = right_clicked_squares
+                        drawing_settings["drawn_arrows"] = drawn_arrow
+                        drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
+                        drawing_settings["opposing_drawn_arrows"] = opposing_drawn_arrows
                     drawing_settings["draw"] = True
                 elif "resume_clock" in cmd:
                     opponent_color = cmd.split(" ")[0]

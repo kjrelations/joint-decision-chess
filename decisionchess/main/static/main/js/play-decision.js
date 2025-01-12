@@ -101,6 +101,17 @@ function faviconInterval() {
 
 var faviconIntervalId;
 
+const shareButton = document.getElementById("toggleShareArrows");
+
+shareButton.addEventListener('click', () => {
+    shareButton.classList.toggle('active');
+    if (sessionStorage.getItem('toggle-arrows') === 'true') {
+        sessionStorage.setItem('toggle-arrows', 'false');
+    } else {
+        sessionStorage.setItem('toggle-arrows', 'true');
+    }
+})
+
 var gameSaved = false;
 var signed_uuid = "";
 var rematch_request = false;
@@ -155,6 +166,7 @@ function updateCommandCenter() {
         buttons.forEach(button => {
             button.remove();
         });
+        document.getElementById("toggleShareArrows").remove();
     }
     promoting = sessionStorage.getItem('promoting');
     promoting = (promoting === 'true' ? true : false);
@@ -1015,7 +1027,8 @@ function checkNewConnect() {
             "resignButton", 
             "drawOfferButton", 
             "cycleThemeButton", 
-            "flipButton"
+            "flipButton",
+            "toggleShareArrows"
         ];
 
         var hiddenDflexElements = document.getElementsByName('initHiddenDflex');

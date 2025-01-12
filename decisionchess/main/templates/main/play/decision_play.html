@@ -106,7 +106,8 @@ Play
                 </div>
                 <div class="d-flex justify-content-center">
                     <button id="readyButton" actions="true" class="action-button confirm hidden mr-2" style="font-size: 1.5rem;">Ready</button>
-                    <button id="redoButton" actions="true" class="action-button confirm hidden" style="font-size: 1.5rem;">Reset</button>
+                    <button id="redoButton" actions="true" class="action-button confirm hidden mr-2" style="font-size: 1.5rem;">Reset</button>
+                    <button id="toggleShareArrows" actions="true" class="share-arrows hidden">{{ relay_svg|safe }}</button>
                 </div>
                 <div class="d-flex justify-content-center">
                     <button id="rematchButton" post-game=true class="action-button confirm hidden">Rematch</button>
@@ -160,6 +161,7 @@ Play
             sessionStorage.setItem('undo_request', "{{ undo_request }}");
             sessionStorage.setItem('total_reset', "{{ total_reset }}");
             sessionStorage.setItem('promoting', 'false');
+            sessionStorage.setItem('toggle-arrows', 'false');
             var csrftoken = "{{ csrf_token|escapejs }}";
             sessionStorage.setItem('csrftoken', csrftoken);
             sessionStorage.setItem('muted', "false");

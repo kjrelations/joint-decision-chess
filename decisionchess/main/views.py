@@ -536,6 +536,9 @@ def play(request, game_uuid):
         sessionVariables['player_rank'] = player_rank
         sessionVariables['opponent_rank'] = opponent_rank
 
+        with open(".\\static\\images\\reveal-stage-icon.svg", 'r') as f:
+            sessionVariables["relay_svg"] = f.read()
+
         if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
             solo_html = "main/play/computer.html" if game.gametype == 'Classical' else "main/play/decision_computer.html"
             sessionVariables['computer_game'] = True if game.computer_game else False

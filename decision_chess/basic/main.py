@@ -1367,6 +1367,8 @@ async def main():
                         # Clear highlights and arrows
                         drawing_settings["right_clicked_squares"] = []
                         drawing_settings["drawn_arrows"] = []
+                        if window.sessionStorage.getItem('toggle-arrows') == 'true':
+                            init["drawings_sent"] = 0
 
                         x, y = pygame.mouse.get_pos()
                         row, col = get_board_coordinates(x, y, current_theme.GRID_SIZE)
@@ -1529,7 +1531,7 @@ async def main():
                                 drawing_settings["right_clicked_squares"].append((row, col))
                             else:
                                 drawing_settings["right_clicked_squares"].remove((row, col))
-                            if client_game.reveal_stage:
+                            if window.sessionStorage.getItem('toggle-arrows') == 'true':
                                 init["drawings_sent"] = 0
                         elif current_right_clicked_square is not None:
                             x, y = pygame.mouse.get_pos()
@@ -1542,11 +1544,11 @@ async def main():
                                 # Disallow out of bound arrows
                                 if 0 <= end_right_released_square[0] < 8 and 0 <= end_right_released_square[1] < 8:
                                     drawing_settings["drawn_arrows"].append([current_right_clicked_square, end_right_released_square])
-                                    if client_game.reveal_stage:
+                                    if window.sessionStorage.getItem('toggle-arrows') == 'true':
                                         init["drawings_sent"] = 0
                             else:
                                 drawing_settings["drawn_arrows"].remove([current_right_clicked_square, end_right_released_square])
-                                if client_game.reveal_stage:
+                                if window.sessionStorage.getItem('toggle-arrows') == 'true':
                                     init["drawings_sent"] = 0
                 
                 elif event.type == pygame.KEYDOWN:
@@ -1878,7 +1880,8 @@ async def main():
             if not init["drawings_sent"]:
                 drawings = {
                     "right_clicked_squares": drawing_settings["right_clicked_squares"],
-                    "drawn_arrows": drawing_settings["drawn_arrows"]
+                    "drawn_arrows": drawing_settings["drawn_arrows"],
+                    "side": client_game._starting_player
                 }
                 txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "spectator_pid": None}
                 node.tx(txdata)

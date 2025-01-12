@@ -101,6 +101,9 @@
     --action-button-waiting-background: #c7c7c7;
     --action-button-icon-hover: #fff6e0;
     --action-button-icon-disabled: #727272;
+    --share-button: rgb(46, 77, 82);
+    --share-button-active: rgb(80, 119, 113);
+    --share-button-hover: rgb(70, 118, 126);
     --move-row-text: white;
     --even-move-row-background: rgb(150, 150, 150);
     --move-button-text: white;
@@ -265,6 +268,9 @@
     --action-button-waiting-background: #c7c7c7;
     --action-button-icon-hover: #fff6e0;
     --action-button-icon-disabled: #727272;
+    --share-button: #151f22;
+    --share-button-active: rgb(46, 77, 82);
+    --share-button-hover: rgb(70, 118, 126);
     --move-row-text: white;
     --even-move-row-background: rgb(66, 66, 66);
     --move-button-text: white;
