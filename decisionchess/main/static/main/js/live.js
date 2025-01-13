@@ -179,13 +179,11 @@ function adjustSizes() {
     const parentHeight = contentContainer.parentElement.offsetHeight;
     var matrixDimension = Math.min(parentWidth, parentHeight) - (paddingLeft + paddingRight);
     contentContainer.style.width = matrixDimension + 'px';
-    var containerWidth = document.getElementById("left-column").offsetWidth;
-    gameContainerHeight = containerWidth * 1.25;
-    contentContainer.style.height = (gameContainerHeight * 3.1) + 'px';
+    var containerWidth = matrixDimension / 5;
+    gameContainerHeight = matrixDimension * 1.25 / 4;
+    var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
+    contentContainer.style.height = isSmallScreen ? (gameContainerHeight * 7.5) + 'px': (gameContainerHeight * 4.1) + 'px';
     var gameDimension = containerWidth * 0.9;
-    document.getElementById("top-middle").style.height = gameContainerHeight + "px";
-    document.getElementById("bottom-middle").style.height = gameContainerHeight + "px";
-    document.getElementById("middle-section").style.height = `calc(100% - ${2 * gameContainerHeight}px)`;
     for (let i = 1; i <= 10; i++) {
         var gameContainer = document.getElementById(`game-${i}`);
         var iframeContainer = document.getElementById(`embedded-iframe-${i}`);

@@ -54,16 +54,28 @@ Live
                     <button class="refresh-button" onclick="loadPreviews()">Refresh Grid</button>
                 </div>
             </div>
-            <div class="d-flex justify-content-center align-items-center" style="width: 100%; height: 80vh;">
-                <div id="multiview-matrix" class="d-flex align-items-center" style="width: 100%;">
-                    <div id="left-column" class="d-flex flex-column justify-content-between" style="width: 25%; height: 100%;">
+            <div class="d-flex justify-content-center align-items-center" style="width: 100%; max-height: 80vh;">
+                <div id="multiview-matrix" class="d-flex flex-column justify-content-center align-items-center matrix-container" style="width: 100%;">
+                    <div id="first-column" class="d-flex justify-content-center align-items-end top-column" style="width: 100%; height: 25%;">
+                        <div class="spacer"></div>
                         <a id="game-1" class="game-container">
                             <div class="spinner-border" id="spinner-1" role="status">
                                 <span class="sr-only">Loading...</span>
                             </div>
                         </a>
-                        <a id="game-9" class="game-container">
-                            <div class="spinner-border" id="spinner-9" role="status">
+                        <a id="game-2" class="game-container">
+                            <div class="spinner-border" id="spinner-2" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </a>
+                        <a id="game-3" class="game-container">
+                            <div class="spinner-border" id="spinner-3" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </a>
+                        <div class="spacer"></div>
+                        <a id="game-4" class="game-container">
+                            <div class="spinner-border" id="spinner-4" role="status">
                                 <span class="sr-only">Loading...</span>
                             </div>
                         </a>
@@ -72,21 +84,9 @@ Live
                                 <span class="sr-only">Loading...</span>
                             </div>
                         </a>
-                    </div>
-                    <div style="width: 50%; height: 100%">
-                        <div id="top-middle" class="d-flex" style="width: 100%;">
-                            <a id="game-3" class="game-container">
-                                <div class="spinner-border" id="spinner-3" role="status">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                            </a>
-                            <a id="game-4" class="game-container">
-                                <div class="spinner-border" id="spinner-4" role="status">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                            </a>
-                        </div>
-                        <div id="middle-section" class="d-flex flex-column" style="width: 100%;">
+                    </div>  
+                    <div class="middle-block">
+                        <div id="middle-section" class="d-flex flex-column" style="width: 100%; height: 100%;">
                             <div class="middle-headers">
                                 <div class="input-group" style="padding: 10px 5px 0 5px;">
                                     <select class="custom-select user-select" id="user-select">
@@ -111,32 +111,32 @@ Live
                             </div>
                             <div id="center-preview" class="d-none center-preview"></div>
                         </div>
-                        <div id="bottom-middle" class="d-flex" style="width: 100%;">
-                            <a id="game-7" class="game-container">
-                                <div class="spinner-border" id="spinner-7" role="status">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                            </a>
-                            <a id="game-8" class="game-container">
-                                <div class="spinner-border" id="spinner-8" role="status">
-                                    <span class="sr-only">Loading...</span>
-                                </div>
-                            </a>
-                        </div>
                     </div>
-                    <div id="right-column" class="d-flex flex-column justify-content-between" style="width: 25%; height: 100%;">
-                        <a id="game-2" class="game-container">
-                            <div class="spinner-border" id="spinner-2" role="status">
+                    <div id="second-column" class="d-flex justify-content-center align-items-start bottom-column" style="width: 100%; height: 25%;">
+                        <div class="spacer"></div>
+                        <a id="game-6" class="game-container">
+                            <div class="spinner-border" id="spinner-6" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </a>
+                        <a id="game-7" class="game-container">
+                            <div class="spinner-border" id="spinner-7" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </a>
+                        <div class="spacer"></div>
+                        <a id="game-8" class="game-container break">
+                            <div class="spinner-border" id="spinner-8" role="status">
+                                <span class="sr-only">Loading...</span>
+                            </div>
+                        </a>
+                        <a id="game-9" class="game-container">
+                            <div class="spinner-border" id="spinner-9" role="status">
                                 <span class="sr-only">Loading...</span>
                             </div>
                         </a>
                         <a id="game-10" class="game-container">
                             <div class="spinner-border" id="spinner-10" role="status">
-                                <span class="sr-only">Loading...</span>
-                            </div>
-                        </a>
-                        <a id="game-6" class="game-container">
-                            <div class="spinner-border" id="spinner-6" role="status">
                                 <span class="sr-only">Loading...</span>
                             </div>
                         </a>
