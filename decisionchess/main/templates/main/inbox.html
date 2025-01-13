@@ -17,7 +17,7 @@
                         <div class="tab-pane fade show active" id="messagePreviews">
                             {% for message in received.all %}
                                 <button class="inbox-item" id="{{ message.message_id }}" onclick="getMessage('{{ message.message_id }}')">
-                                    <div class="{% if not message.is_read %}unread{% endif %}" id="header_{{ message.message_id }}">{{ message.subject }}</div>
+                                    <div class="{% if not message.is_read %}unread{% endif %} subject" id="header_{{ message.message_id }}">{{ message.subject }}</div>
                                     <div class="username">{{ message.sender_username }}</div>
                                 </button>
                             {% endfor %}

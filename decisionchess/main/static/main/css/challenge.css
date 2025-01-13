@@ -156,3 +156,31 @@ h1 {
 .svg-scaled-circle {
     width: 30%;
 }
+
+@media (max-width: 767px) {
+    .game-info {
+        width: auto;
+    }
+    .second {
+        transform: translateY(100%);
+    }
+    .challenge-content {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .challenger-side,
+    .opponent-side {
+        text-align: center;
+    }
+    h1 {
+        font-size: medium;
+    }
+    .challenger-side h2,
+    .opponent-side h2 {
+        font-size: small;
+    }
+    .svg-side {
+        width: 20px;
+    }
+}

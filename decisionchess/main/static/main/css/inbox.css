@@ -9,6 +9,7 @@
     background-color: var(--inbox-list-background);
 }
 
+
 .left-column {
     overflow-y: scroll;
     height: calc(100% - 50px);
@@ -37,6 +38,15 @@
 
 .unread {
     color: var(--homeblock-hover);
+}
+
+@media (max-width: 520px) {
+    .subject {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 50px;
+        white-space: nowrap;
+    }
 }
 
 .username {
