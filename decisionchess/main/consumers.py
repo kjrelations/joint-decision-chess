@@ -122,7 +122,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             random_number = random.randint(1 + increment, 9999 + increment)
             username = f"Anon-{random_number}"
             existing_users = await self.redis_helper.group_users(self.room_group_name)
-            if username not in existing_users.values():
+            usernames = [user_data.get('name') for user_data in existing_users]
+            if username not in usernames:
                 return username
             increment += 1000
 
