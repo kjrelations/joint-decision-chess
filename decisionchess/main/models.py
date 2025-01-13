@@ -251,3 +251,8 @@ class Blocks(models.Model):
 	block_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 	user = models.ForeignKey(User, related_name='blocked_users', on_delete=models.CASCADE)
 	blocked_user_id = models.UUIDField()
+
+class ReportedChats(models.Model):
+	report_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	game_id = models.UUIDField()
+	reporting_time = models.DateTimeField(default=timezone.now)

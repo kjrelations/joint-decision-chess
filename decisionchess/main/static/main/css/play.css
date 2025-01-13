@@ -19,6 +19,24 @@
     overflow-y: auto;
 }
 
+.chat-header {
+    width: 100%;
+    border-bottom: solid 1px black;
+}
+
+.report-chat {
+    border: none;
+    background-color: var(--chat-box-background);
+}
+
+.report-chat:focus {
+    outline: none;
+}
+
+.report-chat:hover {
+    background-color: var(--chat-input-background);
+}
+
 .chat-messages p {
     padding-top: 0.25em;
     padding-bottom: 0.25em;

@@ -762,6 +762,37 @@ function updateClocks(playerColor) {
     }
 }
 
+var reportElement = document.getElementById('reportButton');
+reportElement.addEventListener("click", function () {
+    const segments = window.location.href.split('/');
+    const game_id = segments[segments.length - 2];
+    fetch('/report_chat/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({ 
+            game_id: game_id, 
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === "Unauthorized") {
+            throw new Error('Unauthorized');
+        }
+        appendChatLog('Chat reported');
+        return;
+    })
+    .catch(error => {
+        appendChatLog('Chat already reported');
+    });
+    $('#reportChat').modal('hide');
+    $(".chat-wrapper").each(function() {
+        $(this).scrollTop($(this)[0].scrollHeight);
+    });
+});
+
 var socket;
 
 function initializeWebSocket() {

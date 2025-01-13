@@ -23,7 +23,7 @@ from django.views.decorators.http import require_GET
 from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
-from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification
+from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification, ReportedChats
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm, GameSearch
 from .user_settings import default_themes
 from .game_helpers import *
@@ -942,6 +942,20 @@ def save_chat_and_game(active_game, lobby_game, data):
         return [white_rank_new, completed_game.white_rank_change], [black_rank_new, completed_game.black_rank_change]
     else:
         return None, None
+
+def report_chat(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        game_id = data["game_id"]
+        if not ReportedChats.objects.filter(game_id=game_id).exists():
+            report = ReportedChats(
+                game_id= game_id
+            )
+            report.save()
+            return JsonResponse({"status": "OK"}, status=200)
+    return JsonResponse({"status": "Unauthorized"}, status=401) 
+
 
 def lessons(request):
     lessons = Lessons.objects.all()
