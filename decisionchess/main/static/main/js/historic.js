@@ -18,7 +18,7 @@ window.addEventListener('load', function() {
     document.getElementById('embedded-iframe').style.height = width + 'px';
     iframeContainer.style.height = width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
+    var commandCenterHeight = width * 0.6;
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     document.getElementById('chat-box').style.height = isSmallScreen ? `20vh` : `calc(${window.innerHeight * 0.95}px - 50px - ${commandCenterHeight}px)`;
     adjustFont();

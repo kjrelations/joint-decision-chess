@@ -23,6 +23,7 @@ decision_chess/decision_builder/*
 !decision_chess/decision_builder/images/delete.png
 !decision_chess/decision_builder/builder_utils.py
 !decision_chess/decision_builder/constants.py
+!decision_chess/decision_builder/helpers.py
 decision_chess/decision_exercise/*
 !decision_chess/decision_exercise/main.py
 decision_chess/decision_spectate/*

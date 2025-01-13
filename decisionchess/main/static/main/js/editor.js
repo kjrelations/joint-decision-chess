@@ -17,7 +17,7 @@ window.addEventListener('load', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = 0.8 * width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
+    var commandCenterHeight = isSmallScreen ? (width * 0.8) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });
@@ -27,7 +27,7 @@ window.addEventListener('resize', function() {
     var width = iframeContainer.offsetWidth;
     document.getElementById('embedded-iframe').style.height = 0.8 * width + 'px';
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    var commandCenterHeight = isSmallScreen ? (width * 0.5) : (width * 0.6);
+    var commandCenterHeight = isSmallScreen ? (width * 0.8) : (width * 0.6);
     document.getElementById('command-center').style.height = commandCenterHeight + 'px';
     adjustFont();
 });

@@ -34,6 +34,12 @@
     .historic-game:hover::before {
         background: linear-gradient(to right, transparent, rgba(115, 101, 59, 0.22), transparent);
     }
+
+    @media (max-width: 767px) {
+        .moves {
+            font-size: 12px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -127,7 +133,7 @@ Search Games
                                     <h3>{{ game.game_type }}</h3>
                                     <div>{{ game.white_name|safe }} Vs. {{ game.black_name|safe }}</div>
                                 </div>
-                                <i>{{ game.formatted_moves_string }}</i>
+                                <i class="moves">{{ game.formatted_moves_string }}</i>
                             </div>
                         </div>
                     </a>
