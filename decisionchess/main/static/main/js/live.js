@@ -179,10 +179,11 @@ function adjustSizes() {
     const parentHeight = contentContainer.parentElement.offsetHeight;
     var matrixDimension = Math.min(parentWidth, parentHeight) - (paddingLeft + paddingRight);
     contentContainer.style.width = matrixDimension + 'px';
-    var containerWidth = matrixDimension / 5;
-    gameContainerHeight = matrixDimension * 1.25 / 4;
     var isSmallScreen = window.matchMedia('(max-width: 767px)').matches;
-    contentContainer.style.height = isSmallScreen ? (gameContainerHeight * 7.5) + 'px': (gameContainerHeight * 4.1) + 'px';
+    var isVerySmallScreen = window.matchMedia('(max-width: 442px)').matches;
+    gameContainerHeight = isVerySmallScreen? matrixDimension * 1.5 / 4: matrixDimension * 1.25 / 4;
+    var containerWidth = isVerySmallScreen ? matrixDimension / 3.2 :matrixDimension / 5;
+    contentContainer.style.height = isSmallScreen ? (gameContainerHeight * 7.9) + 'px': (gameContainerHeight * 4.1) + 'px';
     var gameDimension = containerWidth * 0.9;
     for (let i = 1; i <= 10; i++) {
         var gameContainer = document.getElementById(`game-${i}`);
