@@ -5,9 +5,9 @@ This project is a multiplayer enabled game for classic chess as well as the vari
 
 The project is available at https://decisionchess.com
 
-![home](/images/home.PNG)
+![home](/images/home.jpg)
 
-![play](/images/play.PNG)
+![play](/images/play.jpg)
 
 ![play](/images/lessons.png)
 
