@@ -9,7 +9,7 @@ The project is available at https://decisionchess.com
 
 ![play](/images/play.PNG)
 
-![play](/images/lessons.PNG)
+![play](/images/lessons.png)
 
 Play against a live opponent or basic AI in a chess variant where the first move doesn't dictate an advantage and surprise is around every corner. Many more features have been added will be specific to the variant such as sub-variants, timed modes, leaderboards, a board editor, saved games under a user profile, and more. 
 
