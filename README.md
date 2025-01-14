@@ -5,11 +5,11 @@ This project is a multiplayer enabled game for classic chess as well as the vari
 
 The project is available at https://decisionchess.com
 
-![home](/images/home.PNG)
+![home](./images/home.PNG)
 
-![play](/images/play.PNG)
+![play](./images/play.PNG)
 
-![play](/images/lessons.PNG)
+![play](./images/lessons.PNG)
 
 Play against a live opponent or basic AI in a chess variant where the first move doesn't dictate an advantage and surprise is around every corner. Many more features have been added will be specific to the variant such as sub-variants, timed modes, leaderboards, a board editor, saved games under a user profile, and more. 
 
