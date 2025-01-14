@@ -18,7 +18,7 @@ class RegisterForm(UserCreationForm):
 
     def clean_username(self):
         username = self.cleaned_data['username']
-        if self.username.startswith("Anon-") or self.username.lower() == "anonymous":
+        if self.username.startswith("Anon") or self.username.lower() == "anonymous":
             raise forms.ValidationError("Usernames starting with 'Anon' are not allowed.")
         return username
 
