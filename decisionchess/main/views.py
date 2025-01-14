@@ -441,8 +441,19 @@ def get_config(request, game_uuid):
                     }
                 }, status=200)
         except ChessLobby.DoesNotExist:
-            # TODO check historic games and send a special refresh message if available
-            return JsonResponse({"status": "error"}, status=401)
+            try:
+                game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
+                return JsonResponse({
+                    "message": {
+                        "starting_side": fill,
+                        "game_type": game.gametype, 
+                        "theme_names": theme_names, 
+                        "subvariant": game.subvariant,
+                        "increment": game.increment
+                        }
+                    }, status=200)
+            except GameHistoryTable.DoesNotExist:
+                return JsonResponse({"status": "error"}, status=401)
     elif type == 'historic':
         try:
             game = GameHistoryTable.objects.get(historic_game_id=game_uuid)
@@ -557,9 +568,11 @@ def play(request, game_uuid):
                 else:
                     return redirect("home")
         elif str(user_id) in [str(game.white_id), str(game.black_id)]:
-            # For now we won't allow multiple joins even from the same person after they've connected twice
+            # For now we will allow multiple joins even from the same person after they've connected twice
             # This logic not for ranked modes later
-            if game.black_id is None and game.initiator_connected:
+            if (game.black_id is None or game.white_id is None) and game.initiator_connected and game.match_type == "Ranked":
+                return redirect("home")
+            elif game.black_id is None and game.initiator_connected:
                 game.black_id = user_id
                 game.opponent_connected = True
                 game.opponent_name = player
