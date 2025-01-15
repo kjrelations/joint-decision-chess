@@ -36,6 +36,12 @@ import jwt
 import re
 import os
 
+def get_static_file_path(file_name):
+    if settings.DEBUG:
+        return os.path.join(settings.BASE_DIR, 'static', 'images', file_name)
+    else:
+        return os.path.join(settings.STATIC_ROOT, file_name)
+
 def index(request):
     return render(request, "main/home.html", {})
 
@@ -113,23 +119,23 @@ def home(request):
 
     context["games_in_play"] = games_in_play
     context['form'] = CreateNewGameForm()
-    context['white_side_svg'] = open(".\\static\\images\\side-white.svg").read()
-    context['black_side_svg'] = open(".\\static\\images\\side-black.svg").read()
-    context['random_side_svg'] = open(".\\static\\images\\side-random.svg").read()
-    context['complete_svg'] = open(".\\static\\images\\complete-variant-icon.svg").read()
-    context['relay_svg'] = open(".\\static\\images\\reveal-stage-icon.svg").read()
-    context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
-    context['standard_svg'] = open(".\\static\\images\\decision-icon-colored.svg").read()
-    context['x_svg'] = open(".\\static\\images\\x.svg").read()
-    context['envelope_svg'] = open(".\\static\\images\\envelope.svg").read()
-    context['hourglass_svg'] = open(".\\static\\images\\hourglass.svg").read()
-    context['bird_svg'] = open(".\\static\\images\\bird.svg").read()
-    context['lightning_svg'] = open(".\\static\\images\\lightning.svg").read()
-    context['eye_svg'] = open(".\\static\\images\\eye.svg").read()
-    context['masks_svg'] = open(".\\static\\images\\masks.svg").read()
-    context['a1_svg'] = open(".\\static\\images\\a1.svg").read()
-    context['b1_svg'] = open(".\\static\\images\\b1.svg").read()
-    context['classic_svg'] = open(".\\static\\images\\classic-icon.svg").read()
+    context['white_side_svg'] = open(get_static_file_path("side-white.svg")).read()
+    context['black_side_svg'] = open(get_static_file_path("side-black.svg")).read()
+    context['random_side_svg'] = open(get_static_file_path("side-random.svg")).read()
+    context['complete_svg'] = open(get_static_file_path("complete-variant-icon.svg")).read()
+    context['relay_svg'] = open(get_static_file_path("reveal-stage-icon.svg")).read()
+    context['countdown_svg'] = open(get_static_file_path("decision-stage-icon.svg")).read()
+    context['standard_svg'] = open(get_static_file_path("decision-icon-colored.svg")).read()
+    context['x_svg'] = open(get_static_file_path("x.svg")).read()
+    context['envelope_svg'] = open(get_static_file_path("envelope.svg")).read()
+    context['hourglass_svg'] = open(get_static_file_path("hourglass.svg")).read()
+    context['bird_svg'] = open(get_static_file_path("bird.svg")).read()
+    context['lightning_svg'] = open(get_static_file_path("lightning.svg")).read()
+    context['eye_svg'] = open(get_static_file_path("eye.svg")).read()
+    context['masks_svg'] = open(get_static_file_path("masks.svg")).read()
+    context['a1_svg'] = open(get_static_file_path("a1.svg")).read()
+    context['b1_svg'] = open(get_static_file_path("b1.svg")).read()
+    context['classic_svg'] = open(get_static_file_path("classic-icon.svg")).read()
     return render(request, "main/home.html", context)
 
 class CustomLoginView(LoginView):
@@ -547,7 +553,7 @@ def play(request, game_uuid):
         sessionVariables['player_rank'] = player_rank
         sessionVariables['opponent_rank'] = opponent_rank
 
-        with open(".\\static\\images\\reveal-stage-icon.svg", 'r') as f:
+        with open(get_static_file_path("reveal-stage-icon.svg"), 'r') as f:
             sessionVariables["relay_svg"] = f.read()
 
         if (game.computer_game or game.solo_game) and str(user_id) in [str(game.white_id), str(game.black_id)]:
@@ -998,16 +1004,16 @@ def lesson(request, lesson):
 
 def variants(request):
     svg_files = {
-        'standard_svg': ".\\static\\images\\decision-icon-colored.svg",
-        'envelope_svg': ".\\static\\images\\envelope.svg",
-        'hourglass_svg': ".\\static\\images\\hourglass.svg",
-        'bird_svg': ".\\static\\images\\bird.svg",
-        'lightning_svg': ".\\static\\images\\lightning.svg",
-        'relay_svg': ".\\static\\images\\reveal-stage-icon.svg",
-        'eye_svg': ".\\static\\images\\eye.svg",
-        'masks_svg': ".\\static\\images\\masks.svg",
-        'countdown_svg': ".\\static\\images\\decision-stage-icon.svg",
-        'complete_svg': ".\\static\\images\\complete-variant-icon.svg",
+        'standard_svg': get_static_file_path("decision-icon-colored.svg"),
+        'envelope_svg': get_static_file_path("envelope.svg"),
+        'hourglass_svg': get_static_file_path("hourglass.svg"),
+        'bird_svg': get_static_file_path("bird.svg"),
+        'lightning_svg': get_static_file_path("lightning.svg"),
+        'relay_svg': get_static_file_path("reveal-stage-icon.svg"),
+        'eye_svg': get_static_file_path("eye.svg"),
+        'masks_svg': get_static_file_path("masks.svg"),
+        'countdown_svg': get_static_file_path("decision-stage-icon.svg"),
+        'complete_svg': get_static_file_path("complete-variant-icon.svg"),
     }
     context = {}
     for key, path in svg_files.items():
@@ -1104,10 +1110,10 @@ def live(request):
         else:
             return JsonResponse({"status": "DNE", "message": "no games"}, status=200)
     context = {"active_games": active_games}
-    context['complete_svg'] = open(".\\static\\images\\complete-variant-icon.svg").read()
-    context['relay_svg'] = open(".\\static\\images\\reveal-stage-icon.svg").read()
-    context['countdown_svg'] = open(".\\static\\images\\decision-stage-icon.svg").read()
-    context['standard_svg'] = open(".\\static\\images\\decision-icon-colored.svg").read()
+    context['complete_svg'] = open(get_static_file_path("complete-variant-icon.svg")).read()
+    context['relay_svg'] = open(get_static_file_path("reveal-stage-icon.svg")).read()
+    context['countdown_svg'] = open(get_static_file_path("decision-stage-icon.svg")).read()
+    context['standard_svg'] = open(get_static_file_path("decision-icon-colored.svg")).read()
     return render(request, "main/live.html", context)
 
 def board_editor(request):
@@ -1296,16 +1302,16 @@ def leaderboards(request):
 
     context = {"rank_lists": rank_lists}
     svg_files = {
-        'standard_svg': ".\\static\\images\\decision-icon-colored.svg",
-        'envelope_svg': ".\\static\\images\\envelope.svg",
-        'hourglass_svg': ".\\static\\images\\hourglass.svg",
-        'bird_svg': ".\\static\\images\\bird.svg",
-        'lightning_svg': ".\\static\\images\\lightning.svg",
-        'relay_svg': ".\\static\\images\\reveal-stage-icon.svg",
-        'relay_eye_svg': ".\\static\\images\\eye.svg",
-        'relay_masks_svg': ".\\static\\images\\masks.svg",
-        'countdown_svg': ".\\static\\images\\decision-stage-icon.svg",
-        'complete_svg': ".\\static\\images\\complete-variant-icon.svg",
+        'standard_svg': get_static_file_path("decision-icon-colored.svg"),
+        'envelope_svg': get_static_file_path("envelope.svg"),
+        'hourglass_svg': get_static_file_path("hourglass.svg"),
+        'bird_svg': get_static_file_path("bird.svg"),
+        'lightning_svg': get_static_file_path("lightning.svg"),
+        'relay_svg': get_static_file_path("reveal-stage-icon.svg"),
+        'relay_eye_svg': get_static_file_path("eye.svg"),
+        'relay_masks_svg': get_static_file_path("masks.svg"),
+        'countdown_svg': get_static_file_path("decision-stage-icon.svg"),
+        'complete_svg': get_static_file_path("complete-variant-icon.svg"),
     }
 
     for key, path in svg_files.items():
@@ -1480,14 +1486,14 @@ def challenge(request, challenge_id):
             raise Http404("Object not found")
         context = {'initiator': request.user.username == challenge.initiator_name, 'challenge': challenge}
         if challenge.initiator_choice == "Random":
-            random = open(".\\static\\images\\random-pawn.svg").read()
+            random = open(get_static_file_path("random-pawn.svg")).read()
             context.update({
                 'init_svg': random,
                 'opp_svg': random
                 })
         else:
-            black = open(".\\static\\images\\black-pawn.svg").read()
-            white = open(".\\static\\images\\white-pawn.svg").read()
+            black = open(get_static_file_path("black-pawn.svg")).read()
+            white = open(get_static_file_path("white-pawn.svg")).read()
             context.update({
                 'init_svg': white if challenge.initiator_color == "white" else black,
                 'opp_svg': white if not challenge.initiator_color == "white" else black
@@ -1500,7 +1506,7 @@ def challenge(request, challenge_id):
             gametype_svg = "decision-stage-icon"
         else:
             gametype_svg = "decision-icon-colored" # Handle classical eventually
-        context['gametype_svg'] = open(f".\\static\\images\\{gametype_svg}.svg").read()
+        context['gametype_svg'] = open(get_static_file_path(f"{gametype_svg}.svg")).read()
         context["chat_messages"] = challenge.messages.all().order_by('timestamp')
         return render(request, 'main/challenge.html', context)
     except Challenge.DoesNotExist:
