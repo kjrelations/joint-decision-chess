@@ -37,6 +37,11 @@ ADMIN_PATH = config('ADMIN_PATH')
 
 ALLOWED_HOSTS = ['*', 'www.decisionchess.com', 'decisionchess.com', '127.0.0.1', 'localhost']
 
+CORS_ALLOWED_ORIGINS = [
+    'https://decisionchess.com',
+    'http://decisionchess.com',
+]
+
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # Application definition
