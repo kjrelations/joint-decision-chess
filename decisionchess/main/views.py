@@ -40,8 +40,8 @@ def get_static_file_path(file_name):
     if settings.DEBUG:
         return f'.\\static\\images\\{file_name}'
     else:
-        print(os.listdir(os.getcwd()))
-        return f'.\\app\\static_collected_files\\{file_name}'
+        print(os.listdir('app\\static_collected_files'))
+        return f'app\\static_collected_files\\{file_name}'
 
 def index(request):
     return render(request, "main/home.html", {})
