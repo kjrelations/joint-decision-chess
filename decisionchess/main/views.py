@@ -40,7 +40,7 @@ def get_static_file_path(file_name):
     if settings.DEBUG:
         return f'.\\static\\images\\{file_name}'
     else:
-        print(os.listdir('.\\static_collected_files'))
+        print(os.listdir('static_collected_files'))
         return f'.\\static_collected_files\\{file_name}'
 
 def index(request):
