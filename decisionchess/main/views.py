@@ -750,6 +750,7 @@ def update_connected(request):
                     if not web_connect:
                         filename = active_game.FEN.replace('/', '-')
                         filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
+                        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
                         if not os.path.exists(filename):
                             save_screenshot(active_game.FEN, filename)
                 except ActiveGames.DoesNotExist:
