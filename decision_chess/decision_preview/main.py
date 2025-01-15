@@ -14,7 +14,7 @@ from constants import *
 from helpers import *
 from network import *
 
-production = False
+production = True
 local = "http://127.0.0.1:8000"
 local_debug = False
 
