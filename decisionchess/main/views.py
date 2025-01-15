@@ -40,7 +40,7 @@ def get_static_file_path(file_name):
     if settings.DEBUG:
         return os.path.join('.', 'static', 'images', file_name)
     else:
-        print(os.listdir(os.getcwd()))
+        print(os.listdir(os.path.join(os.getcwd(), 'app')))
         return os.path.join('./app', 'static_collected_files', file_name)
 
 def index(request):
