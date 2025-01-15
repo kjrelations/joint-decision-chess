@@ -41,8 +41,10 @@ def get_static_file_path(file_name):
         return f'.\\static\\images\\{file_name}'
     else:
         print(os.listdir(os.getcwd()))
+        print(settings.BASE_DIR)
         if 'media' in os.listdir(os.getcwd()):
             print(os.listdir('media'))
+            print(os.listdir(settings.MEDIA_ROOT))
         return os.path.join('static_collected_files', 'images', file_name)
 
 def index(request):
