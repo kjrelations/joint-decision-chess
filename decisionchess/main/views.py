@@ -41,7 +41,7 @@ def get_static_file_path(file_name):
         return f'.\\static\\images\\{file_name}'
     else:
         print(os.listdir(os.path.join('static_collected_files', 'images')))
-        return f'.\\static_collected_files\\images\\{file_name}'
+        return f'static_collected_files\\images\\{file_name}'
 
 def index(request):
     return render(request, "main/home.html", {})
