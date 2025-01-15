@@ -38,9 +38,9 @@ import os
 
 def get_static_file_path(file_name):
     if settings.DEBUG:
-        return os.path.join(settings.BASE_DIR, 'static', 'images', file_name)
+        return os.path.join('.', 'static', 'images', file_name)
     else:
-        return os.path.join(settings.STATIC_ROOT, file_name)
+        return os.path.join('.', 'static_collected_files', file_name)
 
 def index(request):
     return render(request, "main/home.html", {})
