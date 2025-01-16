@@ -762,6 +762,7 @@ def update_connected(request):
                                 content = ContentFile(temp_file.read())
                             default_storage.save(raw_filename, content)
                             os.remove(filepath)
+                            print("HEREEE")
                 except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
