@@ -762,7 +762,6 @@ def update_connected(request):
                                 content = ContentFile(temp_file.read())
                             default_storage.save(raw_filename, content)
                             os.remove(filepath)
-                            print("HEREEE")
                 except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
@@ -1271,6 +1270,7 @@ def game_search(request):
             formatted_moves_string = " ".join(result[:init_index])
             if len(move_list) > 5:
                 formatted_moves_string += f" ... {result[-1]}"
+            extension = ".png" if settings.DEBUG else ""
             games_details.append({
                 'game_id': game.historic_game_id,
                 'outcome': game.outcome,
@@ -1279,7 +1279,7 @@ def game_search(request):
                 'game_type': game.gametype.capitalize(),
                 'relative_game_time': relative_game_time,
                 'formatted_moves_string': formatted_moves_string,
-                'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
+                'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + extension
             })
         context["games_details"] = games_details
             
@@ -1411,6 +1411,7 @@ def profile(request, username):
            or (side == 'Black' and game.outcome == '0-1')
         loss = (side == 'White' and game.outcome == '0-1') \
             or (side == 'Black' and game.outcome == '1-0')
+        extension = ".png" if settings.DEBUG else ""
         games_details.append({
             'game_id': game.historic_game_id,
             'outcome': game.outcome,
@@ -1421,7 +1422,7 @@ def profile(request, username):
             'loss': loss,
             'relative_game_time': relative_game_time,
             'formatted_moves_string': formatted_moves_string,
-            'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
+            'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + extension
         })
         
     wins = [game for game in games_details if game['won']]
