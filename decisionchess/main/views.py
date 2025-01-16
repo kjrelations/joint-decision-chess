@@ -750,18 +750,18 @@ def update_connected(request):
                 try:
                     active_game = ActiveGames.objects.get(active_game_id=connect_game_uuid)
                     if not web_connect:
-                        filename = active_game.FEN.replace('/', '-')
-                        filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
+                        raw_filename = active_game.FEN.replace('/', '-')
+                        filepath = os.path.join(settings.MEDIA_ROOT, f"{raw_filename}.png")
                         os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
                         if settings.DEBUG:
-                            if not os.path.exists(filename):
-                                save_screenshot(active_game.FEN, filename)
-                        elif not default_storage.exists(filename):
-                            save_screenshot(active_game.FEN, filename)
-                            with open(filename, 'rb') as temp_file:
+                            if not os.path.exists(filepath):
+                                save_screenshot(active_game.FEN, filepath)
+                        elif not default_storage.exists(raw_filename):
+                            save_screenshot(active_game.FEN, filepath)
+                            with open(filepath, 'rb') as temp_file:
                                 content = ContentFile(temp_file.read())
-                            default_storage.save(filename, content)
-                            os.remove(filename)
+                            default_storage.save(raw_filename, content)
+                            os.remove(filepath)
                 except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
