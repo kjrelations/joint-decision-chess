@@ -869,10 +869,18 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()
-            filename = active_game.FEN.replace('/', '-')
-            filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
-            if not os.path.exists(filename):
-                save_screenshot(active_game.FEN, filename)
+            raw_filename = active_game.FEN.replace('/', '-')
+            filepath = os.path.join(settings.MEDIA_ROOT, f"{raw_filename}.png")
+            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+            if settings.DEBUG:
+                if not os.path.exists(filepath):
+                    save_screenshot(active_game.FEN, filepath)
+            elif not default_storage.exists(raw_filename):
+                save_screenshot(active_game.FEN, filepath)
+                with open(filepath, 'rb') as temp_file:
+                    content = ContentFile(temp_file.read())
+                default_storage.save(raw_filename + ".png", content)
+                os.remove(filepath)
             response = {"status": "updated"}
             if white_rank_new is not None: # Maybe return username
                 response.update({"white_rank": white_rank_new, "black_rank": black_rank_new})
