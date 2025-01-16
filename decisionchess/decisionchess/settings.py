@@ -28,10 +28,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Need to force it to bool else it reads as string same with others way below
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+
 if DEBUG:
+    MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR.parent.parent / 'debug_images'
+else:
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
+
+    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 ADMIN_PATH = config('ADMIN_PATH')
 

@@ -10,6 +10,8 @@ from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.signing import dumps, loads, SignatureExpired, BadSignature
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -40,11 +42,6 @@ def get_static_file_path(file_name):
     if settings.DEBUG:
         return f'.\\static\\images\\{file_name}'
     else:
-        print(os.listdir(os.getcwd()))
-        print(settings.BASE_DIR)
-        if 'media' in os.listdir(os.getcwd()):
-            print(os.listdir('media'))
-            print(os.listdir(settings.MEDIA_ROOT))
         return os.path.join('static_collected_files', 'images', file_name)
 
 def index(request):
@@ -120,7 +117,7 @@ def home(request):
         except User.DoesNotExist:
             opponent_username = "Anonymous"
         game.opponent_name = opponent_username
-        game.FEN_image_name = "/media/" + game.fen.replace("/", "-") + ".png" if game.fen is not None else ""
+        game.FEN_image_name = settings.MEDIA_URL + game.fen.replace("/", "-") + ".png" if game.fen is not None else ""
 
     context["games_in_play"] = games_in_play
     context['form'] = CreateNewGameForm()
@@ -756,8 +753,15 @@ def update_connected(request):
                         filename = active_game.FEN.replace('/', '-')
                         filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
                         os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-                        if not os.path.exists(filename):
+                        if settings.DEBUG:
+                            if not os.path.exists(filename):
+                                save_screenshot(active_game.FEN, filename)
+                        elif not default_storage.exists(filename):
                             save_screenshot(active_game.FEN, filename)
+                            with open(filename, 'rb') as temp_file:
+                                content = ContentFile(temp_file.read())
+                            default_storage.save(filename, content)
+                            os.remove(filename)
                 except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
@@ -1274,7 +1278,7 @@ def game_search(request):
                 'game_type': game.gametype.capitalize(),
                 'relative_game_time': relative_game_time,
                 'formatted_moves_string': formatted_moves_string,
-                'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
+                'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
             })
         context["games_details"] = games_details
             
@@ -1416,7 +1420,7 @@ def profile(request, username):
             'loss': loss,
             'relative_game_time': relative_game_time,
             'formatted_moves_string': formatted_moves_string,
-            'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
+            'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
         })
         
     wins = [game for game in games_details if game['won']]
