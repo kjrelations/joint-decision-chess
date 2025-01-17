@@ -1059,10 +1059,9 @@ def live(request):
     user_type_param = request.GET.get('user_type')
     user_param = request.GET.get('user')
     active_games = []
-    today = timezone.now().date() 
-    yesterday_start = today - timedelta(days=1) 
-    yesterday_end = today
-    if ActiveGames.objects.filter(start_time__range=[yesterday_start, yesterday_end]).exists():
+    now = timezone.now()
+    yesterday_start = now - timedelta(days=1) 
+    if ActiveGames.objects.filter(start_time__range=[yesterday_start, now]).exists():
         lobby_subquery = ChessLobby.objects.filter(
             lobby_id=OuterRef('active_game_id'),
             private=False,
