@@ -1070,6 +1070,7 @@ def live(request):
         ).exclude(gametype='Classical')
 
         game_filter = Q(gametype__in=types) if types else Q(gametype="Standard")
+        game_filter &= Q(start_time__range=[yesterday_start, now])
         if user_param:
             if user_type_param == "white":
                 game_filter &= Q(
