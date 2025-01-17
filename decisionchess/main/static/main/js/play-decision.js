@@ -1456,7 +1456,7 @@ function handleButton(buttonId, sessionStorageObjectName, Options = null, resetD
             // On followup display only, main buttons are disabled. We need to re-enable them
             // This does not apply to executing or queued actions
             actionbuttons.forEach(function(element) {
-                if (element.id !== buttonId) {
+                if (element.id !== buttonId && element.id !== 'toggleShareArrows') {
                     if ((element.id !== 'readyButton' && element.id !== 'redoButton')) {
                         element.classList.remove("hidden");
                     }

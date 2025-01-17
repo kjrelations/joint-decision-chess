@@ -10,6 +10,8 @@ from django.template.loader import render_to_string
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.signing import dumps, loads, SignatureExpired, BadSignature
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -38,9 +40,9 @@ import os
 
 def get_static_file_path(file_name):
     if settings.DEBUG:
-        return os.path.join('.', 'static', 'images', file_name)
+        return f'.\\static\\images\\{file_name}'
     else:
-        return os.path.join('.', 'static_collected_files', file_name)
+        return os.path.join('static_collected_files', 'images', file_name)
 
 def index(request):
     return render(request, "main/home.html", {})
@@ -115,7 +117,7 @@ def home(request):
         except User.DoesNotExist:
             opponent_username = "Anonymous"
         game.opponent_name = opponent_username
-        game.FEN_image_name = "/media/" + game.fen.replace("/", "-") + ".png" if game.fen is not None else ""
+        game.FEN_image_name = settings.MEDIA_URL + game.fen.replace("/", "-") + ".png" if game.fen is not None else ""
 
     context["games_in_play"] = games_in_play
     context['form'] = CreateNewGameForm()
@@ -748,10 +750,18 @@ def update_connected(request):
                 try:
                     active_game = ActiveGames.objects.get(active_game_id=connect_game_uuid)
                     if not web_connect:
-                        filename = active_game.FEN.replace('/', '-')
-                        filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
-                        if not os.path.exists(filename):
-                            save_screenshot(active_game.FEN, filename)
+                        raw_filename = active_game.FEN.replace('/', '-')
+                        filepath = os.path.join(settings.MEDIA_ROOT, f"{raw_filename}.png")
+                        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+                        if settings.DEBUG:
+                            if not os.path.exists(filepath):
+                                save_screenshot(active_game.FEN, filepath)
+                        elif not default_storage.exists(raw_filename + '.png'):
+                            save_screenshot(active_game.FEN, filepath)
+                            with open(filepath, 'rb') as temp_file:
+                                content = ContentFile(temp_file.read())
+                            default_storage.save(raw_filename + ".png", content)
+                            os.remove(filepath)
                 except ActiveGames.DoesNotExist:
                     active_game = ActiveGames(
                         active_game_id = connect_game_uuid,
@@ -859,10 +869,18 @@ def save_game(request):
                 return JsonResponse({"status": "error", "message": "Game and chat not Saved"}, status=400)
             lobby_game.delete()
             active_game.delete()
-            filename = active_game.FEN.replace('/', '-')
-            filename = os.path.join(settings.MEDIA_ROOT, f"{filename}.png")
-            if not os.path.exists(filename):
-                save_screenshot(active_game.FEN, filename)
+            raw_filename = active_game.FEN.replace('/', '-')
+            filepath = os.path.join(settings.MEDIA_ROOT, f"{raw_filename}.png")
+            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+            if settings.DEBUG:
+                if not os.path.exists(filepath):
+                    save_screenshot(active_game.FEN, filepath)
+            elif not default_storage.exists(raw_filename + '.png'):
+                save_screenshot(active_game.FEN, filepath)
+                with open(filepath, 'rb') as temp_file:
+                    content = ContentFile(temp_file.read())
+                default_storage.save(raw_filename + ".png", content)
+                os.remove(filepath)
             response = {"status": "updated"}
             if white_rank_new is not None: # Maybe return username
                 response.update({"white_rank": white_rank_new, "black_rank": black_rank_new})
@@ -1041,7 +1059,9 @@ def live(request):
     user_type_param = request.GET.get('user_type')
     user_param = request.GET.get('user')
     active_games = []
-    if ActiveGames.objects.exists():
+    now = timezone.now()
+    yesterday_start = now - timedelta(days=2) 
+    if ActiveGames.objects.filter(start_time__range=[yesterday_start, now]).exists():
         lobby_subquery = ChessLobby.objects.filter(
             lobby_id=OuterRef('active_game_id'),
             private=False,
@@ -1050,6 +1070,7 @@ def live(request):
         ).exclude(gametype='Classical')
 
         game_filter = Q(gametype__in=types) if types else Q(gametype="Standard")
+        game_filter &= Q(start_time__range=[yesterday_start, now])
         if user_param:
             if user_type_param == "white":
                 game_filter &= Q(
@@ -1268,7 +1289,7 @@ def game_search(request):
                 'game_type': game.gametype.capitalize(),
                 'relative_game_time': relative_game_time,
                 'formatted_moves_string': formatted_moves_string,
-                'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
+                'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
             })
         context["games_details"] = games_details
             
@@ -1410,7 +1431,7 @@ def profile(request, username):
             'loss': loss,
             'relative_game_time': relative_game_time,
             'formatted_moves_string': formatted_moves_string,
-            'FEN_image_name': "/media/" + game.FEN_outcome.replace('/', '-') + ".png"
+            'FEN_image_name': settings.MEDIA_URL + game.FEN_outcome.replace('/', '-') + ".png"
         })
         
     wins = [game for game in games_details if game['won']]

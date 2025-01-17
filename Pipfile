@@ -26,6 +26,8 @@ django-livereload-server = "*"
 cython = "*"
 redis = "*"
 pillow = "*"
+boto3 = "*"
+django-storages = {extras = ["s3"], version = "*"}
 
 [dev-packages]
 pytest = "*"

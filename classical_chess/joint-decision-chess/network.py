@@ -9,7 +9,7 @@ from constants import *
 from helpers import *
 
 debug_prints = True
-production = False
+production = True
 local = "http://127.0.0.1:8000"
 
 ## Network helper logic

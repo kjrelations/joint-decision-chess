@@ -28,14 +28,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Need to force it to bool else it reads as string same with others way below
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+
 if DEBUG:
+    MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR.parent.parent / 'debug_images'
+else:
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        }
+    }
+
+    MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 ADMIN_PATH = config('ADMIN_PATH')
 
 ALLOWED_HOSTS = ['*', 'www.decisionchess.com', 'decisionchess.com', '127.0.0.1', 'localhost']
+
+CORS_ALLOWED_ORIGINS = [
+    'https://decisionchess.com',
+    'http://decisionchess.com',
+]
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
@@ -50,6 +73,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'whitenoise.runserver_nostatic',
+    'storages',
     'crispy_forms',
     'crispy_bootstrap4',
     'main.apps.MainConfig',
