@@ -756,7 +756,7 @@ def update_connected(request):
                         if settings.DEBUG:
                             if not os.path.exists(filepath):
                                 save_screenshot(active_game.FEN, filepath)
-                        elif not default_storage.exists(raw_filename):
+                        elif not default_storage.exists(raw_filename + '.png'):
                             save_screenshot(active_game.FEN, filepath)
                             with open(filepath, 'rb') as temp_file:
                                 content = ContentFile(temp_file.read())
@@ -875,7 +875,7 @@ def save_game(request):
             if settings.DEBUG:
                 if not os.path.exists(filepath):
                     save_screenshot(active_game.FEN, filepath)
-            elif not default_storage.exists(raw_filename):
+            elif not default_storage.exists(raw_filename + '.png'):
                 save_screenshot(active_game.FEN, filepath)
                 with open(filepath, 'rb') as temp_file:
                     content = ContentFile(temp_file.read())
