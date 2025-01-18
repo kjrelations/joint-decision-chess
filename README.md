@@ -17,9 +17,9 @@ The full title is called "Joint-Decision Chess".
 
 ## Description
 
-See the dev-base branch if you wish to test the prototype version where the README is accurate and local testing can easily be performed with no connection or major setup and an early version of the game can be played.
+See the dev-base branch if you wish to test the prototype version where the README is accurate and local testing can easily be performed with no connection or major setup and classic chess can be played.
 
-Otherwise, if you understand how to launch Django locally, you may try this branch, you will need a PostgreSQL database setup and to configure it in Django's settings as well as server connection details.
+Otherwise, if you understand how to launch Django locally, you may try this branch, you will need a PostgreSQL database and Redis setup and to configure it in Django's settings as well as server connection details to the IRC server.
 
 If you wish to test a basic form of local multiplayer without Django try the dev-pygbag branch.
 
@@ -40,7 +40,8 @@ Currently the main gameplay features include:
   - Checkmate or stalemate;
   - Resignation;
   - Drawing;
-  - By threefold repetition after checking the last 500 unique states.
+  - By threefold repetition after checking the last 500 unique states
+  - By insufficient material.
 - Algebraic moves are displayed as the game is played in the command center with figurine algebraic notation.
 - Cycling between the themes defined in the `themes.json` file by continuously pressing the "t" key or through the web "Cycle Theme" button:
   - A selection of a subset of themes can be made in the user settings including the active theme.
@@ -73,7 +74,7 @@ The site is public for testing but a local environment of just the game can easi
    pipenv shell
    ```
 
-4. You can now run the application using Pygbag which should have been installed. This should be done from the `join-decision-chess` file for the live game, the `simple_ai` folder for the AI game, and `solo_play` for a game against yourself:
+4. You can now run the application using Pygbag which should have been installed. This should be done from the `classical_chess/joint-decision-chess` folder for the live game, the `classical_chess/simple_ai` folder for the AI game, and `classical_chess/solo_play` for a game against yourself. (These are for the classic game similar folders exist in `decision_chess` for the variant with `basic` being the live game):
 
    ```bash
    python -m pygbag main.py
@@ -81,12 +82,14 @@ The site is public for testing but a local environment of just the game can easi
 
    - This will allow your game to be available at localhost:8000.
 
+5. Edit the configuration variable for production or development in main.py and network.py. 
+
 5. The live game requires a game id to connect to the server in order to load, this is retrieved from the browser sessionStorage. Open a browser dev console and run the following before the ready button is clicked.
 
    - `sessionStorage.setItem("current_game_id", "<non-0-number>")`.
    - If the game loads with a black screen simply reload the page. If an error box occurs then clear the site cache and re-run the above.
 
-6. For the live game repeat step 5 once the board is loaded on a new tab to open a second client as the opponent.
+6. For the live game repeat step 6 once the board is loaded on a new tab to open a second client as the opponent.
 
 7. Play a game!
 
