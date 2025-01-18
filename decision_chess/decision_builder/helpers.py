@@ -1171,6 +1171,8 @@ def draw_highlight(window, theme, row, col, left, is_white, player_side=True):
 
 # Helper function to shift coordinates as inputs to those of a reversed board
 def map_to_reversed_board(original_row, original_col, board_size=8):
+    if original_col > 7:
+        return original_row, original_col
     reversed_row = board_size - 1 - original_row
     reversed_col = board_size - 1 - original_col
     

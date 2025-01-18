@@ -1276,7 +1276,14 @@ class Game:
                     elif (prev_row, prev_col) == (other_curr_row, other_curr_col) and increment > 0:
                         update = False
                     replacement = potential_capture if increment < 0 else new_piece
-                    fill = color_piece if increment < 0 else ' '
+                    entanglement = (other_curr_row, other_curr_col) == (prev_row, prev_col) and (other_curr_row, other_curr_col) != (curr_row, curr_col)
+                    if increment > 0 :
+                        if entanglement:
+                            fill = other_color_piece
+                        else:
+                            fill = ' '
+                    else:
+                        fill = color_piece
                     if update and replacement is not None:
                         board[curr_row][curr_col] = replacement
                     board[prev_row][prev_col] = fill
