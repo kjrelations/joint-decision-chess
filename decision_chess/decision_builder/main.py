@@ -9,6 +9,8 @@ from helpers import *
 from network import *
 from builder_utils import *
 
+production = True
+
 # Handle Persistent Storage
 if __import__("sys").platform == "emscripten":
     from platform import window
@@ -576,3 +578,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         log_err_and_print(e, window)
+        # if production:
+        #     post_error(e, window, 'builder')

@@ -1234,6 +1234,8 @@ class Game:
                 prev_col, 
                 other_curr_row, 
                 other_curr_col, 
+                other_prev_row,
+                other_prev_col,
                 color_piece, 
                 other_color_piece
             ):
@@ -1263,8 +1265,11 @@ class Game:
                         update = False
                     replacement = potential_capture if increment < 0 else new_piece
                     entanglement = (other_curr_row, other_curr_col) == (prev_row, prev_col) and (other_curr_row, other_curr_col) != (curr_row, curr_col)
+                    collapse = (other_curr_row, other_curr_col) == (prev_row, prev_col) and (curr_row, curr_col) == (other_prev_row, other_prev_col)
                     if increment > 0 :
-                        if entanglement:
+                        if collapse:
+                            fill = ' '
+                        elif entanglement:
                             fill = other_color_piece
                         else:
                             fill = ' '
@@ -1299,6 +1304,8 @@ class Game:
                 white_prev_col,
                 black_curr_row,
                 black_curr_col,
+                black_prev_row,
+                black_prev_col,
                 white_piece,
                 black_piece
                 )
@@ -1312,6 +1319,8 @@ class Game:
                 black_prev_col,
                 white_curr_row,
                 white_curr_col,
+                white_prev_row,
+                white_prev_col,
                 black_piece,
                 white_piece
                 )
