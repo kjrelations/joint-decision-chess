@@ -115,6 +115,16 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             window.eval(js_code)
             raise Exception(str(e))
 
+def post_error(error, window, script_type):
+    try:
+        domain = 'https://decisionchess.com' if production else local
+        url = f'{domain}/error/'
+        handler = fetch.RequestHandler()
+        csrf = window.sessionStorage.getItem("csrftoken")
+        _ = handler.post(url, data = {"error": str(error), "script": script_type}, headers = {'X-CSRFToken': csrf})
+    except Exception as e:
+        pass
+
 # Helper to retrieve game from DB
 async def reconnect(window, game_id, access_keys, init, drawing_settings):
     init["reconnecting"] = True

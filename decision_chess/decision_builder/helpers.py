@@ -765,7 +765,7 @@ def is_check(board, is_white):
     return False
 
 def has_insufficient_material(board):
-    pieces = {'K': 0, 'B': 0, 'N': 0}
+    pieces = {'K': 0, 'B': 0, 'N': 0, 'P': 0, 'Q': 0, 'R': 0}
     bishops_squares = {'white': False, 'black': False}
     
     for row in board:
@@ -1171,6 +1171,8 @@ def draw_highlight(window, theme, row, col, left, is_white, player_side=True):
 
 # Helper function to shift coordinates as inputs to those of a reversed board
 def map_to_reversed_board(original_row, original_col, board_size=8):
+    if original_col > 7:
+        return original_row, original_col
     reversed_row = board_size - 1 - original_row
     reversed_col = board_size - 1 - original_col
     

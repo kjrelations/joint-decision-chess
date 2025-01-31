@@ -2129,3 +2129,5 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         log_err_and_print(e, window)
+        # if production:
+        #     post_error(e, window, 'decision_main')

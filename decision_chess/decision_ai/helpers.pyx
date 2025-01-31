@@ -847,7 +847,7 @@ cpdef bint is_check(list[list[str]] board, bint is_white):
     return False
 
 def has_insufficient_material(board):
-    pieces = {'K': 0, 'B': 0, 'N': 0}
+    pieces = {'K': 0, 'B': 0, 'N': 0, 'P': 0, 'Q': 0, 'R': 0}
     bishops_squares = {'white': False, 'black': False}
     
     for row in board:
