@@ -26,7 +26,7 @@ from base64 import binascii
 from datetime import datetime, timedelta, timezone as dt_timezone
 from .models import BlogPosts, User, ChessLobby, ActiveGames, GameHistoryTable, ActiveChatMessages, ChatMessages, UserSettings
 from .models import  Lessons, Pages, EmbeddedGames, Message, Challenge, Blocks, Notification, ReportedChats
-# from .models import Errors
+from .models import Errors
 from .forms import ChangeEmailForm, EditProfile, CloseAccount, ChangeThemesForm, CreateNewGameForm, BoardEditorForm, GameSearch
 from .user_settings import default_themes
 from .game_helpers import *
@@ -493,26 +493,25 @@ def get_config(request, game_uuid):
     else:
         return JsonResponse({"status": "error"}, status=401)
 
-# def error(request, game_uuid):
-#     if request.method == 'POST':
-#         data = json.loads(request.body.decode('utf-8'))
-#         if data.get("token"):
-#             decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
-#             if decoded.get('error'):
-#                 error_message = decoded['error']
-#                 game_id = data['game_id']
-#                 script_type = data['script_type']
-#                 error = Errors(
-#                     game_id= game_id,
-#                     script_type= script_type,
-#                     error_message= error_message
-#                 )
-#                 error.save()
-#                 return JsonResponse({"status": "updated"}, status=200)
-#             else:
-#                 return JsonResponse({"status": "error"}, status=400)
-#         else:
-#             return JsonResponse({"status": "error"}, status=400)
+def error(request, game_uuid):
+    if request.method == 'POST':
+        data = json.loads(request.body.decode('utf-8'))
+        if data.get("token"):
+            decoded = jwt.decode(data["token"], settings.STATE_UPDATE_KEY + str(game_uuid), algorithms=['HS256'])
+            if decoded.get('error'):
+                error_message = decoded['error']
+                script_type = decoded['script_type']
+                error = Errors(
+                    game_id= game_uuid,
+                    script_type= script_type,
+                    error_message= error_message
+                )
+                error.save()
+                return JsonResponse({"status": "updated"}, status=200)
+            else:
+                return JsonResponse({"status": "error"}, status=400)
+        else:
+            return JsonResponse({"status": "error"}, status=400)
 
 def play(request, game_uuid):
     if request.user and request.user.id is not None:

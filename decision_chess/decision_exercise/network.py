@@ -2,10 +2,7 @@ import json
 import fetch
 import asyncio
 import pygbag.aio as asyncio
-import pygbag_net
 import builtins
-import time
-from datetime import datetime
 from game import *
 from constants import *
 from helpers import *
@@ -21,16 +18,14 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
     if post:
         if isinstance(client_game, str): # could just be not game but we add hinting later
             raise Exception('Wrong POST input')
-        # POSTed form is synced yet move can be undone and locally can be unsynced
         client_game_str = client_game.to_json(include_states=True).replace('"_sync": false', '"_sync": true')
-        FEN = client_game.translate_into_FEN()
         try:
             domain = 'https://decisionchess.com' if production else local
             url = f'{domain}/game-state/' + game_id + '/'
             handler = fetch.RequestHandler()
             js_code = """
-                function generateToken(game_json, secret, FEN_text) {
-                    const oPayload = {game: game_json, FEN: FEN_text};
+                function generateToken(game_json, secret) {
+                    const oPayload = {game: game_json};
                     const oHeader = {alg: 'HS256', typ: 'JWT'};
                     return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
                 };
@@ -39,13 +34,13 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
                     const script = document.createElement('script');
                     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
                     script.onload = function() {
-                        window.encryptedToken = generateToken('game_string', 'secret_key', 'FEN_str');
+                        window.encryptedToken = generateToken('game_string', 'secret_key');
                     };
                     document.head.appendChild(script);
                 } else {
-                    window.encryptedToken = generateToken('game_string', 'secret_key', 'FEN_str');
+                    window.encryptedToken = generateToken('game_string', 'secret_key');
                 };
-            """.replace("game_string", client_game_str).replace("secret_key", secret_key).replace("FEN_str", FEN)
+            """.replace("game_string", client_game_str).replace("secret_key", secret_key)
             window.eval(js_code)
             await asyncio.sleep(0)
             while window.encryptedToken is None:
@@ -72,7 +67,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             if data.get("status") and data["status"] == "error":
                 raise Exception('Request failed')
             elif data.get("message") and data["message"] == "DNE":
-                return None, None, None
+                return None
             elif data.get("token"):
                 response_token = data["token"]
             else:
@@ -105,12 +100,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
                 await asyncio.sleep(0)
             game_payload = window.payload
             window.payload = None
-            submitted, retrieved_time = None, None
-            if data.get('submitted'):
-                submitted = datetime.fromisoformat(data.get('submitted'))
-                if data.get('retrieved'):
-                    retrieved_time = datetime.fromisoformat(data.get('retrieved'))
-            return game_payload, submitted, retrieved_time
+            return game_payload
         except Exception as e:
             exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
             js_code = f"console.log('{exc_str}')".replace(secret_key, "####")
@@ -119,7 +109,7 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
 
 async def post_error(error, window, script_type):
     access_keys = load_keys("secrets.txt")
-    game_id = window.sessionStorage.getItem("current_game_id")
+    game_id = "exercise"
     secret_key = access_keys["updatekey"] + game_id
     try:
         error = str(error).replace('\n', '\\n').replace("'", "\\x27").replace('"', '\\x22')#.replace('(', 'o-p').replace(')', 'c-p')
@@ -158,50 +148,19 @@ async def post_error(error, window, script_type):
         window.eval(js_code)
         raise Exception(str(e))
 
-async def save_game(window, game_id, alg_moves_str, comp_moves_str, score, FEN_final, forced_end):
-    try:
-        domain = 'https://decisionchess.com' if production else local
-        url = f'{domain}/save_game/'
-        handler = fetch.RequestHandler()
-        csrf = window.sessionStorage.getItem("csrftoken")
-        response = await handler.put(url, data = {
-            "game_uuid": game_id,
-            "alg_moves": alg_moves_str,
-            "outcome": score,
-            "comp_moves": comp_moves_str,
-            "FEN": FEN_final,
-            "termination_reason": forced_end
-            }, headers = {'X-CSRFToken': csrf})
-        data = json.loads(response)
-        if data.get("status") and data["status"] == "error":
-            raise Exception(f'Request failed {data}')
-    except Exception as e:
-        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
-        js_code = f"console.log('{exc_str}')"
-        window.eval(js_code)
-        raise Exception(str(e))
-
 # Helper to retrieve game from DB
 async def reconnect(window, game_id, access_keys, init):
     init["reconnecting"] = True
     retrieved_state = None
-    delay = 0
     try:
-        retrieved_state, submitted_time, retrieved_time = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
+        retrieved_state = await asyncio.wait_for(get_or_update_game(window, game_id, access_keys), timeout = 5)
         if retrieved_state is None:
-            init["retrieved"] = Game(new_board.copy(), init["starting_player"], init["game_type"], init["subvariant"], init["increment"])
+            init["retrieved"] = Game(new_board.copy(), init["starting_player"])
         else:
             retrieved_state = json.loads(retrieved_state)
             init["retrieved"] = Game(custom_params=retrieved_state)
         init["sent"] = 1
-        if init["retrieved"].timed_mode and submitted_time is not None:
-            datetime_delay = retrieved_time - submitted_time
-            delay = datetime_delay.total_seconds()
-            if delay > 30:
-                init["retrieved_delay"] = delay - 30
-            else:
-                init["retrieved_delay"] = 0
-    except Exception as e:
+    except:
         err = 'Reconnection Failed. Reattempting...'
         js_code = f"console.log('{err}')"
         window.eval(js_code)
@@ -238,7 +197,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
             if ev == node.SYNC:
                 print("SYNC:", node.proto, node.data[node.CMD])
                 cmd = node.data[node.CMD]
-                if cmd == "initialize" and node.data["spectator_pid"] is None:
+                if cmd == "initialize":
                     init["starting_player"] = node.data.pop("start")
                     if node.data.get("starting_position"):
                         init["starting_position"] = json.loads(node.data.pop("starting_position"))
@@ -252,40 +211,16 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         drawing_settings["clear_selections"] = True
                     else:
                         init["sent"] = 0
-                    drawing_settings["draw"] = True
                     init["initializing"] = True
                     init["reloaded"] = True
                 elif cmd == f"{init['opponent']} ready":
-                    if client_game.timed_mode:
-                        if init["opponent"] == "white":
-                            init["white_grace_time"] = None
-                        else:
-                            init["black_grace_time"] = None
-                        if not init["waiting"]:
-                            end = time.monotonic()
-                            if client_game.black_clock_running:
-                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0) 
-                            if client_game.white_clock_running:
-                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                            client_game.white_clock_running = True if not client_game.white_played else False
-                            client_game.black_clock_running = True if not client_game.black_played else False
-                        init["reference_time"] = time.monotonic()
                     init["waiting"] = False
-                    drawing_settings["draw"] = True
                 elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
-                    drawing_settings["draw"] = True
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             illegal = client_game.synchronize(game)
-                            if not illegal and client_game.timed_mode and not client_game.end_position:
-                                end = time.monotonic()
-                                if client_game._starting_player and client_game.white_clock_running and client_game.black_played:
-                                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                elif not client_game._starting_player and client_game.black_clock_running and client_game.white_played:
-                                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                                init["reference_time"] = time.monotonic()
                             drawing_settings["recalc_selections"] = True
                             # Unnecessary?
                             if not (client_game.white_played and client_game._starting_player) and \
@@ -298,16 +233,14 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     else:
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
-                                    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
-                                    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
                                     checkmate = checkmate_white or checkmate_black
                                     no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
                                     if checkmate:
                                         print("CHECKMATE")
-                                    elif no_remaining_moves or insufficient:
+                                    elif no_remaining_moves:
                                         print("STALEMATE")
-                                        if insufficient:
-                                            client_game.forced_end = "Insufficient Material"
                                     elif client_game.threefold_check():
                                         print("DRAW BY THREEFOLD REPETITION")
                                     elif client_game.forced_end != "":
@@ -316,13 +249,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     break
                                 print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
                             if illegal:
-                                end = time.monotonic()
-                                if client_game.timed_mode:
-                                    if client_game.white_clock_running:
-                                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                    if client_game.black_clock_running:
-                                        client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                                    init["reference_time"] = time.monotonic()
                                 txdata = {node.CMD: f"{init['player']}_update"}
                                 txdata[node.CMD] += "_req_sync"
                                 send_game = client_game.to_json()
@@ -345,22 +271,39 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                 played_condition = not client_game._starting_player == client_game.black_played
                             init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
-                            if client_game.timed_mode:
-                                if not client_game.white_played:
-                                    client_game.white_clock_running = True
-                                if not client_game.black_played:
-                                    client_game.black_clock_running = True
-                                init["reference_time"] = time.monotonic()
-                                node.tx({node.CMD: f"{init["player"]} resume_clock"})
+                        # Handle double desync first to prevent infinite syncs sent back and forth
+                        elif not game._sync and not client_game._sync and not init["desync"]:
+                            confirmed_state = None
+                            if not init["local_debug"]:
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                                except:
+                                    err = 'Confirmed state retrieval failed. Quitting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
+                            if confirmed_state is not None:
+                                confirmed_state = json.loads(confirmed_state)
+                                confirmed_state["_starting_player"] = init["starting_player"]
+                                client_game = Game(custom_params=confirmed_state)
+                                init["sent"] = 1
+                                drawing_settings["recalc_selections"] = True
+                                drawing_settings["clear_selections"] = True
+                                node.tx({node.CMD: "_retrieve"})
+                                init["desync"] = True
+                                client_game._sync = False
+                            else:
+                                node.tx({node.CMD: "_fail"})
+                                await asyncio.sleep(1)
+                                node.quit()
+                                raise Exception("Desynced")
                         elif "req_sync" in cmd:
                             txdata = {node.CMD: "_sync"}
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
                             init["sent"] = 0
-                            if client_game.timed_mode:
-                                init["reference_time"] = time.monotonic()
-                elif cmd == "drawings" and node.data["spectator_pid"] is None:
+                elif cmd == "drawings":
                     drawings = json.loads(node.data.pop("drawings"))
                     opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
                     drawing_settings["opposing_right_clicked_squares"] = opposing_right_clicked_squares
@@ -368,21 +311,18 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
-                    drawing_settings["draw"] = True
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
                         client_state_actions["draw_offer_received"] = True
                 elif cmd == "draw_accept":
                     client_state_actions["draw_response_received"] = True
-                    drawing_settings["draw"] = True
                 elif cmd == "undo_offer":
                     if not client_state_actions["undo_sent"]:
                         window.sessionStorage.setItem("undo_request", "true")
                         client_state_actions["undo_received"] = True
                 elif cmd == "undo_accept":
                     client_state_actions["undo_response_received"] = True
-                    drawing_settings["draw"] = True
                 elif cmd == "reset":
                     apply_resets(window, offers, client_state_actions)
                 elif "reset" in cmd:
@@ -394,68 +334,59 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         client_state_actions[offer_states[3]] = True
                         sent_status = offer_states[1] + "_sent"
                         client_state_actions[sent_status] = False
-                elif "resume_clock" in cmd:
-                    opponent_color = cmd.split(" ")[0]
-                    end = time.monotonic()
-                    if opponent_color == "white":
-                        client_game.white_clock_running = True
-                        if client_game.black_clock_running:
-                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                    elif opponent_color == "black":
-                        client_game.black_clock_running = True
-                        if client_game.white_clock_running:
-                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                    init["reference_time"] = time.monotonic()
-                elif any(spectate_cmd in cmd for spectate_cmd in ["disconnect", "clock sync"]):
-                    pass
 
                 elif cmd == "join_game":
-                    join_text = "joined game" if "spec" not in node.data["nick"] else "is spectating"
-                    print(node.data["nick"], join_text)
+                    print(node.data["nick"], "joined game")
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
-                    spectator = "spec" in node.data["nick"]
-                    if node.fork and not spectator:
+                    if node.fork: # Need to handle spectators
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
-                        node.publish(spectator)
+                        node.publish()
+                elif cmd == "_retrieve":
+                    confirmed_state = None
+                    if not init["local_debug"]:
+                        try:
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                        except:
+                            err = 'Confirmed state retrieval failed. Quitting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
+                    if confirmed_state is not None:
+                        confirmed_state = json.loads(confirmed_state)
+                        confirmed_state["_starting_player"] = init["starting_player"]
+                        client_game = Game(custom_params=confirmed_state)
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
+                        else:
+                            played_condition = not client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
+                        drawing_settings["recalc_selections"] = True
+                        drawing_settings["clear_selections"] = True
+                        node.tx({node.CMD: "retrieve_sync"})
+                    else:
+                        node.tx({node.CMD: "_fail"})
+                        await asyncio.sleep(1)
+                        node.quit()
+                        raise Exception("Desynced")
+                elif cmd == "_fail":
+                    node.quit()
+                    raise Exception("Desynced")
 
             elif ev == node.GAME:
                 print("GAME:", node.proto, node.data[node.CMD])
                 cmd = node.data[node.CMD]
 
                 if cmd == f"{init['opponent']} initialized":
-                    if client_game.timed_mode:
-                        if init["opponent"] == "white":
-                            init["white_grace_time"] = None
-                        else:
-                            init["black_grace_time"] = None
-                        if not init["waiting"]:
-                            end = time.monotonic()
-                            if client_game.black_clock_running:
-                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0) 
-                            if client_game.white_clock_running:
-                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                            client_game.white_clock_running = True if not client_game.white_played else False
-                            client_game.black_clock_running = True if not client_game.black_played else False
-                        init["reference_time"] = time.monotonic()
                     node.tx({node.CMD: f"{init['player']} ready"})
                     init["waiting"] = False
-                    drawing_settings["draw"] = True
                 elif f"{init['opponent']}_update" in cmd or "_sync" in cmd:
-                    drawing_settings["draw"] = True
                     if f"{init['opponent']}_update" in cmd:
                         game = Game(custom_params=json.loads(node.data.pop("game")))
                         if client_game._sync:
                             temp_alg_moves = client_game.alg_moves
                             illegal = client_game.synchronize(game)
-                            if not illegal and client_game.timed_mode and not client_game.end_position:
-                                end = time.monotonic()
-                                if client_game._starting_player and client_game.white_clock_running and client_game.black_played:
-                                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                elif not client_game._starting_player and client_game.black_clock_running and client_game.white_played:
-                                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                                init["reference_time"] = time.monotonic()
                             drawing_settings["recalc_selections"] = True
                             # Unnecessary?
                             if not (client_game.white_played and client_game._starting_player) and \
@@ -468,16 +399,14 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     else:
                                         handle_play(window, move_sound)
                                 if client_game.end_position:
-                                    checkmate_white, remaining_moves_white, insufficient = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
-                                    checkmate_black, remaining_moves_black, insufficient = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
+                                    checkmate_white, remaining_moves_white = is_checkmate_or_stalemate(client_game.board, True, client_game.moves)
+                                    checkmate_black, remaining_moves_black = is_checkmate_or_stalemate(client_game.board, False, client_game.moves)
                                     checkmate = checkmate_white or checkmate_black
                                     no_remaining_moves = remaining_moves_white == 0 or remaining_moves_black == 0
                                     if checkmate:
                                         print("CHECKMATE")
-                                    elif no_remaining_moves or insufficient:
+                                    elif no_remaining_moves:
                                         print("STALEMATE")
-                                        if insufficient:
-                                            client_game.forced_end = "Insufficient Material"
                                     elif client_game.threefold_check():
                                         print("DRAW BY THREEFOLD REPETITION")
                                     elif client_game.forced_end != "":
@@ -486,13 +415,6 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                     break
                                 print_d("ALG_MOVES: ", client_game.alg_moves, debug=debug_prints)
                             if illegal:
-                                end = time.monotonic()
-                                if client_game.timed_mode:
-                                    if client_game.white_clock_running:
-                                        client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                    if client_game.black_clock_running:
-                                        client_game.remaining_black_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                    init["reference_time"] = time.monotonic()
                                 txdata = {node.CMD: f"{init['player']}_update"}
                                 txdata[node.CMD] += "_req_sync"
                                 send_game = client_game.to_json()
@@ -515,21 +437,39 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                                 played_condition = not client_game._starting_player == client_game.black_played
                             init["sent"] = int(played_condition)
                             init["desync"] = False if init["desync"] else False
-                            if client_game.timed_mode:
-                                if not client_game.white_played:
-                                    client_game.white_clock_running = True
-                                if not client_game.black_played:
-                                    client_game.black_clock_running = True
-                                init["reference_time"] = time.monotonic()
-                            node.tx({node.CMD: f"{init["player"]} resume_clock"})
+                        # Handle double desync first to prevent infinite syncs sent back and forth
+                        elif not game._sync and not client_game._sync and not init["desync"]:
+                            confirmed_state = None
+                            if not init["local_debug"]:
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                                except:
+                                    err = 'Confirmed state retrieval failed. Quitting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
+                            if confirmed_state is not None:
+                                confirmed_state = json.loads(confirmed_state)
+                                confirmed_state["_starting_player"] = init["starting_player"]
+                                client_game = Game(custom_params=confirmed_state)
+                                init["sent"] = 1
+                                drawing_settings["recalc_selections"] = True
+                                drawing_settings["clear_selections"] = True
+                                node.tx({node.CMD: "_retrieve"})
+                                init["desync"] = True
+                                client_game._sync = False
+                            else:
+                                node.tx({node.CMD: "_fail"})
+                                await asyncio.sleep(1)
+                                node.quit()
+                                raise Exception("Desynced")
+                        # elif both games are unsynced, synchronize? and maybe or maybe not send something to halt infinite sync signals?
                         elif "req_sync" in cmd:
                             txdata = {node.CMD: "_sync"}
                             send_game = client_game.to_json()
                             txdata.update({"game": send_game})
                             node.tx(txdata)
                             init["sent"] = 0
-                            if client_game.timed_mode:
-                                init["reference_time"] = time.monotonic()
                 elif cmd == "drawings":
                     drawings = json.loads(node.data.pop("drawings"))
                     opposing_right_clicked_squares, opposing_drawn_arrows, right_clicked_squares, drawn_arrows = load_drawings(drawings)
@@ -538,21 +478,18 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                     if node.data.get("redraw"):
                         drawing_settings["right_clicked_squares"] = right_clicked_squares
                         drawing_settings["drawn_arrows"] = drawn_arrows
-                    drawing_settings["draw"] = True
                 elif cmd == "draw_offer":
                     if not client_state_actions["draw_offer_sent"]:
                         window.sessionStorage.setItem("draw_request", "true")
                         client_state_actions["draw_offer_received"] = True
                 elif cmd == "draw_accept":
                     client_state_actions["draw_response_received"] = True
-                    drawing_settings["draw"] = True
                 elif cmd == "undo_offer":
                     if not client_state_actions["undo_sent"]:
                         window.sessionStorage.setItem("undo_request", "true")
                         client_state_actions["undo_received"] = True
                 elif cmd == "undo_accept":
                     client_state_actions["undo_response_received"] = True
-                    drawing_settings["draw"] = True
                 elif cmd == "reset":
                     apply_resets(window, offers, client_state_actions)
                 elif "reset" in cmd:
@@ -564,70 +501,69 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         client_state_actions[offer_states[3]] = True
                         sent_status = offer_states[1] + "_sent"
                         client_state_actions[sent_status] = False
-                elif "resume_clock" in cmd:
-                    opponent_color = cmd.split(" ")[0]
-                    end = time.monotonic()
-                    if opponent_color == "white":
-                        client_game.white_clock_running = True
-                        if client_game.black_clock_running:
-                            client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                    elif opponent_color == "black":
-                        client_game.black_clock_running = True
-                        if client_game.white_clock_running:
-                            client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                    init["reference_time"] = time.monotonic()
-                elif any(spectate_cmd in cmd for spectate_cmd in ["disconnect", "clock sync"]):
-                    pass
-
+                
                 elif cmd == "clone":
-                    if not node.fork:
-                        # send all history to child
-                        node.checkout_for(node.data)
-                        spectator_pid = node.data[node.PID] if "spec" in node.data["nick"] else None
-                        init_message = {node.CMD: "initialize", "start": not init["starting_player"], "spectator_pid": spectator_pid}
-                        if init["initialized"]:
-                            end = time.monotonic()
-                            if client_game.timed_mode:
-                                if client_game.white_clock_running:
-                                    client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                                if client_game.black_clock_running:
-                                    client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                                if init["white_grace_time"] is not None:
-                                    init["white_grace_time"] = max(init["white_grace_time"] - (end - init["reference_time"]), 0)
-                                    init_message.update({"white_grace_time": init["white_grace_time"]})
-                                if init["black_grace_time"] is not None:
-                                    init["black_grace_time"] = max(init["black_grace_time"] - (end - init["reference_time"]), 0)
-                                    init_message.update({"black_grace_time": init["black_grace_time"]})
-                                init["reference_time"] = time.monotonic()
-                            init_message.update({"starting_position": client_game.to_json(include_states=True)})
+                    # send all history to child
+                    node.checkout_for(node.data)
+                    init_message = {node.CMD: "initialize", "start": not init["starting_player"]}
+                    if init["initialized"]:
+                        init_message.update({"starting_position": client_game.to_json(include_states=True)})
+                    else:
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
                         else:
-                            if client_game._starting_player:
-                                played_condition = client_game._starting_player == client_game.white_played
-                            else:
-                                played_condition = not client_game._starting_player == client_game.black_played
-                            init["sent"] = int(played_condition)
-                        node.tx(init_message)
-                        if client_game.reveal_stage:
-                            drawings = {
-                                "right_clicked_squares": drawing_settings["right_clicked_squares"],
-                                "drawn_arrows": drawing_settings["drawn_arrows"],
-                                "opposing_right_clicked_squares": drawing_settings["opposing_right_clicked_squares"],
-                                "opposing_drawn_arrows": drawing_settings["opposing_drawn_arrows"]
-                            }
-                            txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "redraw": True, "spectator_pid": spectator_pid}
-                            node.tx(txdata)
-                        if not init["initialized"]:
-                            init["initializing"] = True
+                            played_condition = not client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
+                    node.tx(init_message)
+                    if client_game.reveal_stage:
+                        drawings = {
+                            "right_clicked_squares": drawing_settings["right_clicked_squares"],
+                            "drawn_arrows": drawing_settings["drawn_arrows"],
+                            "opposing_right_clicked_squares": drawing_settings["opposing_right_clicked_squares"],
+                            "opposing_drawn_arrows": drawing_settings["opposing_drawn_arrows"]
+                        }
+                        txdata = {node.CMD: "drawings", "drawings": json.dumps(drawings), "redraw": True}
+                        node.tx(txdata)
+                    if not init["initialized"]:
+                        init["initializing"] = True
                 elif cmd == "join_game":
-                    join_text = "joined game" if "spec" not in node.data["nick"] else "is spectating"
-                    print(node.data["nick"], join_text)
+                    print(node.data["nick"], "joined game")
                 elif cmd == "rejoin":
                     print("Lobby/Game:", "Welcome", node.data['nick'])
-                    spectator = "spec" in node.data["nick"]
-                    if node.fork and not spectator:
+                    if node.fork: # Need to handle spectators by not publishing to them if they live in a different room
                         node.fork = 0
                     if node.data['forked_node'] != node.pid:
-                        node.publish(spectator)
+                        node.publish()
+                elif cmd == "_retrieve":
+                    confirmed_state = None
+                    if not init["local_debug"]:
+                        try:
+                            confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                        except:
+                            err = 'Confirmed state retrieval failed. Quitting...'
+                            js_code = f"console.log('{err}')"
+                            window.eval(js_code)
+                            print(err)
+                    if confirmed_state is not None:
+                        confirmed_state = json.loads(confirmed_state)
+                        confirmed_state["_starting_player"] = init["starting_player"]
+                        client_game = Game(custom_params=confirmed_state)
+                        if client_game._starting_player:
+                            played_condition = client_game._starting_player == client_game.white_played
+                        else:
+                            played_condition = not client_game._starting_player == client_game.black_played
+                        init["sent"] = int(played_condition)
+                        drawing_settings["recalc_selections"] = True
+                        drawing_settings["clear_selections"] = True
+                        node.tx({node.CMD: "retrieve_sync"})
+                    else:
+                        node.tx({node.CMD: "_fail"})
+                        await asyncio.sleep(1)
+                        node.quit()
+                        raise Exception("Desynced")
+                elif cmd == "_fail":
+                    node.quit()
+                    raise Exception("Desynced")
                 else:
                     print("87 ?", node.data)
 
@@ -639,21 +575,13 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
 
             elif ev == node.JOINED:
                 print("Entered channel", node.joined)
-                count_side = sum(1 for key in node.users.keys() if key.startswith("u_" + node.side) and "spec" not in key)
                 game_channel = f"{node.lobby}-{init['game_id']}"
-                if not node.in_game and node.joined == game_channel and count_side >= 2:
-                    node.quit()
-                    window.sessionStorage.setItem('duplicate', 'true')
-                    break
-                if node.joined == node.lobby_channel and not node.in_game:
+                if node.joined == node.lobby_channel:
                     node.tx({node.CMD: "join_game", 'nick': node.nick}) # tx() joins the game lobby and sends another JOINED event
-                    continue
-                if node.joined == game_channel and not node.in_game:
-                    node.in_game = True
-                if node.joined == game_channel and not init["reloaded"] and node.in_game:
+                if node.joined == game_channel and not init["reloaded"]: # This should handle rejoining spectators differently, especially if not present in that code
                     node.pstree[node.pid]["forks"] = []
                     if node.oid in node.pstree and "forks" in node.pstree[node.oid]:
-                        node.pstree[node.oid]["forks"] = [] # maybe remove?
+                        node.pstree[node.oid]["forks"] = []
                     node.tx({node.CMD: "rejoin", node.PID: node.pid, 'nick': node.nick, "forked_node": node.fork})
 
             elif ev == node.TOPIC:
@@ -661,69 +589,26 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
 
             elif ev == node.QUIT:
                 print(f"Quit: {node.proto}, Reason: {node.data}")
+                # Only if it's the other main player here, spectators can have different prefix names
+                window.sessionStorage.setItem("connected", "false")
                 u = node.proto.split("!")[0]
-                count_white = sum(1 for key in node.users.keys() if key.startswith("u_white") and "spec" not in key)
-                count_black = sum(1 for key in node.users.keys() if key.startswith("u_black") and "spec" not in key)
                 if u in node.users:
                     del node.users[u]
-                if "spec" not in u:
-                    if count_white >= 2 or count_black >= 2:
-                        side = 'white' 
-                        if count_white >= 2 and count_black >= 2:
-                            side = 'white and black'
-                        elif count_black >= 2:
-                            side = 'black'
-                        print(f"Second window/tab opened by {side}")
-                        continue
-                    # Only if it's the other main player here, spectators can have different prefix names
-                    window.sessionStorage.setItem("connected", "false")
-                    if client_game is not None:
-                        client_game._sync = True
-                    apply_resets(window, offers, client_state_actions)
-                    if client_game is not None and client_game.timed_mode:
-                        end = time.monotonic()
-                        if client_game._starting_player:
-                            if client_game.black_clock_running:
-                                client_game.black_clock_running = False
-                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]) - 10, 0)
-                            if client_game.white_clock_running:
-                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]), 0)
-                            init["black_grace_time"] = 30
-                            init["reference_time"] = time.monotonic()
-                        else:
-                            if client_game.white_clock_running:
-                                client_game.white_clock_running = False
-                                client_game.remaining_white_time = max(client_game.remaining_white_time - (end - init["reference_time"]) - 10, 0)
-                            if client_game.black_clock_running:
-                                client_game.remaining_black_time = max(client_game.remaining_black_time - (end - init["reference_time"]), 0)
-                            init["white_grace_time"] = 30
-                            init["reference_time"] = time.monotonic()
-                        side = 'white' if not init["starting_player"] else 'black'
-                        node.tx({node.CMD: f"{side} disconnect"})
-                        init["old_sent"] = init["sent"]
-                        init["sent"] = 0
-                        init["opponent_quit"] = True
-                    if node.fork:
-                        node.fork = 0
-                        node.publish(True)
+                apply_resets(window, offers, client_state_actions)
+                if node.fork:
+                    node.fork = 0
 
             elif ev in [node.LOBBY, node.LOBBY_GAME]:
                 cmd, pid, nick, info = node.proto
 
                 if cmd == node.HELLO:
                     print("Lobby/Game:", "Welcome", nick)
-                    spectator = "spec" in nick
-                    if nick not in node.users.keys():
-                        node.users[nick] = {}
-                    if not spectator:
-                        game_status = window.sessionStorage.getItem("connected")
-                        if game_status != "true":
-                            window.sessionStorage.setItem("connected", "true")
+                    game_status = window.sessionStorage.getItem("connected")
+                    if game_status != "true":
+                        window.sessionStorage.setItem("connected", "true")
                     # publish if main
-                    if not node.fork or (node.fork != pid and not spectator):
-                        node.publish(spectator)
-                        if not spectator:
-                            node.publish(True)
+                    if not node.fork or node.fork != pid:
+                        node.publish()
 
                 elif (ev == node.LOBBY_GAME) and (cmd == node.OFFER):
                     if node.fork:
@@ -734,8 +619,7 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
                         print("forking to game offer", node.hint)
                         node.clone(pid)
                         print("cloning", init["player"], pid)
-                elif cmd == node.SPEC_OFFER:
-                    ...
+
                 else:
                     print(f"\nLOBBY/GAME: {node.fork=} {node.proto=} {node.data=} {node.hint=}")
 
@@ -750,13 +634,35 @@ async def handle_node_events(node, window, init, client_game, client_state_actio
 
             elif ev in [node.USERLIST]:
                 print(node.proto, node.users)
-                count = sum(1 for key in node.users.keys() if key.startswith("u_") and "spec" not in key)
+                count = sum(1 for key in node.users.keys() if key.startswith("u_"))
                 if count == 1:
-                    # Only advance if the retrieved position isn't the custom starting position
-                    if init["starting_position"] is not None and init["starting_position"].get('custom_start') != True:
-                        if client_game.timed_mode and init["waiting"]:
-                            init["reference_time"] = time.monotonic()
-                        init["waiting"] = False
+                    if init["starting_position"] is not None:
+                        init["waiting"] = False # Can be dependant on starting position later/game state
+                    if not init["reloaded"]:
+                        confirmed_state = None
+                        if not init["local_debug"]:
+                            retrieved = False
+                            while not retrieved:
+                                try:
+                                    confirmed_state = await asyncio.wait_for(get_or_update_game(window, init["game_id"], init["access_keys"]), timeout = 5)
+                                    retrieved = True
+                                except:
+                                    err = 'Game State retreival Failed. Reattempting...'
+                                    js_code = f"console.log('{err}')"
+                                    window.eval(js_code)
+                                    print(err)
+                        if confirmed_state is not None:
+                            confirmed_state = json.loads(confirmed_state)
+                            confirmed_state["_starting_player"] = init["starting_player"]
+                            client_game = Game(custom_params=confirmed_state)
+                            if client_game._starting_player:
+                                played_condition = client_game._starting_player == client_game.white_played
+                            else:
+                                played_condition = not client_game._starting_player == client_game.black_played
+                            init["sent"] = int(played_condition)
+                            drawing_settings["recalc_selections"] = True
+                            drawing_settings["clear_selections"] = True
+                        init["reloaded"] = True
 
             elif ev == node.RAW:
                 print("RAW:", node.data)
