@@ -5,6 +5,7 @@ import asyncio
 import pygbag.aio as asyncio
 import fetch
 import copy
+import traceback
 from game import *
 from constants import *
 from helpers import *
@@ -1174,10 +1175,13 @@ async def main():
     pygame.quit()
     sys.exit()
 
-if __name__ == "__main__":
+async def run_main():
     try:
-        asyncio.run(main())
+        await main()
     except Exception as e:
         log_err_and_print(e, window)
-        # if production:
-        #     post_error(e, window, 'exercise')
+        print(traceback.format_exc())
+        await post_error(traceback.format_exc(), window, 'exercise')
+
+if __name__ == "__main__":
+    asyncio.run(main())

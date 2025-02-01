@@ -3,6 +3,7 @@ import sys
 import json
 import asyncio
 import pygbag.aio as asyncio
+import traceback
 from game import *
 from constants import *
 from helpers import *
@@ -573,10 +574,13 @@ async def main():
     pygame.quit()
     sys.exit()
 
-if __name__ == "__main__":
+async def run_main():
     try:
-        asyncio.run(main())
+        await main()
     except Exception as e:
         log_err_and_print(e, window)
-        # if production:
-        #     post_error(e, window, 'builder')
+        print(traceback.format_exc())
+        await post_error(traceback.format_exc(), window, 'builder')
+
+if __name__ == "__main__":
+    asyncio.run(main())

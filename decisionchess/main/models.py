@@ -257,8 +257,8 @@ class ReportedChats(models.Model):
 	game_id = models.UUIDField()
 	reporting_time = models.DateTimeField(default=timezone.now)
 
-# class Errors(models.Model):
-# 	error_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-# 	game_id = models.TextField()
-# 	script_type = models.CharField(max_length=50, blank=False, null=False, default='decision_main')
-# 	error_message = models.TextField()
+class Errors(models.Model):
+	error_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+	game_id = models.TextField()
+	script_type = models.CharField(max_length=50, blank=False, null=False, default='decision_main')
+	error_message = models.TextField()

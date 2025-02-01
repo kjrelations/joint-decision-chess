@@ -7,6 +7,7 @@ import fetch
 import pygbag_net
 import builtins
 import time
+import traceback
 from datetime import datetime
 from game import *
 from constants import *
@@ -2124,10 +2125,13 @@ async def main():
     pygame.quit()
     sys.exit()
 
-if __name__ == "__main__":
+async def run_main():
     try:
-        asyncio.run(main())
+        await main()
     except Exception as e:
         log_err_and_print(e, window)
-        # if production:
-        #     post_error(e, window, 'decision_main')
+        print(traceback.format_exc())
+        await post_error(traceback.format_exc(), window, 'decision_main')
+
+if __name__ == "__main__":
+    asyncio.run(run_main())

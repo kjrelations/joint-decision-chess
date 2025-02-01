@@ -5,6 +5,7 @@ import pygbag.aio as asyncio
 import pygbag_net
 import builtins
 import time
+import os
 from datetime import datetime
 from game import *
 from constants import *
@@ -115,15 +116,50 @@ async def get_or_update_game(window, game_id, access_keys, client_game = "", pos
             window.eval(js_code)
             raise Exception(str(e))
 
-def post_error(error, window, script_type):
+async def post_error(error, window, script_type):
+    access_keys = load_keys("secrets.txt")
+    game_key = os.environ.get('key')
+    if game_key is None:
+        raise Exception('No iframe key param set')
+    else:
+        game_id = window.sessionStorage.getItem(game_key)
+    secret_key = access_keys["updatekey"] + game_id
     try:
+        error = str(error).replace('\n', '\\n').replace("'", "\\x27").replace('"', '\\x22')#.replace('(', 'o-p').replace(')', 'c-p')
         domain = 'https://decisionchess.com' if production else local
-        url = f'{domain}/error/'
+        url = f'{domain}/error/{game_id}/'
         handler = fetch.RequestHandler()
         csrf = window.sessionStorage.getItem("csrftoken")
-        _ = handler.post(url, data = {"error": str(error), "script": script_type}, headers = {'X-CSRFToken': csrf})
+        js_code = """
+            function generateToken(error, script_type, secret) {
+                const oPayload = {error: error, script_type: script_type};
+                const oHeader = {alg: 'HS256', typ: 'JWT'};
+                return KJUR.jws.JWS.sign('HS256', JSON.stringify(oHeader), JSON.stringify(oPayload), secret);
+            };
+            const existingScript = document.querySelector(`script[src='https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js']`);
+            if (!existingScript) {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js';
+                script.onload = function() {
+                    window.encryptedToken = generateToken('error_msg', 'script_type_str', 'secret_key');
+                };
+                document.head.appendChild(script);
+            } else {
+                window.encryptedToken = generateToken('error_msg', 'script_type_str', 'secret_key');
+            };
+        """.replace('secret_key', secret_key).replace("error_msg", error).replace('script_type_str', script_type)
+        window.eval(js_code)
+        await asyncio.sleep(0)
+        while window.encryptedToken is None:
+            await asyncio.sleep(0)
+        encrytedToken = window.encryptedToken
+        window.encryptedToken = None
+        _ = await handler.post(url, data = {"token": encrytedToken}, headers = {'X-CSRFToken': csrf})
     except Exception as e:
-        pass
+        exc_str = str(e).replace("'", "\\x27").replace('"', '\\x22')
+        js_code = f"console.log('{exc_str}')".replace(secret_key, "####")
+        window.eval(js_code)
+        raise Exception(str(e))
 
 # Helper to retrieve game from DB
 async def reconnect(window, game_id, access_keys, init, drawing_settings):
