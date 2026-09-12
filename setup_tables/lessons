@@ -1,0 +1,11 @@
+2f42c413-34a9-4a10-88b8-ccd420236c0f,Potential Barriers,potential-barrier,Cut your opponent's path short by landing inside it
+62fa3da4-b26a-475b-ac5b-34d79f9cae42,Rook,rook,Vertically or horizontally any number of squares
+816b35b0-0467-4d37-b092-0b6be1e70a19,Queen,queen,Rook and Bishop combined
+c4700dd7-3ab5-4edc-8dc8-12658cac1b71,Bishop,bishop,Any number of squares diagonally
+d3418188-ea43-4989-aef8-11d8fe640662,Pawn,pawn,Once or twice forwards\, captures once diagonally
+d60da47c-7273-43f4-9111-5e39e48f4997,King,king,One square in any direction
+e295569b-97bc-4d61-8915-a4bcf89910ed,Knight,knight,In an L-shape
+6931ced2-8f60-42bd-a0ec-0a9647f514fa,Annihilation,annihilation,When pieces land at the same destination
+b6d98dc8-aa03-4454-9e92-4d460e2cca4f,Introduction,introduction,How to select and move pieces\, how to draw arrows\, what the main difference is between Chess versus Decision Chess\, and more
+bb33a153-a462-4a71-9ea5-28e5cacc5da5,Entanglement & Collapse,entanglement-collapse,Prevent the opponent's active move and when both players attack simultaneously
+e22e9539-cd28-49fb-8e7d-1e489e440f0a,Double Checkmate,double-checkmate,A win-win can arise under unique circumstances
